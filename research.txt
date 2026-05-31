@@ -1,0 +1,409 @@
+# Graph-Conditioned Fine-grained Reinforcement Retrieval for Repository-level Code Completion
+
+## Abstract
+
+Repository-level code completion has emerged as a critical challenge in modern software engineering due to the highly modular and dependency-driven nature of real-world codebases. While large language models (LLMs) demonstrate remarkable performance in intra-file code generation, they often fail to capture long-range cross-file dependencies, inheritance structures, API propagation, and repository-wide contextual semantics. Existing Retrieval-Augmented Generation (RAG) systems partially mitigate this issue through dense or sparse retrieval mechanisms. However, current approaches suffer from three major limitations: (1) coarse-grained retrieval optimization, (2) insufficient structural reasoning over repository topology, and (3) weak alignment between retrieval objectives and downstream generation quality.
+
+This work proposes Graph-Conditioned Fine-grained Reinforcement Retrieval (GraphFRL), a novel framework that formulates repository-level retrieval as a graph-conditioned sequential decision-making problem. Unlike previous methods that treat retrieval as static similarity matching, GraphFRL models software repositories as heterogeneous dependency graphs and optimizes retrieval trajectories using reinforcement learning. The proposed method integrates graph-conditioned retrieval policies, local repository subgraph reasoning, and fine-grained reward assignment to improve contextual precision for downstream code generation.
+
+To address the limitations of coarse retrieval supervision in prior work, we introduce Graph-Conditioned Fine-grained Credit Assignment (GFCA), a lightweight influence-aware masking mechanism that isolates retrieval segments contributing meaningfully to generation quality. Furthermore, GraphFRL incorporates Fill-in-the-Middle (FIM) prompting to preserve bidirectional repository context during completion.
+
+The proposed framework is designed to remain computationally feasible on a single NVIDIA A100 80GB GPU by freezing the generator LLM and optimizing only the retrieval policy network using PPO. We hypothesize that GraphFRL significantly improves repository-level completion accuracy by enabling structurally-aware retrieval behavior and reducing noisy contextual injection.
+
+---
+
+# 1. Introduction
+
+Large language models trained on massive-scale code corpora have fundamentally transformed automated code completion systems. Modern code generation models achieve strong performance on intra-file generation tasks due to their ability to learn local syntax patterns and common programming idioms. However, repository-level code completion remains substantially more challenging because real-world software systems contain complex cross-file dependencies, inheritance hierarchies, dynamically propagated APIs, and modular architectures spanning hundreds or thousands of files.
+
+In practical software development environments, the information required to complete a code fragment often resides outside the currently edited file. Repository-level reasoning therefore requires retrieving semantically and structurally relevant context distributed across multiple modules. This challenge motivates Retrieval-Augmented Generation (RAG) systems for repository-level code completion.
+
+Recent approaches such as RepoCoder, AlignCoder, RLCoder, and CodeRAG improve generation quality by retrieving external repository context and concatenating retrieved snippets into the model prompt. Nevertheless, existing methods primarily optimize retrieval through lexical or embedding similarity, resulting in three major limitations.
+
+First, current retrieval optimization is coarse-grained. Reinforcement-learning-based methods such as AlignCoder and RLCoder assign rewards at the chunk level using perplexity reduction, without identifying which retrieved segments genuinely contribute to generation success.
+
+Second, current retrieval mechanisms remain structurally shallow. Most systems treat repositories as collections of independent text chunks rather than interconnected software dependency graphs.
+
+Third, existing methods lack graph-conditioned retrieval reasoning. Dense retrieval alone cannot reliably recover implicit dependencies such as inheritance propagation, indirect API references, or multi-hop call relationships.
+
+To address these issues, we propose GraphFRL, a Graph-Conditioned Fine-grained Reinforcement Retrieval framework for repository-level code completion.
+
+Unlike prior approaches, GraphFRL formulates retrieval as a graph-conditioned sequential decision-making process. The repository is represented as a heterogeneous dependency graph containing files, classes, functions, and symbols connected through import, call, inheritance, and reference relations. A graph-conditioned reinforcement learning policy learns retrieval behaviors over local repository subgraphs.
+
+Importantly, GraphFRL does not attempt to train the code generator itself. Instead, the framework freezes the generator LLM and optimizes only the retrieval policy. This design choice significantly improves training stability, reduces computational cost, and isolates retrieval quality as the primary optimization target.
+
+The core contributions of this work are summarized as follows:
+
+1. We formulate repository-level retrieval as a graph-conditioned reinforcement learning problem over heterogeneous repository dependency graphs.
+
+2. We introduce Graph-Conditioned Fine-grained Credit Assignment (GFCA), an influence-aware retrieval masking mechanism that improves retrieval reward precision.
+
+3. We propose a lightweight graph-conditioned retrieval policy using local repository subgraphs and PPO-based optimization.
+
+4. We integrate Fill-in-the-Middle prompting into repository-level retrieval pipelines to preserve bidirectional structural context.
+
+5. We design the framework to remain feasible on a single NVIDIA A100 80GB GPU by freezing the generator LLM and optimizing only the retrieval policy network.
+
+---
+
+# 2. Background and Related Work
+
+## 2.1 Repository-level Code Completion
+
+Repository-level code completion extends traditional code completion by requiring reasoning across multiple files and modules. Unlike intra-file completion, repository-level tasks require understanding software architecture, import dependencies, inheritance chains, and external symbol definitions.
+
+Benchmarks such as RepoEval and CCEval have demonstrated that standard code LLMs degrade significantly under repository-level settings due to insufficient external context.
+
+## 2.2 Retrieval-Augmented Code Generation
+
+RAG-based systems augment code generation with retrieved repository context.
+
+Sparse retrieval methods rely on lexical matching mechanisms such as BM25 or grep-style retrieval. Dense retrieval methods encode repository chunks into vector spaces using embedding models.
+
+Hybrid retrieval systems combine lexical and semantic retrieval pipelines. CodeRAG further integrates reranking mechanisms and dataflow-aware retrieval.
+
+Despite these improvements, retrieval remains fundamentally static and similarity-driven.
+
+## 2.3 Reinforcement Learning for Retrieval
+
+Recent systems such as AlignCoder and RLCoder optimize retrieval using reinforcement learning. These approaches use perplexity reduction as a reward signal to align retrieval behavior with downstream generation quality.
+
+However, these methods still assign rewards at coarse chunk granularity and do not model repository topology explicitly.
+
+## 2.4 Graph-based Repository Modeling
+
+Software repositories naturally exhibit graph structures.
+
+Nodes may represent:
+
+* files
+* classes
+* functions
+* variables
+* API symbols
+
+Edges may represent:
+
+* imports
+* calls
+* inheritance
+* references
+
+GRACE demonstrates the usefulness of graph-aware repository retrieval using graph neural networks. However, graph structures are used primarily as static representations rather than reinforcement learning environments.
+
+---
+
+# 3. Problem Formulation
+
+We formulate repository-level retrieval as a graph-conditioned Markov Decision Process (MDP).
+
+## 3.1 Repository Graph
+
+Each repository is represented as a heterogeneous graph:
+
+G = (V, E)
+
+where:
+
+V contains:
+
+* file nodes
+* class nodes
+* function nodes
+* symbol nodes
+
+E contains:
+
+* IMPORTS edges
+* CALLS edges
+* INHERITS edges
+* DEFINES edges
+* REFERENCES edges
+
+Graph construction is performed offline using Tree-sitter parsing.
+
+## 3.2 Local Repository Subgraph
+
+Traversing entire repository graphs is computationally infeasible for large-scale repositories.
+
+Therefore, GraphFRL dynamically extracts a local subgraph:
+
+G_local ⊂ G
+
+based on the current cursor position.
+
+The local subgraph includes:
+
+* neighboring function nodes
+* imported modules
+* inheritance neighbors
+* call-chain neighborhoods
+
+This restriction significantly reduces graph traversal complexity.
+
+## 3.3 State Space
+
+At retrieval step t, the state is defined as:
+
+s_t = (v_t, G_local, C_t, H_t)
+
+where:
+
+* v_t denotes the current graph node
+* G_local denotes the extracted local repository subgraph
+* C_t denotes accumulated retrieved context
+* H_t denotes retrieval history
+
+## 3.4 Action Space
+
+Unlike full graph traversal systems, GraphFRL restricts actions to retrieval-oriented operations.
+
+Actions include:
+
+* retrieve(node_i)
+* expand(neighborhood_j)
+* follow(edge_type_k)
+* stop
+
+This formulation preserves graph reasoning while avoiding combinatorial traversal explosion.
+
+## 3.5 Retrieval Policy
+
+The retrieval policy is conditioned on graph representations:
+
+πθ(a_t | s_t, G_local)
+
+A lightweight GraphSAGE encoder computes node embeddings over G_local:
+
+h_v = GraphSAGE(G_local)
+
+The policy head predicts retrieval actions using graph embeddings and query representations.
+
+---
+
+# 4. Graph-Conditioned Fine-grained Credit Assignment
+
+## 4.1 Motivation
+
+Prior retrieval optimization methods assign rewards at coarse chunk granularity. If a retrieved chunk improves generation quality, the entire chunk receives positive reward regardless of whether individual tokens contribute meaningfully.
+
+This leads to noisy retrieval policies that favor large redundant contexts.
+
+## 4.2 Influence-aware Retrieval Attribution
+
+We introduce Graph-Conditioned Fine-grained Credit Assignment (GFCA), an influence-aware masking mechanism.
+
+For each retrieved retrieval segment k, influence is estimated through generation sensitivity:
+
+I_k = Δ log P(y | x, c) - Δ log P(y | x, c \ k)
+
+where:
+
+* x denotes input context
+* c denotes retrieved context
+* y denotes target completion
+
+Segments with negligible influence receive reduced policy contribution.
+
+## 4.3 Retrieval Masking
+
+The retrieval mask is defined as:
+
+M_k = 1(I_k > τ)
+
+Only retrieval segments satisfying the influence threshold participate in policy optimization.
+
+This reduces noisy gradient propagation and improves retrieval precision.
+
+## 4.4 Variance Reduction Intuition
+
+We hypothesize that masking irrelevant retrieval segments reduces policy-gradient variance by removing non-contributing trajectories from optimization.
+
+Unlike prior coarse-grained reward assignment methods, GFCA filters noisy retrieval behaviors before PPO updates.
+
+---
+
+# 5. Retrieval and Generation Pipeline
+
+## 5.1 Graph-aware Retrieval
+
+GraphFRL integrates three retrieval pathways:
+
+### Lexical Retrieval
+
+Sparse retrieval captures explicit identifier matches.
+
+### Dense Retrieval
+
+Embedding similarity retrieves semantically related code fragments.
+
+### Graph-conditioned Retrieval
+
+The reinforcement learning policy retrieves structurally relevant repository context through local graph reasoning.
+
+## 5.2 Left-context Repository Completion
+
+GraphFRL follows the standard repository-level completion setting used in prior work, where only the left-side context before the cursor position is available during inference.
+
+Retrieved repository context is concatenated with the left context:
+
+Retrieved Context + Left Context
+
+Unlike Fill-in-the-Middle settings, this formulation avoids relying on future tokens or right-side structural hints that are unavailable in practical interactive coding environments.
+
+This design preserves consistency with existing repository-level completion benchmarks and real-world IDE completion scenarios.
+
+## 5.3 Frozen Generator Design
+
+GraphFRL freezes the generator LLM throughout training.
+
+The generator acts only as:
+
+* generation environment
+* reward evaluator
+
+This design avoids instability associated with RL fine-tuning of large language models.
+
+---
+
+# 6. Reward Design
+
+The total retrieval reward combines multiple retrieval-quality objectives:
+
+R_total = w1 R_ppl + w2 R_struct + w3 R_edit
+
+## 6.1 Retrieval Perplexity Reward
+
+Measures perplexity reduction after retrieval augmentation.
+
+## 6.2 Structural Consistency Reward
+
+Measures consistency between retrieved dependency structures and repository topology.
+
+## 6.3 Edit Similarity Reward
+
+Measures similarity between generated completion and ground-truth completion.
+
+All rewards are normalized before PPO optimization.
+
+---
+
+# 7. Training Setup
+
+## 7.1 Generator Model
+
+The framework uses a frozen Qwen2.5-Coder-7B generator quantized to 4-bit precision.
+
+No full-model fine-tuning is performed.
+
+## 7.2 Retrieval Policy
+
+The graph-conditioned retrieval policy consists of:
+
+* GraphSAGE encoder
+* MLP policy head
+* PPO optimization
+
+## 7.3 Hardware Constraints
+
+Training is designed for a single NVIDIA A100 80GB GPU.
+
+To maintain feasibility:
+
+* graph construction is fully offline
+* local subgraphs are dynamically extracted
+* only retrieval policy parameters are updated
+
+---
+
+# 8. Experimental Setup
+
+## 8.1 Datasets
+
+Experiments are conducted on:
+
+* RepoEval
+* CCEval
+
+## 8.2 Baselines
+
+We compare against:
+
+* BM25 Retrieval
+* Dense Retrieval
+* RepoCoder
+* AlignCoder
+* RLCoder
+* CodeRAG
+* GRACE
+
+## 8.3 Metrics
+
+Evaluation metrics include:
+
+* Exact Match (EM)
+* Edit Similarity (ES)
+* Retrieval Recall
+* Dependency-chain Retrieval Accuracy
+
+## 8.4 Ablation Studies
+
+We perform ablations on:
+
+* graph-conditioned policy
+* GFCA masking
+* FIM prompting
+* lexical retrieval
+* dense retrieval
+
+---
+
+# 9. Expected Outcomes
+
+We hypothesize that GraphFRL improves repository-level completion quality by:
+
+1. improving retrieval precision
+2. reducing noisy context injection
+3. recovering long dependency chains
+4. improving structural reasoning over repository topology
+
+We further hypothesize that graph-conditioned retrieval trajectories produce more interpretable retrieval behaviors than similarity-only retrieval systems.
+
+---
+
+# 10. Limitations
+
+GraphFRL currently relies on static repository graph extraction and may struggle with:
+
+* dynamic imports
+* reflection-based systems
+* metaprogramming-heavy repositories
+* incomplete dependency extraction
+
+Additionally, influence-aware retrieval masking introduces additional inference overhead.
+
+Future work may investigate:
+
+* dynamic graph updates
+* graph transformers
+* multi-agent retrieval systems
+* scalable causal retrieval attribution
+
+---
+
+# 11. Conclusion
+
+This work proposes GraphFRL, a graph-conditioned reinforcement retrieval framework for repository-level code completion.
+
+Unlike prior retrieval systems that rely on static similarity-based retrieval, GraphFRL formulates retrieval as a graph-conditioned sequential decision-making process over repository dependency graphs.
+
+The proposed framework introduces:
+
+* graph-conditioned retrieval policies
+* local repository graph reasoning
+* fine-grained retrieval credit assignment
+* FIM-aware repository completion
+
+Importantly, GraphFRL preserves computational feasibility by freezing the generator LLM and optimizing only the retrieval policy network.
+
+We believe this work establishes a promising research direction at the intersection of graph reinforcement learning, retrieval-augmented generation, and repository-level code intelligence.
