@@ -3,6 +3,14 @@ GraphFRL Main Training Script (Production)
 
 Full pipeline: Data → Retrieval → Generation → CAHM → Reward → PPO
 With: batch processing, validation, logging, checkpointing.
+
+Retrieval modes (set RETRIEVAL_MODE):
+  - dense+graph:    Dense (PPO-trained) + Graph (deterministic) — original behavior
+  - quantum:        Quantum only (PPO-trained)
+  - quantum+graph:  Quantum (PPO-trained) + Graph (deterministic)
+  - dense+quantum:  Dense (frozen) + Quantum (PPO-trained)
+  - all:            Dense (frozen) + Graph (deterministic) + Quantum (PPO-trained)
+  - dense:          Dense only (PPO-trained, no graph)
 """
 
 import os
@@ -21,6 +29,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from GraphFRL.retriever.unixcoder_retriever import UniXCoderRetriever
 from GraphFRL.retriever.graph_retriever import GraphRetriever
+from GraphFRL.retriever.quantum_retriever import QuantumUniXCoderRetriever
 from GraphFRL.data.dataset_loader import GraphFRLDataLoader
 from GraphFRL.data.ast_parser import ASTQueryExtractor
 from GraphFRL.generator.causal_prompt import CausalPromptGenerator
@@ -82,14 +91,26 @@ class TrainingLogger:
 @torch.no_grad()
 def validate(
     data_loader: GraphFRLDataLoader,
-    dense_retriever: UniXCoderRetriever,
-    graph_retriever: GraphRetriever,
+    trainable_retriever,
+    graph_retriever,
     ast_extractor: ASTQueryExtractor,
     prompt_gen: CausalPromptGenerator,
     llm: DeepSeekGenerator,
+    use_graph: bool = True,
+    dense_retriever=None,
     max_samples: int = 50,
 ) -> dict:
-    """Run validation and return EM/ES metrics."""
+    """
+    Run validation and return EM/ES metrics.
+
+    Args:
+        trainable_retriever: The PPO-trained retriever (quantum or dense).
+        graph_retriever: Optional graph retriever (deterministic).
+        use_graph: Whether to use graph retrieval.
+        dense_retriever: Optional extra dense retriever (only when both
+                         dense and quantum are active — dense provides
+                         additional fixed context alongside quantum).
+    """
     try:
         val_samples = data_loader.load_test_samples(
             dataset_name="repoeval", max_samples=max_samples
@@ -104,21 +125,38 @@ def validate(
         query = sample["left_context"]
         file_path = sample["id"]
 
-        # Graph retrieval
-        local_graph = ast_extractor.extract_local_graph(
-            query, cursor_line=len(query.split("\n"))
-        )
-        graph_snippets = graph_retriever.retrieve_paths(
-            local_graph=local_graph, crossfile_dict=sample["crossfile_context"]
-        )
+        # Graph retrieval (structural, deterministic)
+        graph_snippets = []
+        if use_graph and graph_retriever is not None:
+            local_graph = ast_extractor.extract_local_graph(
+                query, cursor_line=len(query.split("\n"))
+            )
+            graph_snippets = graph_retriever.retrieve_paths(
+                local_graph=local_graph, crossfile_dict=sample["crossfile_context"]
+            )
 
-        # Dense retrieval
-        dense_snippets, _ = dense_retriever.retrieve_top_k(
+        # Extra dense retrieval (when both dense and quantum are active)
+        extra_dense_snippets = []
+        if dense_retriever is not None:
+            extra_dense_snippets, _ = dense_retriever.retrieve_top_k(
+                query, sample["crossfile_context"], top_k=2
+            )
+
+        # Trainable retriever (PPO target)
+        trainable_snippets, _ = trainable_retriever.retrieve_top_k(
             query, sample["crossfile_context"], top_k=2
         )
 
-        # Generate
-        repo_snippet = "\n".join(graph_snippets) + "\n\n" + "\n".join(dense_snippets)
+        # Merge context — combine all active snippets
+        context_parts = []
+        if graph_snippets:
+            context_parts.append("\n".join(graph_snippets))
+        if extra_dense_snippets:
+            context_parts.append("\n".join(extra_dense_snippets))
+        if trainable_snippets:
+            context_parts.append("\n".join(trainable_snippets))
+        repo_snippet = "\n\n".join(context_parts)
+
         prompt = prompt_gen.construct_prompt(repo_snippet, query, file_path=file_path)
         pred_text, _, _ = llm.generate_with_attention(prompt, retrieved_tokens_len=0)
 
@@ -150,13 +188,64 @@ def train():
     CHECKPOINT_DIR = os.path.join(os.path.dirname(__file__), "checkpoints")
     LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")
 
+    # ── Retrieval Mode ────────────────────────────────────────────
+    # Options: dense, quantum, dense+graph, quantum+graph,
+    #          dense+quantum, all
+    # "all" expands to "dense+graph+quantum"
+    # When quantum is active, it becomes the PPO target.
+    # When only dense is active, dense is the PPO target.
+    # Graph retriever is always deterministic (no PPO).
+    RETRIEVAL_MODE = "quantum+graph"
+
+    mode_parts = set(
+        RETRIEVAL_MODE.replace("all", "dense+graph+quantum").split("+")
+    )
+    use_dense = "dense" in mode_parts
+    use_graph = "graph" in mode_parts
+    use_quantum = "quantum" in mode_parts
+
+    assert use_dense or use_quantum, \
+        "RETRIEVAL_MODE must include at least 'dense' or 'quantum'"
+
     # ── Initialize Pipeline ───────────────────────────────────────
     logger.info("Initializing pipeline...")
+    logger.info(f"Retrieval mode: {RETRIEVAL_MODE}")
+    logger.info(
+        f"  use_dense={use_dense}, use_graph={use_graph}, "
+        f"use_quantum={use_quantum}"
+    )
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    dense_retriever = UniXCoderRetriever(device=device)
-    graph_retriever = GraphRetriever()
+    # Graph retriever (deterministic, no PPO training)
+    graph_retriever = GraphRetriever() if use_graph else None
+
+    # Quantum retriever (PPO-trained when active)
+    # Uses mode="quantum" by default (pure quantum scoring, no classical mix)
+    quantum_retriever = None
+    if use_quantum:
+        quantum_retriever = QuantumUniXCoderRetriever(
+            device=device, mode="quantum"
+        )
+
+    # Dense retriever
+    # When both dense and quantum are active, dense provides extra
+    # fixed context (not PPO-trained). When only dense is active,
+    # dense is the PPO target.
+    dense_retriever = None
+    if use_dense and use_quantum:
+        # Dense provides extra fixed context; quantum is PPO target
+        dense_retriever = UniXCoderRetriever(device=device)
+        dense_retriever.eval()
+    elif use_dense:
+        # Dense is the PPO target
+        dense_retriever = UniXCoderRetriever(device=device)
+
+    # Trainable retriever — the one PPO optimizes
+    trainable_retriever = quantum_retriever if use_quantum else dense_retriever
+
+    logger.info(f"PPO target: {trainable_retriever.__class__.__name__}")
+
     data_loader = GraphFRLDataLoader(use_fim=False, completion_level="line")
     ast_extractor = ASTQueryExtractor()
     prompt_gen = CausalPromptGenerator(model_name="deepseek-coder")
@@ -167,15 +256,17 @@ def train():
     reward_model = CompositeRewardModel(use_llm_judge=False)  # Fast mode
 
     # Value head
-    hidden_dim = dense_retriever.model.config.hidden_size
+    hidden_dim = trainable_retriever.model.config.hidden_size
     value_head = ValueHead(hidden_dim=hidden_dim).to(device)
 
-    # Optimizers
-    optimizer = optim.AdamW(dense_retriever.parameters(), lr=LR_RETRIEVER, weight_decay=0.01)
+    # Optimizers — only for the trainable retriever
+    optimizer = optim.AdamW(
+        trainable_retriever.parameters(), lr=LR_RETRIEVER, weight_decay=0.01
+    )
     value_optimizer = optim.AdamW(value_head.parameters(), lr=LR_VALUE)
 
     ppo_trainer = GraphFRLPPOTrainer(
-        model=dense_retriever,
+        model=trainable_retriever,
         optimizer=optimizer,
         cahm_engine=cahm,
         value_head=value_head,
@@ -207,23 +298,48 @@ def train():
                 file_path = sample["id"]
 
                 # ── Step 1: Multi-semantic Retrieval ──
-                local_graph = ast_extractor.extract_local_graph(
-                    query, cursor_line=len(query.split("\n"))
-                )
-                graph_snippets = graph_retriever.retrieve_paths(
-                    local_graph=local_graph,
-                    crossfile_dict=sample["crossfile_context"],
-                    current_file=file_path,
-                )
 
-                dense_snippets, retriever_logprobs, aux = dense_retriever.retrieve_top_k(
-                    query, sample["crossfile_context"], top_k=TOP_K, return_aux=True
-                )
+                # Graph retrieval (structural, deterministic)
+                graph_snippets = []
+                if use_graph and graph_retriever is not None:
+                    local_graph = ast_extractor.extract_local_graph(
+                        query, cursor_line=len(query.split("\n"))
+                    )
+                    graph_snippets = graph_retriever.retrieve_paths(
+                        local_graph=local_graph,
+                        crossfile_dict=sample["crossfile_context"],
+                        current_file=file_path,
+                    )
+
+                # Extra dense retrieval (only when both dense and
+                # quantum are active — dense is frozen, extra context)
+                extra_dense_snippets = []
+                if dense_retriever is not None and use_quantum:
+                    with torch.no_grad():
+                        extra_dense_snippets, _ = dense_retriever.retrieve_top_k(
+                            query, sample["crossfile_context"], top_k=TOP_K
+                        )
+
+                # Trainable retriever (PPO target — quantum or dense)
+                trainable_snippets, retriever_logprobs, aux = \
+                    trainable_retriever.retrieve_top_k(
+                        query, sample["crossfile_context"],
+                        top_k=TOP_K, return_aux=True,
+                    )
                 selected_indices = aux["topk_indices"]
 
-                # Merge context
-                repo_snippet = "\n".join(graph_snippets) + "\n\n" + "\n".join(dense_snippets)
-                prompt = prompt_gen.construct_prompt(repo_snippet, query, file_path=file_path)
+                # Merge context — combine all active snippets
+                context_parts = []
+                if graph_snippets:
+                    context_parts.append("\n".join(graph_snippets))
+                if extra_dense_snippets:
+                    context_parts.append("\n".join(extra_dense_snippets))
+                if trainable_snippets:
+                    context_parts.append("\n".join(trainable_snippets))
+                repo_snippet = "\n\n".join(context_parts)
+                prompt = prompt_gen.construct_prompt(
+                    repo_snippet, query, file_path=file_path
+                )
 
                 # ── Step 2: Generate + get base logprobs ──
                 pred_text, base_logprobs, cross_attn = llm.generate_with_attention(
@@ -233,21 +349,52 @@ def train():
                 # ── Step 3: CAHM Masking ──
                 # U_k: Attention-based mask
                 mean_attn = cross_attn.mean()
-                mask_U_scalar = cahm.compute_attention_mask(torch.tensor([mean_attn.item()]))
-                mask_U = mask_U_scalar.expand_as(retriever_logprobs).to(retriever_logprobs.device)
+                mask_U_scalar = cahm.compute_attention_mask(
+                    torch.tensor([mean_attn.item()])
+                )
+                mask_U = mask_U_scalar.expand_as(retriever_logprobs).to(
+                    retriever_logprobs.device
+                )
 
                 # I_k: Ablation-based causal influence
+                # Fixed context (graph + extra dense) stays constant
+                # during ablation — only trainable snippets are ablated.
+                fixed_parts = []
+                if graph_snippets:
+                    fixed_parts.append("\n".join(graph_snippets))
+                if extra_dense_snippets:
+                    fixed_parts.append("\n".join(extra_dense_snippets))
+                fixed_context = "\n\n".join(fixed_parts)
+
                 action_influences = []
-                for idx in range(len(dense_snippets)):
-                    dense_without_i = [s for j, s in enumerate(dense_snippets) if j != idx]
-                    snippet_without_i = "\n".join(graph_snippets) + "\n\n" + "\n".join(dense_without_i)
-                    prompt_without_i = prompt_gen.construct_prompt(snippet_without_i, query, file_path=file_path)
-                    logprobs_without_i = llm.score_sequence(prompt_without_i, pred_text)
-                    min_len = min(base_logprobs.size(0), logprobs_without_i.size(0))
+                for idx in range(len(trainable_snippets)):
+                    without_i = [
+                        s for j, s in enumerate(trainable_snippets) if j != idx
+                    ]
+                    ablated_parts = []
+                    if fixed_context:
+                        ablated_parts.append(fixed_context)
+                    if without_i:
+                        ablated_parts.append("\n".join(without_i))
+                    snippet_without_i = "\n\n".join(ablated_parts)
+                    prompt_without_i = prompt_gen.construct_prompt(
+                        snippet_without_i, query, file_path=file_path
+                    )
+                    logprobs_without_i = llm.score_sequence(
+                        prompt_without_i, pred_text
+                    )
+                    min_len = min(
+                        base_logprobs.size(0), logprobs_without_i.size(0)
+                    )
                     if min_len == 0:
-                        action_influences.append(torch.tensor(0.0, device=device))
+                        action_influences.append(
+                            torch.tensor(0.0, device=device)
+                        )
                     else:
-                        influence_i = (base_logprobs[:min_len] - logprobs_without_i[:min_len]).mean()
+                        influence_i = (
+                            base_logprobs[:min_len]
+                            - logprobs_without_i[:min_len]
+                        ).mean()
                         action_influences.append(influence_i)
 
                 if action_influences:
@@ -266,16 +413,22 @@ def train():
 
                 # ── Step 5: Value estimation ──
                 with torch.no_grad():
-                    query_emb = dense_retriever.encode_batch([query[-1500:]], batch_size=1)
-                    values_retriever = value_head(query_emb).expand(retriever_logprobs.shape[0])
+                    query_emb = trainable_retriever.encode_batch(
+                        [query[-1500:]], batch_size=1
+                    )
+                    values_retriever = value_head(query_emb).expand(
+                        retriever_logprobs.shape[0]
+                    )
 
                 # ── Step 6: PPO Update ──
                 old_logprobs = retriever_logprobs.detach()
-                rewards_tensor = torch.full_like(retriever_logprobs, final_reward)
+                rewards_tensor = torch.full_like(
+                    retriever_logprobs, final_reward
+                )
 
                 step_losses = []
                 for _ in range(PPO_UPDATE_STEPS):
-                    _, new_logprobs = dense_retriever.retrieve_top_k(
+                    _, new_logprobs = trainable_retriever.retrieve_top_k(
                         query, sample["crossfile_context"],
                         top_k=TOP_K, force_indices=selected_indices,
                     )
@@ -321,12 +474,17 @@ def train():
         # ── Validation ──
         if (epoch + 1) % VALIDATE_EVERY == 0:
             logger.info("Running validation...")
-            dense_retriever.eval()
+            trainable_retriever.eval()
             val_results = validate(
-                data_loader, dense_retriever, graph_retriever,
-                ast_extractor, prompt_gen, llm, max_samples=50,
+                data_loader, trainable_retriever, graph_retriever,
+                ast_extractor, prompt_gen, llm,
+                use_graph=use_graph,
+                dense_retriever=(
+                    dense_retriever if (use_dense and use_quantum) else None
+                ),
+                max_samples=50,
             )
-            dense_retriever.train()
+            trainable_retriever.train()
             epoch_summary.update(val_results)
 
             # Check if best model
@@ -335,10 +493,12 @@ def train():
                 best_path = os.path.join(CHECKPOINT_DIR, "best_model.pt")
                 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
                 torch.save({
-                    "retriever": dense_retriever.model.state_dict(),
+                    "retriever_full": trainable_retriever.state_dict(),
+                    "retriever": trainable_retriever.model.state_dict(),
                     "value_head": value_head.state_dict(),
                     "epoch": epoch + 1,
                     "val_es": val_es,
+                    "retrieval_mode": RETRIEVAL_MODE,
                 }, best_path)
                 best_checkpoint = best_path
                 logger.info(f"  ★ New best model (ES={val_es}%) saved to {best_path}")
@@ -349,10 +509,12 @@ def train():
         os.makedirs(CHECKPOINT_DIR, exist_ok=True)
         ckpt_path = os.path.join(CHECKPOINT_DIR, f"epoch_{epoch + 1}.pt")
         torch.save({
-            "retriever": dense_retriever.model.state_dict(),
+            "retriever_full": trainable_retriever.state_dict(),
+            "retriever": trainable_retriever.model.state_dict(),
             "value_head": value_head.state_dict(),
             "optimizer": optimizer.state_dict(),
             "epoch": epoch + 1,
+            "retrieval_mode": RETRIEVAL_MODE,
         }, ckpt_path)
         logger.info(f"  Checkpoint saved: {ckpt_path}")
 
@@ -367,6 +529,7 @@ def train():
         "total_epochs": NUM_EPOCHS,
         "best_checkpoint": best_checkpoint,
         "final_avg_loss": avg_epoch_loss,
+        "retrieval_mode": RETRIEVAL_MODE,
     })
 
 

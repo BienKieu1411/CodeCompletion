@@ -1,15 +1,5 @@
 """
-Hybrid Quantum-Classical Retriever
-Tích hợp Quantum-Inspired Embeddings Projection (QIEPSM) vào UniXCoder.
-
-Phương pháp lượng tử mô phỏng (Quantum-Inspired):
-  QIEPSM KHÔNG dùng mạch lượng tử thật hay giả lập mạch lượng tử.
-  Họ chỉ mượn công thức toán học từ cơ học lượng tử:
-  - Biểu diễn trên Bloch sphere (amplitude encoding)
-  - Unitary rotations ZYZ (learnable quantum gates mô phỏng)
-  - Quantum Fidelity thay cosine similarity
-  Tất cả chạy trên GPU thông thường bằng PyTorch complex tensors.
-
+Hybrid Quantum-Classical Retriever (QIEPSM)
 Pipeline:
   1. build_index():  AST-based chunking → pre-compute BM25 index (1 lần duy nhất)
   2. retrieve_top_k(): BM25 filter → Dense/Quantum encoding → similarity → top-k
@@ -590,26 +580,6 @@ class QuantumUniXCoderRetriever(nn.Module):
 
         QIEPSM gốc:  F = |Π_k ⟨ψ_q^k|ψ_d^k⟩|²   (prod trước, abs sau)
         Bản này:      log_F ≈ 2 * Σ_k log|⟨ψ_q^k|ψ_d^k⟩|  (abs trước, sum log)
-
-        ╔══════════════════════════════════════════════════════════════╗
-        ║  DEVIATION FROM QIEPSM PAPER — Intentional trade-off:      ║
-        ║                                                              ║
-        ║  QIEPSM: .prod(dim).abs().square()                          ║
-        ║    → Giữ phase cancellation (quantum interference)           ║
-        ║    → Nhưng prod(256 complex < 1) → underflow ≈ 0            ║
-        ║    → Gradient vanishing qua 256-element chain rule           ║
-        ║                                                              ║
-        ║  Bản này: .abs() per qubit → .log() → .sum()                ║
-        ║    → Mất phase information (chỉ giữ magnitude)               ║
-        ║    → Nhưng numerically stable (log-space, không underflow)    ║
-        ║    → Gradient ổn định (sum thay vì product)                  ║
-        ║                                                              ║
-        ║  Vì scores chỉ dùng cho ranking (qua softmax → top-k),     ║
-        ║  magnitude-only đủ phân biệt thứ tự. Phase cancellation     ║
-        ║  chỉ quan trọng trong quantum computing thật.                ║
-        ║                                                              ║
-        ║  Xem: quantum_fidelity_deviation.md để biết chi tiết.       ║
-        ╚══════════════════════════════════════════════════════════════╝
 
         Args:
             query_q: (n_qubits, 2) complex — query quantum state
