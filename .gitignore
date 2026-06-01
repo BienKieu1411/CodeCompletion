@@ -50,3 +50,5 @@ logs/
 
 # Specific request: Ignore folder qiepsm
 qiepsm/
+*.pdf
+repository_explanation.md
