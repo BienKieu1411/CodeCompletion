@@ -8,6 +8,7 @@ Pipeline:
 """
 
 from typing import Dict, Any, List, Optional, Tuple
+import hashlib
 import logging
 import math
 import torch
@@ -16,6 +17,16 @@ import torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModel
 
 logger = logging.getLogger(__name__)
+
+
+def _repo_fingerprint(crossfile_dict: Dict[str, str]) -> str:
+    digest = hashlib.sha256()
+    for filename, content in sorted(crossfile_dict.items()):
+        digest.update(filename.encode("utf8", errors="ignore"))
+        digest.update(b"\0")
+        digest.update(hashlib.sha256((content or "").encode("utf8", errors="ignore")).digest())
+        digest.update(b"\0")
+    return digest.hexdigest()[:16]
 
 
 # ── BM25 Pre-filter ──────────────────────────────────────────────────────────
@@ -205,8 +216,12 @@ class ChunkIndex:
         """
         self.chunk_ids: List[str] = []
         self.chunk_texts: List[str] = []
+        self.encoded_texts: List[str] = []
         self._bm25: Optional[_BM25Index] = None
         self._bm25_tokens: List[List[str]] = []
+        self.doc_raw: Optional[torch.Tensor] = None
+        self.doc_dense: Optional[torch.Tensor] = None
+        self.doc_quantum: Optional[torch.Tensor] = None
 
         # AST-chunk tất cả files 1 lần
         for filename, content in sorted(crossfile_dict.items()):
@@ -222,6 +237,7 @@ class ChunkIndex:
             for cid, ctext in file_chunks:
                 self.chunk_ids.append(cid)
                 self.chunk_texts.append(ctext)
+                self.encoded_texts.append(ctext[:1500])
 
         # Pre-build BM25 index
         if self.chunk_texts:
@@ -236,13 +252,17 @@ class ChunkIndex:
     def __len__(self) -> int:
         return len(self.chunk_texts)
 
-    def bm25_filter(self, query: str, top_n: int = 50) -> Tuple[List[str], List[str]]:
-        """BM25 pre-filter → return (filtered_ids, filtered_texts)."""
+    def bm25_filter_indices(self, query: str, top_n: int = 50) -> List[int]:
+        """BM25 pre-filter → return filtered chunk indices."""
         if self._bm25 is None or len(self) <= top_n:
-            return self.chunk_ids, self.chunk_texts
+            return list(range(len(self.chunk_ids)))
 
         query_tokens = _tokenize_for_bm25(query)
-        indices = self._bm25.query(query_tokens, top_n)
+        return self._bm25.query(query_tokens, top_n)
+
+    def bm25_filter(self, query: str, top_n: int = 50) -> Tuple[List[str], List[str]]:
+        """BM25 pre-filter → return (filtered_ids, filtered_texts)."""
+        indices = self.bm25_filter_indices(query, top_n)
         return (
             [self.chunk_ids[i] for i in indices],
             [self.chunk_texts[i] for i in indices],
@@ -330,6 +350,7 @@ class CoarseDenseRetriever(torch.nn.Module):
         bm25_top_n: int = 50,
         scoring_mode: str = "dense",
         quantum_alpha: float = 0.5,
+        precompute_index: Optional[bool] = None,
     ):
         super().__init__()
         if scoring_mode == "classical":
@@ -341,6 +362,7 @@ class CoarseDenseRetriever(torch.nn.Module):
         self.max_seq_len = max_seq_len
         self.bm25_top_n = bm25_top_n
         self.scoring_mode = scoring_mode
+        self.precompute_index = (scoring_mode in ("quantum", "hybrid")) if precompute_index is None else bool(precompute_index)
 
         init_alpha = max(0.01, min(0.99, float(quantum_alpha)))
         raw_alpha_init = math.log(init_alpha / (1.0 - init_alpha))
@@ -371,21 +393,48 @@ class CoarseDenseRetriever(torch.nn.Module):
 
     # ── Index Management ──────────────────────────────────────────────────────
 
+    def _cache_key(self, crossfile_dict: Dict[str, str], repo_key: str) -> str:
+        if repo_key and repo_key != "default":
+            return repo_key
+        return _repo_fingerprint(crossfile_dict)
+
     def build_index(self, crossfile_dict: Dict[str, str], repo_key: str = "default") -> ChunkIndex:
         """
         Pre-chunk + pre-build BM25 index for a repo.
         Call this ONCE per repo, before running queries.
         """
+        repo_key = self._cache_key(crossfile_dict, repo_key)
         index = ChunkIndex(crossfile_dict)
+        if self.precompute_index:
+            self.precompute_index_representations(index)
         self._index_cache[repo_key] = index
         logger.info(f"Built index for '{repo_key}': {len(index)} chunks")
         return index
 
     def get_or_build_index(self, crossfile_dict: Dict[str, str], repo_key: str = "default") -> ChunkIndex:
         """Get cached index or build new one."""
+        repo_key = self._cache_key(crossfile_dict, repo_key)
         if repo_key not in self._index_cache:
             return self.build_index(crossfile_dict, repo_key)
         return self._index_cache[repo_key]
+
+    def precompute_index_representations(self, index: ChunkIndex, batch_size: int = 32) -> ChunkIndex:
+        """
+        Precompute document-side dense and quantum-inspired representations.
+
+        Query-time retrieval still BM25-filters candidate indices, then slices
+        this base instead of re-encoding every candidate chunk for every query.
+        """
+        if not index.encoded_texts:
+            return index
+        if index.doc_raw is None:
+            with torch.no_grad():
+                index.doc_raw = self.encode_batch_raw(index.encoded_texts, batch_size=batch_size).detach()
+                index.doc_dense = F.normalize(index.doc_raw, p=2, dim=-1).detach()
+        if self.scoring_mode in ("quantum", "hybrid") and index.doc_quantum is None:
+            with torch.no_grad():
+                index.doc_quantum = self._compute_quantum_states(index.doc_raw).detach()
+        return index
 
     # ── Encoding ──────────────────────────────────────────────────────────────
 
@@ -475,13 +524,24 @@ class CoarseDenseRetriever(torch.nn.Module):
         inner = (q_conj[..., 0] * doc_q[..., 0]) + (q_conj[..., 1] * doc_q[..., 1])
         return 2.0 * torch.log(inner.abs() + 1e-12).sum(dim=1)
 
-    def _compute_quantum_scores(self, query_raw: torch.Tensor, doc_raw: torch.Tensor) -> torch.Tensor:
-        query_qubits = self._amplitude_encode(query_raw)
-        doc_qubits = self._amplitude_encode(doc_raw)
+    def _compute_quantum_states(self, raw_embeddings: torch.Tensor) -> torch.Tensor:
+        qubits = self._amplitude_encode(raw_embeddings)
         if hasattr(self, "c_zyz"):
-            query_qubits = self._quantum_transform(query_qubits)
-            doc_qubits = self._quantum_transform(doc_qubits)
-        return self._quantum_fidelity(query_qubits.squeeze(0), doc_qubits)
+            qubits = self._quantum_transform(qubits)
+        return qubits
+
+    def _compute_quantum_scores(
+        self,
+        query_raw: torch.Tensor,
+        doc_raw: Optional[torch.Tensor] = None,
+        doc_quantum: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        query_qubits = self._compute_quantum_states(query_raw)
+        if doc_quantum is None:
+            if doc_raw is None:
+                raise ValueError("doc_raw or doc_quantum must be provided")
+            doc_quantum = self._compute_quantum_states(doc_raw)
+        return self._quantum_fidelity(query_qubits.squeeze(0), doc_quantum)
 
     @staticmethod
     def _zscore(scores: torch.Tensor) -> torch.Tensor:
@@ -529,21 +589,37 @@ class CoarseDenseRetriever(torch.nn.Module):
             return [], empty_lp
 
         # Step 2: BM25 Pre-filter
-        filenames, contents = index.bm25_filter(query, top_n=self.bm25_top_n)
+        candidate_indices = index.bm25_filter_indices(query, top_n=self.bm25_top_n)
+        filenames = [index.chunk_ids[i] for i in candidate_indices]
+        contents = [index.chunk_texts[i] for i in candidate_indices]
 
-        # Step 3: Dense encoding (batched)
-        safe_contents = [c[:1500] for c in contents]
+        # Step 3: Query encoding + document base lookup
         query_raw = self.encode_batch_raw([query[-1500:]], batch_size=1)
-        doc_raw = self.encode_batch_raw(safe_contents, batch_size=32)
+        if self.precompute_index:
+            self.precompute_index_representations(index)
+
+        doc_quantum = None
+        if index.doc_raw is not None:
+            index_tensor = torch.tensor(candidate_indices, dtype=torch.long, device=index.doc_raw.device)
+            doc_raw = index.doc_raw.index_select(0, index_tensor).to(self.device)
+            if index.doc_dense is not None:
+                doc_dense = index.doc_dense.index_select(0, index_tensor).to(self.device)
+            else:
+                doc_dense = F.normalize(doc_raw, p=2, dim=-1)
+            if index.doc_quantum is not None:
+                doc_quantum = index.doc_quantum.index_select(0, index_tensor).to(self.device)
+        else:
+            safe_contents = [c[:1500] for c in contents]
+            doc_raw = self.encode_batch_raw(safe_contents, batch_size=32)
+            doc_dense = F.normalize(doc_raw, p=2, dim=-1)
 
         # Step 4: Similarity scoring
         query_dense = F.normalize(query_raw, p=2, dim=-1)
-        doc_dense = F.normalize(doc_raw, p=2, dim=-1)
         dense_scores = torch.matmul(doc_dense, query_dense.squeeze(0))
 
         quantum_scores = None
         if self.scoring_mode in ("quantum", "hybrid"):
-            quantum_scores = self._compute_quantum_scores(query_raw, doc_raw)
+            quantum_scores = self._compute_quantum_scores(query_raw, doc_raw=doc_raw, doc_quantum=doc_quantum)
 
         if self.scoring_mode == "dense":
             scores_tensor = dense_scores
@@ -581,6 +657,7 @@ class CoarseDenseRetriever(torch.nn.Module):
                 "topk_indices": topk_indices,
                 "filenames": filenames,
                 "scoring_mode": self.scoring_mode,
+                "precomputed_index": index.doc_raw is not None,
             }
             if quantum_scores is not None:
                 aux["quantum_alpha"] = float(self.quantum_alpha_value.detach().cpu().item())

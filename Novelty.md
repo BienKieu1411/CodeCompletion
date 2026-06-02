@@ -250,6 +250,7 @@ Lý do:
 - BM25 + dense retriever hiện tại đã là candidate gate cho graph traversal.
 - Quantum fidelity phù hợp để bổ sung một tín hiệu similarity khác trên embedding UniXCoder.
 - Dùng log-space fidelity ổn định hơn product fidelity gốc vì product qua nhiều qubit dễ underflow.
+- Document-side dense vectors và transformed quantum states có thể được precompute thành coarse base theo repo, sau đó mỗi query chỉ cần encode query và slice candidates theo BM25 indices.
 - Hybrid dense/quantum scoring có thể ablate trực tiếp mà không phá pipeline graph RL.
 
 Công thức scoring:
