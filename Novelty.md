@@ -652,7 +652,7 @@ Initial feature có thể dùng:
 Quy trình:
 
 ```text
-BM25 / UniXcoder lấy top-50 hoặc top-100 candidates
+BM25 / UniXcoder lấy top-100 candidates
   optional: dense / quantum log-fidelity / hybrid coarse scoring
  ↓
 Build local dependency subgraph quanh candidates

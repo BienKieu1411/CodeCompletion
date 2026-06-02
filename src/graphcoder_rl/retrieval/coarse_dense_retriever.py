@@ -347,7 +347,7 @@ class CoarseDenseRetriever(torch.nn.Module):
         model_name: str = "microsoft/unixcoder-base",
         device: str = "cuda",
         max_seq_len: int = 512,
-        bm25_top_n: int = 50,
+        bm25_top_n: int = 100,
         scoring_mode: str = "dense",
         quantum_alpha: float = 0.5,
         precompute_index: Optional[bool] = None,
