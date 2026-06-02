@@ -45,7 +45,11 @@ def infer(args):
 
     # ── Initialize Pipeline ───────────────────────────────────────
     logger.info("Loading models...")
-    dense_retriever = CoarseDenseRetriever(device=device)
+    dense_retriever = CoarseDenseRetriever(
+        device=device,
+        scoring_mode=getattr(args, "coarse_scoring_mode", "dense"),
+        quantum_alpha=float(getattr(args, "coarse_quantum_alpha", 0.5)),
+    )
     graph_retriever = MultiHopGraphRetriever(
         enable_left_context_anchors=bool(getattr(args, "enable_left_context_anchors", True)),
         enable_quantization=bool(getattr(args, "enable_quantization", True)),
@@ -212,6 +216,11 @@ def build_arg_parser():
                         help="Max tokens to generate")
     parser.add_argument("--save_retrieval_meta", action="store_true",
                         help="Save per-sample retrieval metadata for research analysis")
+    parser.add_argument("--coarse-scoring-mode", choices=["dense", "quantum", "hybrid"],
+                        default="dense",
+                        help="Coarse retriever scoring mode")
+    parser.add_argument("--coarse-quantum-alpha", type=float, default=0.5,
+                        help="Hybrid alpha for dense vs quantum coarse scores")
     parser.add_argument("--no-left-context-anchors", action="store_true",
                         help="Disable left-context anchors (ablation)")
     parser.add_argument("--no-quantization", action="store_true",

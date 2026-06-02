@@ -56,6 +56,8 @@ def _cmd_train(args: argparse.Namespace) -> dict:
             "completion_level": args.completion_level,
             "fixed_train_size": args.fixed_train_size,
             "warm_start_steps": args.warm_start_steps,
+            "coarse_scoring_mode": args.coarse_scoring_mode,
+            "coarse_quantum_alpha": args.coarse_quantum_alpha,
         }
     )
     train(cfg)
@@ -75,6 +77,8 @@ def _cmd_infer(args: argparse.Namespace) -> dict:
         top_k=args.top_k,
         max_gen_length=args.max_gen_length,
         save_retrieval_meta=args.save_retrieval_meta,
+        coarse_scoring_mode=args.coarse_scoring_mode,
+        coarse_quantum_alpha=args.coarse_quantum_alpha,
         enable_left_context_anchors=not args.no_left_context_anchors,
         enable_quantization=not args.no_quantization,
         enable_multi_hop=not args.no_multi_hop,
@@ -185,6 +189,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_train.add_argument("--completion-level", choices=["line", "block", "mixed"], default="line")
     p_train.add_argument("--fixed-train-size", type=int, default=2000)
     p_train.add_argument("--warm-start-steps", type=int, default=100)
+    p_train.add_argument("--coarse-scoring-mode", choices=["dense", "quantum", "hybrid"], default="dense")
+    p_train.add_argument("--coarse-quantum-alpha", type=float, default=0.5)
     p_train.set_defaults(func=_cmd_train)
 
     p_infer = sub.add_parser("infer", help="Run inference")
@@ -194,6 +200,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_infer.add_argument("--top-k", type=int, default=3)
     p_infer.add_argument("--max-gen-length", type=int, default=64)
     p_infer.add_argument("--save-retrieval-meta", action="store_true")
+    p_infer.add_argument("--coarse-scoring-mode", choices=["dense", "quantum", "hybrid"], default="dense")
+    p_infer.add_argument("--coarse-quantum-alpha", type=float, default=0.5)
     p_infer.add_argument("--no-left-context-anchors", action="store_true")
     p_infer.add_argument("--no-quantization", action="store_true")
     p_infer.add_argument("--no-multi-hop", action="store_true")

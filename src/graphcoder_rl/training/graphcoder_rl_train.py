@@ -207,7 +207,11 @@ def train(config: dict | None = None):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    dense_retriever = CoarseDenseRetriever(device=device)
+    dense_retriever = CoarseDenseRetriever(
+        device=device,
+        scoring_mode=cfg.get("coarse_scoring_mode", "dense"),
+        quantum_alpha=float(cfg.get("coarse_quantum_alpha", 0.5)),
+    )
     graph_retriever = MultiHopGraphRetriever()
     data_loader = DatasetLoader(
         dataset_path=cfg.get("dataset_path", "data/github_repos/python/train.parquet"),

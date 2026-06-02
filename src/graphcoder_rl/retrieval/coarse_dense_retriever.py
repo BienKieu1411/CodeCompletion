@@ -9,7 +9,9 @@ Pipeline:
 
 from typing import Dict, Any, List, Optional, Tuple
 import logging
+import math
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModel
 
@@ -247,16 +249,78 @@ class ChunkIndex:
         )
 
 
+# ── Quantum-inspired Scoring ──────────────────────────────────────────────────
+
+class ZYZ(nn.Module):
+    """
+    Learnable ZYZ unitary rotation gate from the QIEPSM-style retriever.
+
+    This is a quantum-inspired complex tensor transform implemented in PyTorch;
+    it does not execute a real quantum circuit.
+    """
+
+    def __init__(self, n_qubits: int):
+        super().__init__()
+        self.n_qubits = n_qubits
+        self.alpha_param = nn.Parameter(torch.zeros(n_qubits))
+        self.beta_param = nn.Parameter(torch.zeros(n_qubits))
+        self.gamma_param = nn.Parameter(torch.zeros(n_qubits))
+        self.delta_param = nn.Parameter(torch.zeros(n_qubits))
+        self.register_buffer(
+            "identity",
+            self._u_composition(
+                torch.zeros(n_qubits),
+                torch.zeros(n_qubits),
+                torch.zeros(n_qubits),
+                torch.zeros(n_qubits),
+            ),
+        )
+
+    @staticmethod
+    def _u_composition(alpha, beta, gamma, delta):
+        cos_g = torch.cos(gamma / 2)
+        sin_g = torch.sin(gamma / 2)
+        e_00 = torch.exp(1j * (alpha - beta / 2 - delta / 2)) * cos_g
+        e_01 = -torch.exp(1j * (alpha - beta / 2 + delta / 2)) * sin_g
+        e_10 = torch.exp(1j * (alpha + beta / 2 - delta / 2)) * sin_g
+        e_11 = torch.exp(1j * (alpha + beta / 2 + delta / 2)) * cos_g
+        row0 = torch.cat((e_00.unsqueeze(-1), e_01.unsqueeze(-1)), dim=-1)
+        row1 = torch.cat((e_10.unsqueeze(-1), e_11.unsqueeze(-1)), dim=-1)
+        return torch.stack((row0, row1), dim=-2)
+
+    @staticmethod
+    def _clamp_angle(t, max_val):
+        return torch.tanh(t) * max_val / 2 + max_val / 2
+
+    def forward(self, qubits: torch.Tensor, controlled: bool = False) -> torch.Tensor:
+        alpha = self._clamp_angle(self.alpha_param, 4 * torch.pi)
+        beta = self._clamp_angle(self.beta_param, 4 * torch.pi)
+        gamma = self._clamp_angle(self.gamma_param, 4 * torch.pi)
+        delta = self._clamp_angle(self.delta_param, 4 * torch.pi)
+        unitary = self._u_composition(alpha, beta, gamma, delta)
+
+        if controlled:
+            controlled_unitary = (
+                F.pad(unitary, (2, 0, 2, 0), "constant", 0.0)
+                + F.pad(self.identity, (0, 2, 0, 2), "constant", 0.0)
+            )
+            return controlled_unitary.matmul(qubits.unsqueeze(-1)).squeeze(-1)
+
+        return unitary.matmul(qubits.unsqueeze(-1)).squeeze(-1)
+
+
 # ── UniXCoder Retriever ───────────────────────────────────────────────────────
 
 class CoarseDenseRetriever(torch.nn.Module):
     """
-    Production UniXCoder retriever with:
+    Production UniXCoder retriever with optional quantum-inspired reranking:
     - Pre-indexed chunking (build once, query many)
     - BM25 pre-filter (reduces candidate set)
     - Batch encoding (single forward pass for all chunks)
-    - Mean pooling + L2 normalization
+    - Dense cosine, quantum log-fidelity, or z-normalized hybrid scoring
     """
+
+    N_QUBITS = 256
 
     def __init__(
         self,
@@ -264,19 +328,46 @@ class CoarseDenseRetriever(torch.nn.Module):
         device: str = "cuda",
         max_seq_len: int = 512,
         bm25_top_n: int = 50,
+        scoring_mode: str = "dense",
+        quantum_alpha: float = 0.5,
     ):
         super().__init__()
+        if scoring_mode == "classical":
+            scoring_mode = "dense"
+        if scoring_mode not in ("dense", "quantum", "hybrid"):
+            raise ValueError("scoring_mode must be one of: dense, quantum, hybrid")
+
         self.device = device if torch.cuda.is_available() or device == "cpu" else "cpu"
         self.max_seq_len = max_seq_len
         self.bm25_top_n = bm25_top_n
+        self.scoring_mode = scoring_mode
 
-        logger.info(f"Loading {model_name} on {self.device}...")
+        init_alpha = max(0.01, min(0.99, float(quantum_alpha)))
+        raw_alpha_init = math.log(init_alpha / (1.0 - init_alpha))
+        self.raw_quantum_alpha = nn.Parameter(torch.tensor(float(raw_alpha_init)))
+
+        logger.info(f"Loading {model_name} on {self.device} with coarse scoring={self.scoring_mode}...")
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModel.from_pretrained(model_name)
-        self.model.to(self.device)
+        if self.scoring_mode in ("quantum", "hybrid"):
+            self._init_quantum_layers()
+        self.to(self.device)
 
         # Cache: repo_key → ChunkIndex
         self._index_cache: Dict[str, ChunkIndex] = {}
+
+    @property
+    def quantum_alpha_value(self) -> torch.Tensor:
+        return torch.sigmoid(self.raw_quantum_alpha)
+
+    def _init_quantum_layers(self) -> None:
+        n_qubits = self.N_QUBITS
+        self.c_zyz = ZYZ(n_qubits)
+        self.b_zyz = ZYZ(n_qubits)
+        self.cb_controlled_zyz = ZYZ(n_qubits)
+        self.b_cb_zyz = ZYZ(n_qubits)
+        self.a_zyz = ZYZ(n_qubits)
+        self.ba_controlled_zyz = ZYZ(n_qubits)
 
     # ── Index Management ──────────────────────────────────────────────────────
 
@@ -298,17 +389,16 @@ class CoarseDenseRetriever(torch.nn.Module):
 
     # ── Encoding ──────────────────────────────────────────────────────────────
 
-    def _mean_pool(self, hidden_states: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
-        """Mean pooling over non-padding tokens, then L2 normalize."""
+    def _mean_pool_raw(self, hidden_states: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
+        """Mean pooling over non-padding tokens without normalization."""
         mask_expanded = attention_mask.unsqueeze(-1).expand(hidden_states.size()).float()
         sum_embeddings = torch.sum(hidden_states * mask_expanded, dim=1)
         sum_mask = torch.clamp(mask_expanded.sum(dim=1), min=1e-9)
-        mean_emb = sum_embeddings / sum_mask
-        return F.normalize(mean_emb, p=2, dim=-1)
+        return sum_embeddings / sum_mask
 
-    def encode_batch(self, texts: List[str], batch_size: int = 32) -> torch.Tensor:
+    def encode_batch_raw(self, texts: List[str], batch_size: int = 32) -> torch.Tensor:
         """
-        Encode a list of texts into L2-normalized embeddings.
+        Encode a list of texts into raw pooled embeddings.
         Uses batched forward passes for efficiency.
         Returns: Tensor of shape (len(texts), hidden_dim)
         """
@@ -325,14 +415,80 @@ class CoarseDenseRetriever(torch.nn.Module):
             tokens = {k: v.to(self.device) for k, v in tokens.items()}
 
             outputs = self.model(**tokens)
-            embeddings = self._mean_pool(outputs.last_hidden_state, tokens["attention_mask"])
+            embeddings = self._mean_pool_raw(outputs.last_hidden_state, tokens["attention_mask"])
             all_embeddings.append(embeddings)
 
         return torch.cat(all_embeddings, dim=0)
 
+    def encode_batch(self, texts: List[str], batch_size: int = 32) -> torch.Tensor:
+        """
+        Encode a list of texts into L2-normalized embeddings.
+        Returns: Tensor of shape (len(texts), hidden_dim)
+        """
+        return F.normalize(self.encode_batch_raw(texts, batch_size=batch_size), p=2, dim=-1)
+
     def encode(self, text: str) -> torch.Tensor:
         """Encode a single text. Kept for backward compatibility."""
         return self.encode_batch([text], batch_size=1)
+
+    def _amplitude_encode(self, embeddings: torch.Tensor) -> torch.Tensor:
+        ae = torch.tanh(embeddings)
+        magnitudes = ae * (torch.pi / 2) + (torch.pi / 2)
+        phase_val = (2.0 * torch.pi - 1e-9) / 2.0
+        phases = torch.full_like(ae, phase_val)
+        amplitude_0 = torch.cos(magnitudes / 2).unsqueeze(-1)
+        amplitude_1 = (torch.sin(magnitudes / 2) * torch.exp(1j * phases)).unsqueeze(-1)
+        return torch.cat((amplitude_0, amplitude_1), dim=-1)
+
+    def _quantum_transform(self, qubits: torch.Tensor) -> torch.Tensor:
+        n_qubits = self.N_QUBITS
+        if qubits.shape[1] < 3 * n_qubits:
+            return qubits[:, :n_qubits, :]
+
+        a = qubits[:, :n_qubits, :]
+        b = qubits[:, n_qubits:2 * n_qubits, :]
+        c = qubits[:, 2 * n_qubits:3 * n_qubits, :]
+
+        c_rotated = self.c_zyz(c)
+        b_rotated = self.b_zyz(b)
+        cb_product = torch.einsum("bni,bnj->bnij", c_rotated, b_rotated)
+        cb_state = cb_product.reshape(cb_product.shape[0], n_qubits, 4)
+        cb_state = self.cb_controlled_zyz(cb_state, controlled=True)
+        b_cb = (
+            cb_state[:, :, 0:2].conj() * cb_state[:, :, 0:2]
+            + cb_state[:, :, 2:4].conj() * cb_state[:, :, 2:4]
+        ).real.sqrt().to(cb_state.dtype)
+
+        b_cb_rotated = self.b_cb_zyz(b_cb)
+        a_rotated = self.a_zyz(a)
+        ba_product = torch.einsum("bni,bnj->bnij", b_cb_rotated, a_rotated)
+        ba_state = ba_product.reshape(ba_product.shape[0], n_qubits, 4)
+        ba_state = self.ba_controlled_zyz(ba_state, controlled=True)
+        return (
+            ba_state[:, :, 0:2].conj() * ba_state[:, :, 0:2]
+            + ba_state[:, :, 2:4].conj() * ba_state[:, :, 2:4]
+        ).real.sqrt().to(ba_state.dtype)
+
+    @staticmethod
+    def _quantum_fidelity(query_q: torch.Tensor, doc_q: torch.Tensor) -> torch.Tensor:
+        q_conj = query_q.conj().unsqueeze(0)
+        inner = (q_conj[..., 0] * doc_q[..., 0]) + (q_conj[..., 1] * doc_q[..., 1])
+        return 2.0 * torch.log(inner.abs() + 1e-12).sum(dim=1)
+
+    def _compute_quantum_scores(self, query_raw: torch.Tensor, doc_raw: torch.Tensor) -> torch.Tensor:
+        query_qubits = self._amplitude_encode(query_raw)
+        doc_qubits = self._amplitude_encode(doc_raw)
+        if hasattr(self, "c_zyz"):
+            query_qubits = self._quantum_transform(query_qubits)
+            doc_qubits = self._quantum_transform(doc_qubits)
+        return self._quantum_fidelity(query_qubits.squeeze(0), doc_qubits)
+
+    @staticmethod
+    def _zscore(scores: torch.Tensor) -> torch.Tensor:
+        std = scores.std(unbiased=False)
+        if bool(torch.isnan(std).item()) or float(std.item()) < 1e-8:
+            return torch.zeros_like(scores)
+        return (scores - scores.mean()) / std
 
     # ── Retrieval ─────────────────────────────────────────────────────────────
 
@@ -349,7 +505,7 @@ class CoarseDenseRetriever(torch.nn.Module):
         Full retrieval pipeline:
           1. Get or build chunk index (pre-computed)
           2. BM25 pre-filter → top-N candidates
-          3. Dense encode (batched) → cosine similarity
+          3. Dense/quantum encode (batched) → similarity scoring
           4. Return top-k snippets + logprobs for PPO
 
         Returns:
@@ -377,11 +533,25 @@ class CoarseDenseRetriever(torch.nn.Module):
 
         # Step 3: Dense encoding (batched)
         safe_contents = [c[:1500] for c in contents]
-        query_emb = self.encode_batch([query[-1500:]], batch_size=1)    # shape: (1, dim)
-        doc_embs = self.encode_batch(safe_contents, batch_size=32)       # shape: (N, dim)
+        query_raw = self.encode_batch_raw([query[-1500:]], batch_size=1)
+        doc_raw = self.encode_batch_raw(safe_contents, batch_size=32)
 
-        # Step 4: Cosine similarity (already L2-normalized → dot product)
-        scores_tensor = torch.matmul(doc_embs, query_emb.squeeze(0))  # shape: (N,)
+        # Step 4: Similarity scoring
+        query_dense = F.normalize(query_raw, p=2, dim=-1)
+        doc_dense = F.normalize(doc_raw, p=2, dim=-1)
+        dense_scores = torch.matmul(doc_dense, query_dense.squeeze(0))
+
+        quantum_scores = None
+        if self.scoring_mode in ("quantum", "hybrid"):
+            quantum_scores = self._compute_quantum_scores(query_raw, doc_raw)
+
+        if self.scoring_mode == "dense":
+            scores_tensor = dense_scores
+        elif self.scoring_mode == "quantum":
+            scores_tensor = quantum_scores
+        else:
+            alpha = self.quantum_alpha_value
+            scores_tensor = alpha * self._zscore(dense_scores) + (1.0 - alpha) * self._zscore(quantum_scores)
 
         # Softmax → log-probabilities for PPO
         logprobs_all = F.log_softmax(scores_tensor, dim=-1)
@@ -410,6 +580,9 @@ class CoarseDenseRetriever(torch.nn.Module):
                 "all_logprobs": logprobs_all,
                 "topk_indices": topk_indices,
                 "filenames": filenames,
+                "scoring_mode": self.scoring_mode,
             }
+            if quantum_scores is not None:
+                aux["quantum_alpha"] = float(self.quantum_alpha_value.detach().cpu().item())
             return top_snippets, logprobs_tensor, aux
         return top_snippets, logprobs_tensor

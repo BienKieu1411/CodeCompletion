@@ -221,7 +221,9 @@ Local Context Extraction:
  ↓
 Query Anchor Construction
  ↓
-Coarse Retrieval top-N
+Coarse Retrieval top-N:
+  BM25 + UniXCoder dense scoring
+  optional QIEPSM-inspired quantum log-fidelity / hybrid reranking
  ↓
 Local Dependency Subgraph Construction
  ↓
@@ -238,6 +240,33 @@ Context Composer:
  ↓
 Code Completion
 ```
+
+### 5.1 Cập nhật từ ý tưởng quantum retrieval
+
+Ý tưởng trong thư mục `old` có thể áp dụng, nhưng không nên thay thế graph retrieval hiện tại. Phần phù hợp nhất là đưa **quantum-inspired log-fidelity scoring** vào tầng **coarse retrieval** như một reranker tùy chọn trước khi build local dependency subgraph.
+
+Lý do:
+
+- BM25 + dense retriever hiện tại đã là candidate gate cho graph traversal.
+- Quantum fidelity phù hợp để bổ sung một tín hiệu similarity khác trên embedding UniXCoder.
+- Dùng log-space fidelity ổn định hơn product fidelity gốc vì product qua nhiều qubit dễ underflow.
+- Hybrid dense/quantum scoring có thể ablate trực tiếp mà không phá pipeline graph RL.
+
+Công thức scoring:
+
+```math
+s_{dense}(q, d) = cos(E_q, E_d)
+```
+
+```math
+s_{quant}(q, d) = 2 \sum_k \log |\langle \psi_q^k | \psi_d^k \rangle|
+```
+
+```math
+s_{hybrid} = \alpha \cdot z(s_{dense}) + (1-\alpha) \cdot z(s_{quant})
+```
+
+Trong implementation, `dense` là default để giữ behavior cũ; `quantum` và `hybrid` là mode nghiên cứu/ablation cho coarse retriever.
 
 ---
 
@@ -623,6 +652,7 @@ Quy trình:
 
 ```text
 BM25 / UniXcoder lấy top-50 hoặc top-100 candidates
+  optional: dense / quantum log-fidelity / hybrid coarse scoring
  ↓
 Build local dependency subgraph quanh candidates
  ↓
@@ -870,6 +900,7 @@ Các biến thể cần ablate:
 | w/o RL | Kiểm tra vai trò policy learning |
 | w/o Path Reward | Kiểm tra reward theo dependency path |
 | w/o Token Penalty | Kiểm tra adaptive context budget |
+| Dense vs Quantum vs Hybrid Coarse Scoring | Kiểm tra quantum-inspired log-fidelity trong candidate gate |
 | GraphSAGE vs GAT vs GGNN | So sánh graph encoder |
 | Hard VQ vs Soft VQ | So sánh cách quantization |
 
@@ -1048,8 +1079,9 @@ So với AlignCoder:
 3. **Heterogeneous chunk-entity repository graph** thay cho flat snippet set.
 4. **Multi-hop RL traversal policy** thay cho single-step retriever/reranker.
 5. **Quantized semantic states** để ổn định retrieval và biểu diễn semantic role.
-6. **Interpretable dependency paths** cho repository-level code completion.
-7. **Adaptive context construction** kết hợp preserved left context và retrieved cross-file graph context.
+6. **Quantum-inspired coarse reranking** bằng log-fidelity/hybrid scoring như một candidate-gate ablation trước graph traversal.
+7. **Interpretable dependency paths** cho repository-level code completion.
+8. **Adaptive context construction** kết hợp preserved left context và retrieved cross-file graph context.
 
 Một câu mô tả ngắn gọn:
 

@@ -77,6 +77,11 @@ def default_variants() -> List[AblationVariant]:
         AblationVariant("w_o_structural_edges", ["--no-structural-edges"], "Disable structural graph edges"),
         AblationVariant("w_o_control_dep", ["--no-control-dependency"], "Disable control dependency edges"),
         AblationVariant("w_o_overrides", ["--no-overrides"], "Disable overrides edges"),
+        AblationVariant(
+            "coarse_hybrid_quantum",
+            ["--coarse-scoring-mode", "hybrid"],
+            "Use dense + quantum log-fidelity hybrid coarse retrieval",
+        ),
     ]
 
 
