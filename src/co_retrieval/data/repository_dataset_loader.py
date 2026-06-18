@@ -698,6 +698,3 @@ class DatasetLoader:
 
         return "".join(parts).strip()
 
-
-# Backward-compatible alias during migration.
-GraphCoderRLDatasetLoader = DatasetLoader

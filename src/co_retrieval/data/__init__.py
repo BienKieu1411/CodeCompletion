@@ -5,9 +5,9 @@ from importlib import import_module
 __all__ = ["DatasetLoader", "LeftContextAnchorExtractor", "LocalGraph"]
 
 _LAZY_IMPORTS = {
-    "DatasetLoader": ("graphcoder_rl.data.repository_dataset_loader", "DatasetLoader"),
-    "LeftContextAnchorExtractor": ("graphcoder_rl.data.left_context_anchor_extractor", "LeftContextAnchorExtractor"),
-    "LocalGraph": ("graphcoder_rl.data.left_context_anchor_extractor", "LocalGraph"),
+    "DatasetLoader": ("co_retrieval.data.repository_dataset_loader", "DatasetLoader"),
+    "LeftContextAnchorExtractor": ("co_retrieval.data.left_context_anchor_extractor", "LeftContextAnchorExtractor"),
+    "LocalGraph": ("co_retrieval.data.left_context_anchor_extractor", "LocalGraph"),
 }
 
 

@@ -13,7 +13,7 @@ def _bootstrap_src_path() -> None:
 
 def main() -> int:
     _bootstrap_src_path()
-    from graphcoder_rl.cli.graphcoder_cli import main as _main
+    from co_retrieval.cli.co_retrieval_cli import main as _main
 
     return _main()
 

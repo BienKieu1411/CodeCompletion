@@ -5,7 +5,7 @@ from typing import Any, Dict
 
 
 @dataclass
-class GraphCoderCLIConfig:
+class CoRetrievalCLIConfig:
     dataset_path: str = "data/github_repos/python/train.parquet"
     language: str = "python"
     output_dir: str = "results"

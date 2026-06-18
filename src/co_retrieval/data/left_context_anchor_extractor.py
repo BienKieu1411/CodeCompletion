@@ -143,7 +143,7 @@ class LeftContextAnchorExtractor:
         Quy ước nội bộ: cursor_idx là 0-based line index.
 
         Hỗ trợ input thường gặp trong codebase:
-        - GraphCoderRL đang truyền: len(query.split("\\n")) (tức 1-based-ish / end-of-text)
+        - Co-Retrieval đang truyền: len(query.split("\\n")) (tức 1-based-ish / end-of-text)
         - IDE thường truyền 0-based hoặc 1-based tuỳ nơi
         """
         if total_lines <= 0:
@@ -336,7 +336,7 @@ class LeftContextAnchorExtractor:
         """
         Tìm class_definition bao quanh cursor_idx và trả về header line.
 
-        Hiện tại implement chắc chắn cho Python (đủ dùng cho GraphCoderRL pipeline).
+        Hiện tại implement chắc chắn cho Python (đủ dùng cho Co-Retrieval pipeline).
         """
         if self._normalize_language(self.language) != "python":
             return None
