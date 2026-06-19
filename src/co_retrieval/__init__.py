@@ -1,12 +1,23 @@
 """Co-Retrieval components for repository-level code completion."""
 
 from co_retrieval.chunking import CodeChunk, RepositoryChunker
+from co_retrieval.context_utility import (
+    ContextCandidate,
+    ContextScore,
+    ContextUtilityScorer,
+)
+from co_retrieval.intent import IntentSketch, IntentSketcher
 from co_retrieval.training import CoTrainingConfig, CoTrainingTrainer, TrainingSample
 
 __all__ = [
     # Core
     "CodeChunk",
     "RepositoryChunker",
+    "ContextCandidate",
+    "ContextScore",
+    "ContextUtilityScorer",
+    "IntentSketch",
+    "IntentSketcher",
     # Proxy mode
     "CoTrainingConfig",
     "CoTrainingTrainer",

@@ -33,6 +33,11 @@ class CoRetrievalCLIConfig:
     max_context_tokens: int = 4096
     gate_hidden_dim: int = 256
     encoder_max_length: int = 512
+    experiment_mode: str = "intent_main"
+    intent_mode: str = "static"
+    gate_mode: str = "learned"
+    adapter_type: str = "soft_prompt"
+    include_oracle_strategy: bool = True
 
     # ── Neural: training ──────────────────────────────────────────────────
     retriever_lr: float = 2e-5
@@ -44,8 +49,16 @@ class CoRetrievalCLIConfig:
     steps_per_round_prompt: int = 100
     steps_per_round_dpo: int = 100
     preference_margin: float = 0.1
+    utility_margin: float = 0.05
+    num_hard_negatives: int = 10
+    preference_pool_top_k: int = 20
+    max_pairs_per_sample: int = 4
     grad_clip_norm: float = 1.0
     gate_entropy_weight: float = 0.01
+    batch_encode_size: int = 32
+    max_new_tokens: int = 128
+    eval_ratio: float = 0.1
+    max_eval_samples: int = 100
 
     # ── Neural: device ────────────────────────────────────────────────────
     device: str = "cuda"

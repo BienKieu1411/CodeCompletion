@@ -3,7 +3,7 @@
 Phase 0 — Build repo index (AST chunking → Jina embed → FAISS)
 Phase 1 — Warm-up soft prompt (20% no-ctx, 50% oracle, 30% noisy; CE loss)
 Phase 2 — Build preference data (6 strategies, teacher-forcing NLL)
-Phase 3 — DPO-style train retriever + gate (combined score, reference policy)
+Phase 3 — DPO-style train retriever; train gate from utility labels
 Phase 4 — Refresh FAISS index (re-embed after retriever update)
 Phase 5 — Alternating co-training rounds (P1→P2→P3→P4 repeated)
 Phase 6 — Final evaluation (retrieval + generation metrics)
@@ -12,31 +12,32 @@ Phase 6 — Final evaluation (retrieval + generation metrics)
 from __future__ import annotations
 
 import logging
-import math
 import os
 import random
 import re
+from collections import Counter
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+import numpy as np
 import torch
-import torch.nn.functional as F
 from torch.optim import AdamW
 
 from co_retrieval.chunking import CodeChunk
+from co_retrieval.context_utility import ContextCandidate, ContextUtilityScorer
 from co_retrieval.dense_retriever import DenseRetriever
 from co_retrieval.embedding_cache import EmbeddingCache
+from co_retrieval.intent import IntentSketcher
 from co_retrieval.neural_gate import NeuralGate
 from co_retrieval.quality_metrics import (
-    composite_quality,
     exact_match,
     edit_similarity,
     identifier_f1,
     identifier_set,
 )
 from co_retrieval.soft_prompt import SoftPromptLLM
-from co_retrieval.training import TrainingSample, TrainingHistory
+from co_retrieval.training import TrainingSample
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,11 @@ class NeuralCoTrainingConfig:
 
     # Retrieval
     top_k: int = 3
+    experiment_mode: str = "intent_main"
+    intent_mode: str = "static"
+    gate_mode: str = "learned"
+    adapter_type: str = "soft_prompt"
+    include_oracle_strategy: bool = True
 
     # Phase 1 — Soft Prompt Warm-up
     warmup_steps: int = 200
@@ -76,8 +82,10 @@ class NeuralCoTrainingConfig:
 
     # Phase 2 — Preference Data
     preference_margin: float = 0.1
+    utility_margin: float = 0.05
     num_hard_negatives: int = 10
     preference_pool_top_k: int = 20
+    max_pairs_per_sample: int = 4
 
     # Phase 3 — DPO
     dpo_beta: float = 0.1
@@ -107,6 +115,8 @@ class NeuralCoTrainingConfig:
     random_seed: int = 42
     max_new_tokens: int = 128
     batch_encode_size: int = 32
+    eval_ratio: float = 0.1
+    max_eval_samples: int = 100
 
 
 # ── BM25-like simple scorer ──────────────────────────────────────────────────
@@ -167,13 +177,41 @@ def _oracle_chunks(
 class PreferencePair:
     """A single DPO training pair."""
 
-    query: str  # left_context
+    query: str  # retrieval query
     chosen_chunks: List[CodeChunk]
     rejected_chunks: List[CodeChunk]
     chosen_is_stop: bool = False
     rejected_is_stop: bool = False
     chosen_nll: float = 0.0
     rejected_nll: float = 0.0
+    chosen_utility: float = 0.0
+    rejected_utility: float = 0.0
+    chosen_strategy: str = ""
+    rejected_strategy: str = ""
+    gate_query: str = ""
+
+
+@dataclass
+class GateTrainingExample:
+    """Retrieve/skip supervision from maximum context utility."""
+
+    query: str
+    retrieve_is_better: bool
+    max_utility: float
+    best_strategy: str = ""
+
+
+@dataclass
+class PreferenceData:
+    """Preference pairs plus gate supervision and analysis counters."""
+
+    pairs: List[PreferencePair] = field(default_factory=list)
+    gate_examples: List[GateTrainingExample] = field(default_factory=list)
+    pair_type_counts: Dict[str, int] = field(default_factory=dict)
+    strategy_counts: Dict[str, int] = field(default_factory=dict)
+    gate_positive_count: int = 0
+    gate_negative_count: int = 0
+    mean_max_utility: float = 0.0
 
 
 # ── NeuralCoTrainer ───────────────────────────────────────────────────────────
@@ -184,10 +222,15 @@ class NeuralCoTrainer:
 
     def __init__(self, config: NeuralCoTrainingConfig) -> None:
         self.config = config
+        self._apply_experiment_defaults()
         self.rng = random.Random(config.random_seed)
         torch.manual_seed(config.random_seed)
 
-        dtype_map = {"float16": torch.float16, "bfloat16": torch.bfloat16, "float32": torch.float32}
+        dtype_map = {
+            "float16": torch.float16,
+            "bfloat16": torch.bfloat16,
+            "float32": torch.float32,
+        }
         gen_dtype = dtype_map.get(config.generator_dtype, torch.float16)
 
         # Components
@@ -214,6 +257,14 @@ class NeuralCoTrainer:
             device=config.device,
             dtype=gen_dtype,
         )
+        self.use_adapter = config.adapter_type == "soft_prompt"
+        if config.adapter_type not in {"soft_prompt", "none"}:
+            raise ValueError(
+                f"Unsupported adapter_type={config.adapter_type!r}; "
+                "supported values are 'soft_prompt' and 'none'."
+            )
+        self.intent_sketcher = IntentSketcher()
+        self.utility_scorer = ContextUtilityScorer(self.generator)
 
         # FAISS cache
         self.embedding_cache = EmbeddingCache(dim=self.retriever.hidden_size)
@@ -230,6 +281,26 @@ class NeuralCoTrainer:
         # Global chunks
         self._chunks: List[CodeChunk] = []
         self._chunk_map: Dict[str, CodeChunk] = {}
+
+    def _apply_experiment_defaults(self) -> None:
+        mode = self.config.experiment_mode
+        if mode == "raw_query_main":
+            self.config.intent_mode = "raw"
+        elif mode == "intent_main":
+            self.config.intent_mode = "static"
+        elif mode == "retriever_only":
+            self.config.adapter_type = "none"
+        elif mode == "always_retrieve":
+            self.config.gate_mode = "always_retrieve"
+        elif mode == "always_skip":
+            self.config.gate_mode = "always_skip"
+            self.config.adapter_type = "none"
+        elif mode == "bm25":
+            self.config.gate_mode = "always_retrieve"
+            self.config.adapter_type = "none"
+        elif mode == "dense_frozen":
+            self.config.gate_mode = "always_retrieve"
+            self.config.adapter_type = "none"
 
     # ══════════════════════════════════════════════════════════════════════
     #  Phase 0 — Build Repo Index
@@ -248,6 +319,140 @@ class NeuralCoTrainer:
         )
         logger.info("Phase 0: built index with %d chunks", len(chunks))
 
+    # ── Query / strategy helpers ─────────────────────────────────────────
+
+    def _retrieval_query(self, sample: TrainingSample) -> str:
+        if self.config.intent_mode == "raw":
+            return sample.left_context
+        return self.intent_sketcher.build_query(sample.left_context)
+
+    def _encode_query_numpy(self, query: str) -> np.ndarray:
+        with torch.no_grad():
+            vec = self.retriever.encode_query(query).detach().cpu().numpy()
+        vec = np.asarray(vec, dtype=np.float32)
+        norm = float(np.linalg.norm(vec))
+        if norm > 1e-8:
+            vec = vec / norm
+        return vec
+
+    def _retrieve_current(
+        self,
+        query: str,
+        candidates: Sequence[CodeChunk],
+        top_k: Optional[int] = None,
+    ) -> List[CodeChunk]:
+        """Retrieve with the refreshed Phase 0/4 embedding cache when possible."""
+        chunk_list = list(candidates)
+        k = top_k or self.config.top_k
+        if not chunk_list:
+            return []
+        if self.embedding_cache.is_empty or any(
+            chunk.chunk_id not in self.embedding_cache.chunk_map
+            for chunk in chunk_list
+        ):
+            return self.retriever.retrieve_chunks(query, chunk_list, top_k=k)
+
+        query_vec = self._encode_query_numpy(query)
+        chunk_ids = [chunk.chunk_id for chunk in chunk_list]
+        vectors = self.embedding_cache.get_vectors_by_ids(chunk_ids)
+        if vectors.size == 0:
+            return []
+        scores = vectors @ query_vec
+        order = np.argsort(scores)[::-1][: min(k, len(chunk_list))]
+        return [chunk_list[int(i)] for i in order]
+
+    def _strategy_candidates(
+        self,
+        sample: TrainingSample,
+        candidates: Sequence[CodeChunk],
+        retrieval_query: str,
+    ) -> List[ContextCandidate]:
+        strategies = [
+            ContextCandidate("stop", [], is_stop=True, retrieval_query=retrieval_query)
+        ]
+
+        bm25_ctx = _bm25_retrieve(retrieval_query, candidates, self.config.top_k)
+        strategies.append(
+            ContextCandidate("bm25", bm25_ctx, retrieval_query=retrieval_query)
+        )
+
+        if self.retriever.initial_encoder is not None:
+            jina_ctx = self.retriever.retrieve_with_encoder(
+                retrieval_query,
+                candidates,
+                top_k=self.config.top_k,
+                encoder=self.retriever.initial_encoder,
+            )
+            strategies.append(
+                ContextCandidate(
+                    "dense_frozen", jina_ctx, retrieval_query=retrieval_query
+                )
+            )
+
+        current_ctx = self._retrieve_current(
+            retrieval_query, candidates, top_k=self.config.top_k
+        )
+        strategies.append(
+            ContextCandidate("current", current_ctx, retrieval_query=retrieval_query)
+        )
+
+        hard_neg_ctx = self._mine_hard_negatives(sample, candidates, retrieval_query)
+        if hard_neg_ctx:
+            strategies.append(
+                ContextCandidate(
+                    "hard_neg", hard_neg_ctx, retrieval_query=retrieval_query
+                )
+            )
+
+        if self.config.include_oracle_strategy:
+            oracle_ctx = _oracle_chunks(sample.target, candidates, self.config.top_k)
+            if oracle_ctx:
+                strategies.append(
+                    ContextCandidate(
+                        "oracle", oracle_ctx, retrieval_query=retrieval_query
+                    )
+                )
+
+        return strategies
+
+    def _retrieve_for_generation(
+        self,
+        sample: TrainingSample,
+        candidates: Sequence[CodeChunk],
+    ) -> List[CodeChunk]:
+        query = self._retrieval_query(sample)
+        if self.config.experiment_mode == "bm25":
+            return _bm25_retrieve(query, candidates, self.config.top_k)
+        if (
+            self.config.experiment_mode == "dense_frozen"
+            and self.retriever.initial_encoder is not None
+        ):
+            return self.retriever.retrieve_with_encoder(
+                query,
+                candidates,
+                top_k=self.config.top_k,
+                encoder=self.retriever.initial_encoder,
+            )
+        return self._retrieve_current(query, candidates, top_k=self.config.top_k)
+
+    def _should_retrieve(self, sample: TrainingSample) -> bool:
+        if self.config.gate_mode == "always_retrieve":
+            return True
+        if self.config.gate_mode == "always_skip":
+            return False
+        query = (
+            sample.left_context
+            if self.config.gate_mode != "rule"
+            else self._retrieval_query(sample)
+        )
+        if self.config.gate_mode == "rule":
+            if not sample.left_context.strip():
+                return False
+            return "." in sample.left_context.rstrip().splitlines()[-1]
+        with torch.no_grad():
+            q_vec = self.retriever.encode_query(query)
+            return self.gate.should_retrieve(q_vec)
+
     # ══════════════════════════════════════════════════════════════════════
     #  Phase 1 — Warm-up Soft Prompt
     # ══════════════════════════════════════════════════════════════════════
@@ -262,6 +467,9 @@ class NeuralCoTrainer:
         Context mixing: 20% no-ctx, 50% oracle, 30% noisy/retrieved.
         Freeze: LLM, Retriever, Gate.  Update: Soft Prompt only.
         """
+        if not self.use_adapter:
+            return {"phase1_loss": 0.0}
+
         n_steps = steps or self.config.warmup_steps
         n_steps = min(n_steps, len(samples))
         if n_steps <= 0:
@@ -328,90 +536,87 @@ class NeuralCoTrainer:
     def phase2_build_preference_data(
         self,
         samples: Sequence[TrainingSample],
-    ) -> List[PreferencePair]:
+    ) -> PreferenceData:
         """Create DPO pairs using teacher-forcing NLL (no decoding).
 
-        6 strategies: stop, BM25, jina_frozen, current, oracle, hard_neg.
+        Strategies are ranked by context utility: NLL(stop) - NLL(context).
         """
         logger.info("Phase 2: Building preference data (%d samples)…", len(samples))
         pairs: List[PreferencePair] = []
+        gate_examples: List[GateTrainingExample] = []
+        pair_type_counter: Counter[str] = Counter()
+        strategy_counter: Counter[str] = Counter()
+        gate_positive_count = 0
+        total_max_utility = 0.0
 
         for i, sample in enumerate(samples):
             candidates = list(sample.candidate_chunks or self._chunks)
             if not candidates:
                 continue
 
-            # Build 6 context strategies
-            strategies: Dict[str, Tuple[List[CodeChunk], bool]] = {}
-
-            # C_stop — no retrieval
-            strategies["stop"] = ([], True)
-
-            # C_bm25 — lexical baseline
-            bm25_ctx = _bm25_retrieve(
-                sample.left_context, candidates, self.config.top_k
-            )
-            strategies["bm25"] = (bm25_ctx, False)
-
-            # C_jina — frozen pretrained Jina
-            jina_ctx = self.retriever.retrieve_with_encoder(
-                sample.left_context,
-                candidates,
-                top_k=self.config.top_k,
-                encoder=self.retriever.initial_encoder,
-            )
-            strategies["jina_frozen"] = (jina_ctx, False)
-
-            # C_current — current (trained) retriever
-            current_ctx = self.retriever.retrieve_chunks(
-                sample.left_context, candidates, top_k=self.config.top_k
-            )
-            strategies["current"] = (current_ctx, False)
-
-            # C_oracle — oracle snippets
-            oracle_ctx = _oracle_chunks(
-                sample.target, candidates, self.config.top_k
-            )
-            strategies["oracle"] = (oracle_ctx, False)
-
-            # C_negative — hard negatives (top-scored but irrelevant)
-            hard_neg_ctx = self._mine_hard_negatives(
-                sample, candidates
-            )
-            if hard_neg_ctx:
-                strategies["hard_neg"] = (hard_neg_ctx, False)
-
-            # Evaluate each strategy by teacher-forcing NLL
-            scored: List[Tuple[str, float, List[CodeChunk], bool]] = []
+            retrieval_query = self._retrieval_query(sample)
+            strategies = self._strategy_candidates(sample, candidates, retrieval_query)
             with torch.no_grad():
-                for name, (ctx_chunks, is_stop) in strategies.items():
-                    nll = self.generator.teacher_forcing_nll(
-                        left_context=sample.left_context,
-                        target=sample.target,
-                        retrieved_chunks=ctx_chunks if not is_stop else None,
-                        use_soft_prompt=not is_stop,
-                    )
-                    scored.append((name, nll.item(), ctx_chunks, is_stop))
-
-            # Sort by NLL ascending (lower = better)
-            scored.sort(key=lambda x: x[1])
-
-            # Form preference pairs with margin
-            best_name, best_nll, best_ctx, best_is_stop = scored[0]
-            worst_name, worst_nll, worst_ctx, worst_is_stop = scored[-1]
-
-            if worst_nll - best_nll >= self.config.preference_margin:
-                pairs.append(
-                    PreferencePair(
-                        query=sample.left_context,
-                        chosen_chunks=best_ctx,
-                        rejected_chunks=worst_ctx,
-                        chosen_is_stop=best_is_stop,
-                        rejected_is_stop=worst_is_stop,
-                        chosen_nll=best_nll,
-                        rejected_nll=worst_nll,
-                    )
+                scored = self.utility_scorer.score(
+                    sample.left_context,
+                    sample.target,
+                    strategies,
+                    use_adapter=self.use_adapter,
                 )
+
+            best_retrieve = max(
+                (score for score in scored if not score.is_stop),
+                key=lambda score: score.utility,
+                default=None,
+            )
+            retrieve_is_better = (
+                best_retrieve is not None
+                and best_retrieve.utility > self.config.utility_margin
+            )
+            gate_positive_count += int(retrieve_is_better)
+            total_max_utility += best_retrieve.utility if best_retrieve else 0.0
+            gate_examples.append(
+                GateTrainingExample(
+                    query=sample.left_context,
+                    retrieve_is_better=retrieve_is_better,
+                    max_utility=best_retrieve.utility if best_retrieve else 0.0,
+                    best_strategy=best_retrieve.name if best_retrieve else "stop",
+                )
+            )
+            for score in scored:
+                strategy_counter[score.name] += 1
+
+            # Form multiple informative pairs, not just best-vs-worst.
+            pairs_added = 0
+            for chosen_idx, chosen in enumerate(scored):
+                for rejected in scored[chosen_idx + 1 :]:
+                    if (
+                        chosen.utility - rejected.utility
+                        < self.config.preference_margin
+                    ):
+                        continue
+                    pairs.append(
+                        PreferencePair(
+                            query=retrieval_query,
+                            chosen_chunks=chosen.chunks,
+                            rejected_chunks=rejected.chunks,
+                            chosen_is_stop=chosen.is_stop,
+                            rejected_is_stop=rejected.is_stop,
+                            chosen_nll=chosen.nll,
+                            rejected_nll=rejected.nll,
+                            chosen_utility=chosen.utility,
+                            rejected_utility=rejected.utility,
+                            chosen_strategy=chosen.name,
+                            rejected_strategy=rejected.name,
+                            gate_query=sample.left_context,
+                        )
+                    )
+                    pair_type_counter[f"{chosen.name}>{rejected.name}"] += 1
+                    pairs_added += 1
+                    if pairs_added >= self.config.max_pairs_per_sample:
+                        break
+                if pairs_added >= self.config.max_pairs_per_sample:
+                    break
 
             if (i + 1) % 100 == 0:
                 logger.info(
@@ -420,24 +625,33 @@ class NeuralCoTrainer:
                 )
 
         logger.info(
-            "Phase 2 done: %d pairs from %d samples (%.1f%%)",
-            len(pairs), len(samples),
+            "Phase 2 done: %d pairs and %d gate labels from %d samples (%.1f%%)",
+            len(pairs), len(gate_examples), len(samples),
             100 * len(pairs) / max(1, len(samples)),
         )
-        return pairs
+        return PreferenceData(
+            pairs=pairs,
+            gate_examples=gate_examples,
+            pair_type_counts=dict(pair_type_counter),
+            strategy_counts=dict(strategy_counter),
+            gate_positive_count=gate_positive_count,
+            gate_negative_count=len(gate_examples) - gate_positive_count,
+            mean_max_utility=total_max_utility / max(1, len(gate_examples)),
+        )
 
     def _mine_hard_negatives(
         self,
         sample: TrainingSample,
         candidates: Sequence[CodeChunk],
+        retrieval_query: str,
     ) -> List[CodeChunk]:
         """Find chunks that the retriever ranks high but are not relevant."""
         target_symbols = identifier_set(sample.target)
         if not target_symbols:
             return []
 
-        top_ranked = self.retriever.retrieve_chunks(
-            sample.left_context,
+        top_ranked = self._retrieve_current(
+            retrieval_query,
             candidates,
             top_k=self.config.preference_pool_top_k,
         )
@@ -460,19 +674,25 @@ class NeuralCoTrainer:
 
     def phase3_dpo_training(
         self,
-        pairs: Sequence[PreferencePair],
+        preference_data: PreferenceData,
         steps: Optional[int] = None,
     ) -> Dict[str, float]:
-        """DPO ranking loss → update Retriever + Gate.
+        """DPO ranking loss → update Retriever; utility labels → update Gate.
 
-        Freeze: LLM, Soft Prompt.  Update: Retriever (full), Gate.
+        Freeze: LLM, Soft Prompt.  Update: Retriever (DPO), Gate (BCE only).
         """
-        n_steps = steps or len(pairs)
-        n_steps = min(n_steps, len(pairs))
-        if n_steps <= 0:
+        pairs = preference_data.pairs
+        gate_examples = preference_data.gate_examples
+        dpo_steps = min(steps or len(pairs), len(pairs))
+        gate_steps = min(steps or len(gate_examples), len(gate_examples))
+        if dpo_steps <= 0 and gate_steps <= 0:
             return {"phase3_dpo_loss": 0.0, "phase3_gate_loss": 0.0}
 
-        logger.info("Phase 3: DPO training (%d pairs)…", n_steps)
+        logger.info(
+            "Phase 3: DPO training (%d pairs, %d gate labels)…",
+            dpo_steps,
+            gate_steps,
+        )
 
         # Snapshot reference at start
         self.retriever.refresh_reference()
@@ -482,16 +702,14 @@ class NeuralCoTrainer:
         pair_list = list(pairs)
         self.rng.shuffle(pair_list)
 
-        for i, pair in enumerate(pair_list[:n_steps]):
-            # DPO loss → update retriever + gate
+        for i, pair in enumerate(pair_list[:dpo_steps]):
+            # DPO loss updates only retriever. Gate supervision is separate below.
             self.retriever_opt.zero_grad()
-            self.gate_opt.zero_grad()
 
             dpo_loss = self.retriever.dpo_loss(
                 query_text=pair.query,
                 chosen_chunks=pair.chosen_chunks,
                 rejected_chunks=pair.rejected_chunks,
-                gate=self.gate,
                 beta=self.config.dpo_beta,
                 chosen_is_stop=pair.chosen_is_stop,
                 rejected_is_stop=pair.rejected_is_stop,
@@ -503,20 +721,24 @@ class NeuralCoTrainer:
                     self.retriever.parameters(),
                     self.config.grad_clip_norm * 5,
                 )
-                torch.nn.utils.clip_grad_norm_(
-                    self.gate.parameters(),
-                    self.config.grad_clip_norm,
-                )
                 self.retriever_opt.step()
-                self.gate_opt.step()
                 total_dpo_loss += dpo_loss.item()
 
-            # Gate supervised loss (optional reinforcement)
+            if (i + 1) % 50 == 0:
+                logger.info(
+                    "  Phase 3 DPO step %d/%d  dpo=%.4f",
+                    i + 1,
+                    dpo_steps,
+                    total_dpo_loss / (i + 1),
+                )
+
+        gate_list = list(gate_examples)
+        self.rng.shuffle(gate_list)
+        for i, example in enumerate(gate_list[:gate_steps]):
             with torch.no_grad():
-                q_vec = self.retriever.encode_query(pair.query)
+                q_vec = self.retriever.encode_query(example.query)
             g = self.gate(q_vec.detach())
-            retrieve_better = not pair.chosen_is_stop
-            g_loss = self.gate.gate_loss(g, retrieve_better)
+            g_loss = self.gate.gate_loss(g, example.retrieve_is_better)
             if not torch.isnan(g_loss):
                 self.gate_opt.zero_grad()
                 g_loss.backward()
@@ -525,16 +747,16 @@ class NeuralCoTrainer:
 
             if (i + 1) % 50 == 0:
                 logger.info(
-                    "  Phase 3 step %d/%d  dpo=%.4f  gate=%.4f",
-                    i + 1, n_steps,
-                    total_dpo_loss / (i + 1),
+                    "  Phase 3 gate step %d/%d  gate=%.4f",
+                    i + 1,
+                    gate_steps,
                     total_gate_loss / (i + 1),
                 )
 
-        denom = max(1, n_steps)
         result = {
-            "phase3_dpo_loss": total_dpo_loss / denom,
-            "phase3_gate_loss": total_gate_loss / denom,
+            "phase3_dpo_loss": total_dpo_loss / max(1, dpo_steps),
+            "phase3_gate_loss": total_gate_loss / max(1, gate_steps),
+            "phase3_gate_labels": gate_steps,
         }
         logger.info("Phase 3 done: %s", result)
         return result
@@ -578,11 +800,11 @@ class NeuralCoTrainer:
             )
 
             # P2: Build preference data
-            pairs = self.phase2_build_preference_data(samples)
+            preference_data = self.phase2_build_preference_data(samples)
 
-            # P3: DPO train retriever + gate
+            # P3: DPO train retriever; BCE train gate from utility labels
             p3 = self.phase3_dpo_training(
-                pairs, steps=self.config.steps_per_round_dpo
+                preference_data, steps=self.config.steps_per_round_dpo
             )
 
             # P4: Refresh index
@@ -591,7 +813,14 @@ class NeuralCoTrainer:
             round_result = {
                 "round": r,
                 **p1,
-                "num_dpo_pairs": len(pairs),
+                "num_dpo_pairs": len(preference_data.pairs),
+                "num_gate_examples": len(preference_data.gate_examples),
+                "gate_positive_count": preference_data.gate_positive_count,
+                "gate_positive_ratio": preference_data.gate_positive_count
+                / max(1, len(preference_data.gate_examples)),
+                "mean_max_utility": preference_data.mean_max_utility,
+                "pair_type_counts": preference_data.pair_type_counts,
+                "strategy_counts": preference_data.strategy_counts,
                 **p3,
             }
             round_history.append(round_result)
@@ -620,20 +849,15 @@ class NeuralCoTrainer:
 
         for sample in test_samples:
             candidates = list(sample.candidate_chunks or self._chunks)
-
-            with torch.no_grad():
-                q_vec = self.retriever.encode_query(sample.left_context)
-                should_retrieve = self.gate.should_retrieve(q_vec)
+            should_retrieve = self._should_retrieve(sample)
 
             if should_retrieve and candidates:
-                ctx = self.retriever.retrieve_chunks(
-                    sample.left_context, candidates, top_k=self.config.top_k
-                )
+                ctx = self._retrieve_for_generation(sample, candidates)
                 pred = self.generator.generate(
                     sample.left_context,
                     max_new_tokens=self.config.max_new_tokens,
                     retrieved_chunks=ctx,
-                    use_soft_prompt=True,
+                    use_soft_prompt=self.use_adapter,
                 )
                 total_retrieve_count += 1
             else:
@@ -653,7 +877,7 @@ class NeuralCoTrainer:
                 nll_with = self.generator.teacher_forcing_nll(
                     sample.left_context, sample.target,
                     retrieved_chunks=ctx if ctx else None,
-                    use_soft_prompt=bool(ctx),
+                    use_soft_prompt=bool(ctx) and self.use_adapter,
                 ).item()
                 nll_without = self.generator.teacher_forcing_nll(
                     sample.left_context, sample.target,
@@ -685,6 +909,7 @@ class NeuralCoTrainer:
         self,
         samples: Sequence[TrainingSample],
         chunks: Optional[Sequence[CodeChunk]] = None,
+        eval_samples: Optional[Sequence[TrainingSample]] = None,
     ) -> Dict[str, Any]:
         """Run the complete 7-phase pipeline.
 
@@ -718,14 +943,19 @@ class NeuralCoTrainer:
         # Phase 5 — Alternating co-training rounds (contains P1-P4)
         round_history = self.phase5_co_training(samples)
 
+        # Phase 6 — Final held-out evaluation when provided.
+        eval_metrics = self.phase6_evaluate(eval_samples) if eval_samples else {}
+
         # Save final checkpoint
-        self._save_checkpoint(round_history)
+        self._save_checkpoint({"rounds": round_history, "eval": eval_metrics})
 
         return {
             "status": "ok",
             "initial_warmup": p1,
             "rounds": round_history,
+            "eval": eval_metrics,
             "num_samples": len(samples),
+            "num_eval_samples": len(eval_samples or []),
             "num_chunks": len(all_chunks),
         }
 
@@ -734,19 +964,13 @@ class NeuralCoTrainer:
     def predict(self, sample: TrainingSample) -> str:
         """Single-sample inference with trained pipeline."""
         candidates = list(sample.candidate_chunks or self._chunks)
-
-        with torch.no_grad():
-            q_vec = self.retriever.encode_query(sample.left_context)
-
-        if self.gate.should_retrieve(q_vec) and candidates:
-            ctx = self.retriever.retrieve_chunks(
-                sample.left_context, candidates, top_k=self.config.top_k
-            )
+        if self._should_retrieve(sample) and candidates:
+            ctx = self._retrieve_for_generation(sample, candidates)
             return self.generator.generate(
                 sample.left_context,
                 max_new_tokens=self.config.max_new_tokens,
                 retrieved_chunks=ctx,
-                use_soft_prompt=True,
+                use_soft_prompt=self.use_adapter,
             )
         return self.generator.generate(
             sample.left_context,

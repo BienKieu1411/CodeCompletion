@@ -2,14 +2,16 @@
 
 The gate receives the *query embedding* produced by the retriever encoder and
 outputs a scalar probability g ∈ [0, 1] indicating whether cross-file
-retrieval is likely to help for the current completion.
+retrieval is likely to help for the current completion.  In the main
+pipeline, this gate is trained from retrieve-vs-stop utility labels rather
+than from retrieve-vs-retrieve DPO pairs.
 
 Design
 ------
 * **MLP backbone** — two-layer MLP with GELU activation and dropout.
 * **Log-probability interface** — ``log_probs`` returns both
-  ``log P(continue|q)`` and ``log P(stop|q)`` for use in the combined
-  DPO score ``S(q, C) = gate_score + retrieval_score``.
+  ``log P(continue|q)`` and ``log P(stop|q)`` for diagnostics or explicit
+  joint-scoring ablations.
 * **Entropy regularisation** — discourages gate collapse to always-on/off.
 """
 
@@ -76,16 +78,18 @@ class NeuralGate(nn.Module):
         """
         return torch.sigmoid(self.mlp(query_vec))
 
-    # ── Log-probabilities for combined DPO scoring ────────────────────────
+    # ── Log-probabilities for optional joint scoring ──────────────────────
 
     def log_probs(
         self, query_vec: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return (log P_gate(continue|q), log P_gate(stop|q)).
 
-        Used in the combined score:
+        Available for optional joint scoring:
             S(q, C_retrieved) = log P_gate(continue|q) + mean(sim(q, snippet_i))
             S(q, C_stop)      = log P_gate(stop|q)
+
+        The main training loop keeps gate supervision separate.
         """
         logit = self.mlp(query_vec)  # raw logit before sigmoid
         log_continue = F.logsigmoid(logit)          # log σ(x)

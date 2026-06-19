@@ -7,6 +7,22 @@ name = "co-retrieval-code-completion"
 version = "0.1.0"
 description = "Co-Retrieval scaffold for repository-level code completion."
 requires-python = ">=3.10"
+dependencies = [
+    "pandas>=2.0",
+    "pyarrow>=14.0",
+]
+
+[project.optional-dependencies]
+neural = [
+    "faiss-cpu>=1.7",
+    "numpy>=1.24",
+    "torch>=2.1",
+    "transformers>=4.40",
+]
+parsers = [
+    "tree-sitter>=0.20",
+    "tree-sitter-languages>=1.10",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

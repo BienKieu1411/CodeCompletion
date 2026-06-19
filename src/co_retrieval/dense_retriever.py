@@ -5,10 +5,13 @@ Architecture
 * **Encoder**: ``jinaai/jina-code-embeddings-1.5b`` (or any HF encoder) —
   ALL parameters trainable (full fine-tune).
 * **Scoring**: cosine similarity between query and chunk embeddings.
-* **Combined score** (with gate):
-      S(q, C_retrieve) = log P_gate(continue|q) + mean(sim(q, snippet_i))
-      S(q, C_stop)      = log P_gate(stop|q)
-* **DPO loss**: preference ranking loss with frozen reference snapshot.
+* **DPO score**:
+      S(q, C_retrieve) = mean(sim(q, snippet_i))
+      S(q, C_stop)      = 0
+* **DPO loss**: context preference ranking loss with frozen reference snapshot.
+  The retrieval gate is trained separately from utility labels in the main
+  pipeline so retrieve-vs-retrieve pairs do not accidentally supervise the
+  skip/retrieve decision.
 * **FAISS index**: rebuilt periodically (after retriever weights change).
 
 Because the encoder is fully fine-tuned, chunk embeddings change every
@@ -274,6 +277,10 @@ class DenseRetriever(nn.Module):
     ) -> torch.Tensor:
         """Compute the combined score S(q, C).
 
+        This helper is kept for diagnostics or ablations that explicitly want
+        a joint retriever/gate score.  The main novelty-aligned training path
+        keeps gate supervision separate from retriever DPO.
+
         If context is non-empty (retrieve):
             S = log P_gate(continue|q) + mean(sim(q, snippet_i))
         If context is empty (stop):
@@ -308,20 +315,29 @@ class DenseRetriever(nn.Module):
         query_text: str,
         chosen_chunks: List[CodeChunk],
         rejected_chunks: List[CodeChunk],
-        gate: nn.Module,
+        gate: Optional[nn.Module] = None,
         beta: float = 0.1,
         chosen_is_stop: bool = False,
         rejected_is_stop: bool = False,
+        include_gate_score: bool = False,
     ) -> torch.Tensor:
         """Compute DPO-style ranking loss.
 
         L = -log σ(β × [(S_θ(q,C⁺) - S_θ(q,C⁻)) - (S_ref(q,C⁺) - S_ref(q,C⁻))])
 
-        Gradients flow through the retriever encoder and gate.
+        By default, gradients flow only through the retriever encoder.  The
+        main pipeline trains the gate separately from utility-derived labels.
+        ``include_gate_score=True`` is reserved for ablations.
         """
         # Current policy scores
         q_vec = self.encode_query(query_text)
-        gate_log_continue, gate_log_stop = gate.log_probs(q_vec)
+        if include_gate_score:
+            if gate is None:
+                raise ValueError("gate is required when include_gate_score=True")
+            gate_log_continue, gate_log_stop = gate.log_probs(q_vec)
+        else:
+            gate_log_continue = q_vec.new_zeros(())
+            gate_log_stop = q_vec.new_zeros(())
 
         if chosen_is_stop:
             s_chosen = gate_log_stop
@@ -342,7 +358,8 @@ class DenseRetriever(nn.Module):
             else:
                 ref_q_vec = q_vec.detach()
 
-            ref_gate_log_continue, ref_gate_log_stop = gate_log_continue.detach(), gate_log_stop.detach()
+            ref_gate_log_continue = gate_log_continue.detach()
+            ref_gate_log_stop = gate_log_stop.detach()
 
             if chosen_is_stop:
                 s_ref_chosen = ref_gate_log_stop

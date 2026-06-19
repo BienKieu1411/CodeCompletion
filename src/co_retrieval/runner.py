@@ -9,9 +9,10 @@ from __future__ import annotations
 import json
 import logging
 import os
+import random
 from dataclasses import asdict
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Sequence, Tuple
 
 from co_retrieval.chunking import CodeChunk, RepositoryChunker
 from co_retrieval.training import CoTrainingConfig, CoTrainingTrainer, TrainingSample
@@ -21,9 +22,13 @@ from co_retrieval.data.repository_dataset_loader import DatasetLoader
 logger = logging.getLogger(__name__)
 
 
-def _sample_to_training_sample(sample: Dict[str, Any], chunker: RepositoryChunker) -> TrainingSample:
+def _sample_to_training_sample(
+    sample: Dict[str, Any], chunker: RepositoryChunker
+) -> TrainingSample:
     chunks: List[CodeChunk] = []
-    for file_path, content in sorted((sample.get("crossfile_context") or {}).items()):
+    for file_path, content in sorted(
+        (sample.get("crossfile_context") or {}).items()
+    ):
         chunks.extend(chunker.chunk_source(str(file_path), str(content or "")))
 
     return TrainingSample(
@@ -34,13 +39,17 @@ def _sample_to_training_sample(sample: Dict[str, Any], chunker: RepositoryChunke
     )
 
 
-def _collect_training_samples(cfg: Dict[str, Any], chunker: RepositoryChunker) -> List[TrainingSample]:
+def _collect_training_samples(
+    cfg: Dict[str, Any], chunker: RepositoryChunker
+) -> List[TrainingSample]:
     loader = DatasetLoader(
         dataset_path=cfg.get("dataset_path", "data/github_repos/python/train.parquet"),
         use_fim=bool(cfg.get("use_fim", False)),
         completion_level=cfg.get("completion_level", "line"),
         fixed_train=bool(cfg.get("fixed_train", True)),
-        fixed_train_size=int(cfg.get("fixed_train_size", cfg.get("max_samples", 2000))),
+        fixed_train_size=int(
+            cfg.get("fixed_train_size", cfg.get("max_samples", 2000))
+        ),
         fixed_train_max_attempts=int(cfg.get("fixed_train_max_attempts", 20000)),
         min_file_lines=int(cfg.get("min_file_lines", 200)),
         min_file_chars=int(cfg.get("min_file_chars", 2000)),
@@ -60,6 +69,23 @@ def _collect_training_samples(cfg: Dict[str, Any], chunker: RepositoryChunker) -
     return out
 
 
+def _split_train_eval(
+    samples: Sequence[TrainingSample],
+    eval_ratio: float,
+    max_eval_samples: int,
+    random_seed: int,
+) -> Tuple[List[TrainingSample], List[TrainingSample]]:
+    sample_list = list(samples)
+    if len(sample_list) < 2 or eval_ratio <= 0 or max_eval_samples <= 0:
+        return sample_list, []
+
+    rng = random.Random(random_seed)
+    rng.shuffle(sample_list)
+    eval_size = min(max_eval_samples, max(1, int(len(sample_list) * eval_ratio)))
+    eval_size = min(eval_size, len(sample_list) - 1)
+    return sample_list[eval_size:], sample_list[:eval_size]
+
+
 def _train_proxy(cfg: Dict[str, Any]) -> Dict[str, Any]:
     """Proxy mode training (original — no GPU needed)."""
     checkpoint_dir = cfg.get("checkpoint_dir", "checkpoints/co_retrieval")
@@ -73,7 +99,9 @@ def _train_proxy(cfg: Dict[str, Any]) -> Dict[str, Any]:
     )
     samples = _collect_training_samples(cfg, chunker)
     if not samples:
-        raise RuntimeError("No training samples were constructed. Check dataset path and strict filters.")
+        raise RuntimeError(
+            "No training samples were constructed. Check dataset path and strict filters."
+        )
 
     global_chunks: List[CodeChunk] = []
     seen: set[str] = set()
@@ -150,6 +178,15 @@ def _train_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
     if not samples:
         raise RuntimeError("No training samples found.")
 
+    eval_ratio = float(cfg.get("eval_ratio", 0.1))
+    max_eval_samples = int(cfg.get("max_eval_samples", 100))
+    train_samples, eval_samples = _split_train_eval(
+        samples,
+        eval_ratio=eval_ratio,
+        max_eval_samples=max_eval_samples,
+        random_seed=int(cfg.get("random_seed", 42)),
+    )
+
     neural_cfg = NeuralCoTrainingConfig(
         encoder_name=cfg.get("encoder_name", "jinaai/jina-code-embeddings-1.5b"),
         generator_name=cfg.get("generator_name", "Qwen/Qwen2.5-Coder-7B-Instruct"),
@@ -157,25 +194,41 @@ def _train_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
         num_prompt_tokens=int(cfg.get("num_prompt_tokens", 50)),
         max_context_tokens=int(cfg.get("max_context_tokens", 4096)),
         gate_hidden_dim=int(cfg.get("gate_hidden_dim", 256)),
+        gate_entropy_weight=float(cfg.get("gate_entropy_weight", 0.01)),
         top_k=int(cfg.get("top_k", 3)),
+        experiment_mode=cfg.get("experiment_mode", "intent_main"),
+        intent_mode=cfg.get("intent_mode", "static"),
+        gate_mode=cfg.get("gate_mode", "learned"),
+        adapter_type=cfg.get("adapter_type", "soft_prompt"),
+        include_oracle_strategy=bool(cfg.get("include_oracle_strategy", True)),
         warmup_steps=int(cfg.get("warmup_steps", 200)),
         num_rounds=int(cfg.get("num_rounds", 2)),
         steps_per_round_prompt=int(cfg.get("steps_per_round_prompt", 100)),
         steps_per_round_dpo=int(cfg.get("steps_per_round_dpo", 100)),
         dpo_beta=float(cfg.get("dpo_beta", 0.1)),
         preference_margin=float(cfg.get("preference_margin", 0.1)),
+        utility_margin=float(cfg.get("utility_margin", 0.05)),
+        num_hard_negatives=int(cfg.get("num_hard_negatives", 10)),
+        preference_pool_top_k=int(cfg.get("preference_pool_top_k", 20)),
+        max_pairs_per_sample=int(cfg.get("max_pairs_per_sample", 4)),
         retriever_lr=float(cfg.get("retriever_lr", 2e-5)),
         gate_lr=float(cfg.get("gate_lr", 1e-4)),
         soft_prompt_lr=float(cfg.get("soft_prompt_lr", 5e-3)),
         grad_clip_norm=float(cfg.get("grad_clip_norm", 1.0)),
         device=cfg.get("device", "cuda"),
+        generator_dtype=cfg.get("generator_dtype", "float16"),
         checkpoint_dir=checkpoint_dir,
         log_dir=log_dir,
         random_seed=int(cfg.get("random_seed", 42)),
+        max_new_tokens=int(cfg.get("max_new_tokens", 128)),
+        batch_encode_size=int(cfg.get("batch_encode_size", 32)),
+        eval_ratio=eval_ratio,
+        max_eval_samples=max_eval_samples,
     )
 
     trainer = NeuralCoTrainer(neural_cfg)
-    result = trainer.train(samples)
+    result = trainer.train(train_samples, eval_samples=eval_samples)
+    result["num_collected_samples"] = len(samples)
 
     logger.info("Co-Retrieval neural training complete: %s", result.get("status"))
     return result

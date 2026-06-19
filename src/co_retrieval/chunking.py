@@ -127,9 +127,12 @@ class RepositoryChunker:
         chunks: List[CodeChunk] = []
         occupied_lines: set[int] = set()
 
-        imports_and_globals = self._global_chunk(file_path, lines, tree)
+        global_nodes = self._global_nodes(tree)
+        imports_and_globals = self._global_chunk(file_path, lines, global_nodes)
         if imports_and_globals is not None:
             chunks.append(imports_and_globals)
+            for node in global_nodes:
+                occupied_lines.update(range(node.lineno, self._end_line(node) + 1))
 
         for node in getattr(tree, "body", []):
             if isinstance(node, ast.ClassDef):
@@ -146,8 +149,8 @@ class RepositoryChunker:
             return self._fallback_chunks(file_path, source_code)
         return chunks
 
-    def _global_chunk(self, file_path: str, lines: List[str], tree: ast.AST) -> Optional[CodeChunk]:
-        global_nodes = []
+    def _global_nodes(self, tree: ast.AST) -> List[ast.AST]:
+        global_nodes: List[ast.AST] = []
         for node in getattr(tree, "body", []):
             is_global = isinstance(
                 node,
@@ -161,7 +164,14 @@ class RepositoryChunker:
             )
             if is_global:
                 global_nodes.append(node)
+        return global_nodes
 
+    def _global_chunk(
+        self,
+        file_path: str,
+        lines: List[str],
+        global_nodes: Sequence[ast.AST],
+    ) -> Optional[CodeChunk]:
         if not global_nodes:
             return None
 
@@ -228,11 +238,10 @@ class RepositoryChunker:
         for child in node.body:
             if not isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
-            method_text = f"{header_text}\n{self._slice(lines, child.lineno, self._end_line(child))}"
             for chunk in self._split_text_chunk(
                 file_path=file_path,
                 start_line=child.lineno,
-                text=method_text,
+                text=self._slice(lines, child.lineno, self._end_line(child)),
                 chunk_type="method",
                 defined_symbols=[child.name],
                 parent_class=node.name,

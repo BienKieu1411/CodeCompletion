@@ -276,32 +276,57 @@ class SoftPromptLLM(nn.Module):
         else:
             context_text = left_context
 
-        full_text = context_text + target
-
-        if use_soft_prompt:
-            inputs_embeds, attention_mask = self._prepare_inputs(full_text)
-        else:
-            # No soft prompt — raw LLM
-            max_len = self.budget_manager.max_tokens
-            tokens = self.tokenizer(
-                full_text,
-                return_tensors="pt",
-                truncation=True,
-                max_length=max_len,
-            ).to(self._device)
-            with torch.no_grad():
-                inputs_embeds = self.model.get_input_embeddings()(
-                    tokens.input_ids
-                )
-            attention_mask = tokens.attention_mask
-
-        # Build labels: -100 for context positions, real ids for target
         context_ids = self.tokenizer.encode(
             context_text, add_special_tokens=False
         )
         target_ids = self.tokenizer.encode(target, add_special_tokens=False)
+        if not target_ids:
+            return torch.tensor(0.0, device=self._device, requires_grad=True)
 
         prompt_offset = self.num_prompt_tokens if use_soft_prompt else 0
+        text_budget = self.budget_manager.max_tokens - prompt_offset
+        if text_budget <= 0:
+            return torch.tensor(0.0, device=self._device, requires_grad=True)
+
+        if len(target_ids) >= text_budget:
+            target_ids = target_ids[:text_budget]
+            context_ids = []
+        else:
+            context_budget = text_budget - len(target_ids)
+            context_ids = (
+                context_ids[-context_budget:] if context_budget > 0 else []
+            )
+
+        input_ids = torch.tensor(
+            [context_ids + target_ids],
+            dtype=torch.long,
+            device=self._device,
+        )
+
+        if use_soft_prompt:
+            with torch.no_grad():
+                text_embeds = self.model.get_input_embeddings()(input_ids)
+            prompt_embeds = self.prompt_embeddings.unsqueeze(0).to(
+                dtype=text_embeds.dtype, device=self._device
+            )
+            inputs_embeds = torch.cat([prompt_embeds, text_embeds], dim=1)
+            prompt_mask = torch.ones(
+                1, self.num_prompt_tokens, dtype=torch.long, device=self._device
+            )
+            text_mask = torch.ones_like(
+                input_ids, dtype=torch.long, device=self._device
+            )
+            attention_mask = torch.cat([prompt_mask, text_mask], dim=1)
+        else:
+            # No soft prompt — raw LLM
+            with torch.no_grad():
+                inputs_embeds = self.model.get_input_embeddings()(
+                    input_ids
+                )
+            attention_mask = torch.ones_like(
+                input_ids, dtype=torch.long, device=self._device
+            )
+
         total_len = inputs_embeds.shape[1]
 
         labels = torch.full(
@@ -310,16 +335,9 @@ class SoftPromptLLM(nn.Module):
 
         # Target token positions
         target_start = prompt_offset + len(context_ids)
-        target_end = target_start + len(target_ids)
-
-        if target_end <= total_len and target_ids:
-            full_ids = self.tokenizer.encode(
-                full_text, add_special_tokens=False
-            )
-            for j, pos in enumerate(range(target_start, min(target_end, total_len))):
-                idx = len(context_ids) + j
-                if idx < len(full_ids):
-                    labels[0, pos] = full_ids[idx]
+        target_end = min(target_start + len(target_ids), total_len)
+        for j, pos in enumerate(range(target_start, target_end)):
+            labels[0, pos] = target_ids[j]
 
         outputs = self.model(
             inputs_embeds=inputs_embeds,
