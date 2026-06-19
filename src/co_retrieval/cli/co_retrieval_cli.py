@@ -96,6 +96,9 @@ def _cmd_train(args: argparse.Namespace) -> dict:
                 "num_hard_negatives": args.num_hard_negatives,
                 "preference_pool_top_k": args.preference_pool_top_k,
                 "max_pairs_per_sample": args.max_pairs_per_sample,
+                "leave_one_out_analysis_samples": args.leave_one_out_analysis_samples,
+                "gate_quality_tolerance": args.gate_quality_tolerance,
+                "gate_retrieval_reduction_target": args.gate_retrieval_reduction_target,
                 "num_prompt_tokens": args.num_prompt_tokens,
                 "max_context_tokens": args.max_context_tokens,
                 "encoder_max_length": args.encoder_max_length,
@@ -173,6 +176,8 @@ def build_parser() -> argparse.ArgumentParser:
             "always_skip",
             "bm25",
             "dense_frozen",
+            "sequential_adapter_first",
+            "sequential_retriever_first",
         ],
         default="intent_main",
     )
@@ -195,6 +200,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_train.add_argument("--num-hard-negatives", type=int, default=10)
     p_train.add_argument("--preference-pool-top-k", type=int, default=20)
     p_train.add_argument("--max-pairs-per-sample", type=int, default=4)
+    p_train.add_argument("--leave-one-out-analysis-samples", type=int, default=25)
+    p_train.add_argument("--gate-quality-tolerance", type=float, default=0.01)
+    p_train.add_argument("--gate-retrieval-reduction-target", type=float, default=0.20)
     p_train.add_argument("--num-prompt-tokens", type=int, default=50)
     p_train.add_argument("--max-context-tokens", type=int, default=4096)
     p_train.add_argument("--encoder-max-length", type=int, default=512)

@@ -211,6 +211,13 @@ def _train_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
         num_hard_negatives=int(cfg.get("num_hard_negatives", 10)),
         preference_pool_top_k=int(cfg.get("preference_pool_top_k", 20)),
         max_pairs_per_sample=int(cfg.get("max_pairs_per_sample", 4)),
+        leave_one_out_analysis_samples=int(
+            cfg.get("leave_one_out_analysis_samples", 25)
+        ),
+        gate_quality_tolerance=float(cfg.get("gate_quality_tolerance", 0.01)),
+        gate_retrieval_reduction_target=float(
+            cfg.get("gate_retrieval_reduction_target", 0.20)
+        ),
         retriever_lr=float(cfg.get("retriever_lr", 2e-5)),
         gate_lr=float(cfg.get("gate_lr", 1e-4)),
         soft_prompt_lr=float(cfg.get("soft_prompt_lr", 5e-3)),

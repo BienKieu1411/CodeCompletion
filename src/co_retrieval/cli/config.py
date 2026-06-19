@@ -53,6 +53,9 @@ class CoRetrievalCLIConfig:
     num_hard_negatives: int = 10
     preference_pool_top_k: int = 20
     max_pairs_per_sample: int = 4
+    leave_one_out_analysis_samples: int = 25
+    gate_quality_tolerance: float = 0.01
+    gate_retrieval_reduction_target: float = 0.20
     grad_clip_norm: float = 1.0
     gate_entropy_weight: float = 0.01
     batch_encode_size: int = 32
