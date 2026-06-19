@@ -60,9 +60,8 @@ def _collect_training_samples(cfg: Dict[str, Any], chunker: RepositoryChunker) -
     return out
 
 
-def train(config: Dict[str, Any] | None = None) -> Dict[str, Any]:
-    """Run Co-Retrieval training and save a JSON checkpoint."""
-    cfg = config or {}
+def _train_proxy(cfg: Dict[str, Any]) -> Dict[str, Any]:
+    """Proxy mode training (original — no GPU needed)."""
     checkpoint_dir = cfg.get("checkpoint_dir", "checkpoints/co_retrieval")
     log_dir = cfg.get("log_dir", "logs/co_retrieval")
     os.makedirs(checkpoint_dir, exist_ok=True)
@@ -123,12 +122,73 @@ def train(config: Dict[str, Any] | None = None) -> Dict[str, Any]:
 
     summary = {
         "status": "ok",
-        "framework": "Co-Retrieval",
+        "framework": "Co-Retrieval (proxy)",
         "checkpoint": checkpoint_path,
         "log_path": log_path,
         "num_samples": len(samples),
         "num_chunks": len(global_chunks),
         "final": ckpt["history"][-1] if ckpt["history"] else {},
     }
-    logger.info("Co-Retrieval training complete: %s", summary)
+    logger.info("Co-Retrieval proxy training complete: %s", summary)
     return summary
+
+
+def _train_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
+    """Neural mode training (7-phase pipeline, requires GPU)."""
+    from co_retrieval.neural_training import NeuralCoTrainer, NeuralCoTrainingConfig
+
+    checkpoint_dir = cfg.get("checkpoint_dir", "checkpoints/co_retrieval_neural")
+    log_dir = cfg.get("log_dir", "logs/co_retrieval_neural")
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    os.makedirs(log_dir, exist_ok=True)
+
+    chunker = RepositoryChunker(
+        max_chunk_lines=int(cfg.get("max_chunk_lines", 120)),
+        fallback_lines=int(cfg.get("fallback_lines", 40)),
+    )
+    samples = _collect_training_samples(cfg, chunker)
+    if not samples:
+        raise RuntimeError("No training samples found.")
+
+    neural_cfg = NeuralCoTrainingConfig(
+        encoder_name=cfg.get("encoder_name", "jinaai/jina-code-embeddings-1.5b"),
+        generator_name=cfg.get("generator_name", "Qwen/Qwen2.5-Coder-7B-Instruct"),
+        encoder_max_length=int(cfg.get("encoder_max_length", 512)),
+        num_prompt_tokens=int(cfg.get("num_prompt_tokens", 50)),
+        max_context_tokens=int(cfg.get("max_context_tokens", 4096)),
+        gate_hidden_dim=int(cfg.get("gate_hidden_dim", 256)),
+        top_k=int(cfg.get("top_k", 3)),
+        warmup_steps=int(cfg.get("warmup_steps", 200)),
+        num_rounds=int(cfg.get("num_rounds", 2)),
+        steps_per_round_prompt=int(cfg.get("steps_per_round_prompt", 100)),
+        steps_per_round_dpo=int(cfg.get("steps_per_round_dpo", 100)),
+        dpo_beta=float(cfg.get("dpo_beta", 0.1)),
+        preference_margin=float(cfg.get("preference_margin", 0.1)),
+        retriever_lr=float(cfg.get("retriever_lr", 2e-5)),
+        gate_lr=float(cfg.get("gate_lr", 1e-4)),
+        soft_prompt_lr=float(cfg.get("soft_prompt_lr", 5e-3)),
+        grad_clip_norm=float(cfg.get("grad_clip_norm", 1.0)),
+        device=cfg.get("device", "cuda"),
+        checkpoint_dir=checkpoint_dir,
+        log_dir=log_dir,
+        random_seed=int(cfg.get("random_seed", 42)),
+    )
+
+    trainer = NeuralCoTrainer(neural_cfg)
+    result = trainer.train(samples)
+
+    logger.info("Co-Retrieval neural training complete: %s", result.get("status"))
+    return result
+
+
+def train(config: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    """Run Co-Retrieval training — dispatches between proxy and neural mode."""
+    cfg = config or {}
+    use_neural = bool(cfg.get("use_neural", False))
+
+    if use_neural:
+        logger.info("Starting NEURAL mode training (7-phase pipeline)")
+        return _train_neural(cfg)
+    else:
+        logger.info("Starting PROXY mode training (no GPU)")
+        return _train_proxy(cfg)
