@@ -136,7 +136,24 @@ negative gate label  = mọi retrieved context không vượt stop
 
 Đây là lý do code hiện tại đã thêm `GateTrainingExample`.
 
-### 3.4 Co-training chỉ có giá trị nếu thắng sequential
+### 3.4 Pairwise preference không dùng hết thông tin utility
+
+Một hạn chế của DPO pairwise: với N candidate strategy cho một query, DPO chỉ tạo O(N²) pair rời rạc (chosen/rejected), bỏ qua gradient thông tin giữa các candidate trung gian.
+
+**LiPO (Listwise Preference Optimization)** giải quyết điều này bằng cách:
+
+- giữ toàn bộ utility spectrum của N candidates trong một group;
+- tạo soft label distribution từ softmax của utilities: `target_dist = softmax(U / τ)`;
+- align retriever score distribution với target distribution qua KL divergence;
+- không cần frozen reference copy, giảm tải VRAM đáng kể so với DPO.
+
+```text
+LiPO loss = KL( softmax(scores / τ) || softmax(utilities / τ) )
+```
+
+Đây là lý do `retriever_loss = "lipo"` là default trong code hiện tại. DPO được giữ lại như ablation (`retriever_loss = "dpo"`).
+
+### 3.5 Co-training chỉ có giá trị nếu thắng sequential
 
 Claim co-training không được xem là hiển nhiên. Nó chỉ có giá trị khoa học nếu:
 
@@ -159,8 +176,8 @@ flowchart LR
     A["Code at cursor"] --> B["IntentSketcher"]
     B --> C["Retriever over AST chunks"]
     C --> D["Learned adaptive gate"]
-    D -->|skip| E["Generator without retrieved context"]
-    D -->|retrieve| F["Inference-safe top-k context"]
+    D --> |skip| E["Generator without retrieved context"]
+    D --> |retrieve| F["Inference-safe top-k context"]
     F --> G["Generator with selected context"]
     E --> H["Completion"]
     G --> H
@@ -173,10 +190,10 @@ flowchart LR
     A["Candidate contexts"] --> C["ContextUtilityScorer"]
     B["Gold completion"] --> C
     C --> D["U(C) = NLL(stop) - NLL(C)"]
-    D --> E["DPO context pairs"]
+    D --> E["LiPO listwise groups\n(soft-label utility distribution)"]
     D --> F["Gate retrieve/skip labels"]
-    E --> G["Update retriever"]
-    F --> H["Update gate"]
+    E --> G["Update retriever via LiPO KL loss"]
+    F --> H["Update gate via BCE"]
     I["Generation loss"] --> J["Update adapter"]
 ```
 
@@ -270,23 +287,49 @@ Trong code, phần này tương ứng với:
 
 Điểm quan trọng: đây không phải "không cần reward". Nó là một reward/utility rõ ràng, được định nghĩa bằng generator likelihood. Claim đúng phải là:
 
-> DPO dùng utility-derived preferences nên tránh PPO rollout phức tạp, nhưng vẫn phụ thuộc vào thiết kế utility.
+> LiPO dùng utility-derived soft labels để align retriever score distribution, tránh PPO rollout phức tạp và tận dụng toàn bộ utility spectrum thay vì binarized chosen/rejected.
 
-### 4.4 Preference Optimization Cho Retriever
+### 4.4 Listwise Preference Optimization (LiPO) Cho Retriever
 
-Sau khi sort candidates theo utility, tạo DPO pairs nếu:
+**Đây là component chính thay thế DPO pairwise trong code hiện tại.**
 
-```text
-U(chosen) - U(rejected) >= preference_margin
+Sau khi score tất cả candidates theo utility, LiPO nhóm chúng thành `LipoGroup` và tối ưu bằng soft-label KL divergence:
+
+```python
+# Target: soft distribution from utility values
+target_dist = softmax(utilities / τ)
+
+# Retriever: predicted score distribution
+scores = [retrieval_score(q, C_i) for C_i in candidates]
+log_pred_dist = log_softmax(scores)
+
+# LiPO loss
+loss = KL(log_pred_dist, target_dist)
 ```
 
-DPO loss học tăng xác suất chọn context có utility cao hơn context có utility thấp hơn.
+Ưu điểm so với DPO pairwise:
 
-Lưu ý lý thuyết:
+| Tiêu chí | DPO (pairwise) | LiPO (listwise) |
+|---|---|---|
+| Thông tin sử dụng | Binary chosen/rejected | Toàn bộ utility spectrum |
+| Số training signal / query | O(N²) pairs | 1 group chứa N candidates |
+| Reference copy cần thiết | Có (frozen encoder snapshot) | Không |
+| VRAM overhead | Cao (double encoder) | Thấp |
+| Gradient tín hiệu | Sparse (0/1 preference) | Dense (soft distribution) |
+| Xử lý trường hợp bằng nhau | Phức tạp (cần margin) | Tự nhiên (entropy trong softmax) |
 
-- DPO chỉ đáng tin khi utility ranking ổn định.
-- Teacher-forcing NLL không hoàn toàn đồng nghĩa với exact match hoặc pass@k.
-- Vì vậy evaluation phải đo cả NLL improvement và output metrics.
+Config trong code:
+
+```python
+retriever_loss: str = "lipo"   # default — listwise soft label
+lipo_tau: float = 1.0          # temperature for utility softmax
+# dpo_beta: float = 0.1        # only used when retriever_loss = "dpo"
+```
+
+Trong `phase3_retriever_training`:
+
+- **LiPO path**: shuffle `lipo_groups`, gọi `retriever.lipo_loss(query, candidates, utilities, tau)`, no reference encoder needed.
+- **DPO path** (ablation): shuffle `pairs`, gọi `retriever.dpo_loss(...)`, cần `retriever.refresh_reference()` trước.
 
 ### 4.5 Adaptive Gate
 
@@ -295,6 +338,20 @@ Gate được train bằng nhãn:
 ```text
 retrieve_is_better = max_{C != stop} U(C) > utility_margin
 ```
+
+**Gate labels dùng inference-safe strategies only** (fix từ gate oracle leak):
+
+```python
+GATE_SAFE_STRATEGIES = {"current", "bm25", "dense_frozen", "learned_retriever"}
+gate_scored = [s for s in scored if s.name in GATE_SAFE_STRATEGIES]
+best_gate_retrieve = max(gate_scored, key=lambda s: s.utility, default=None)
+retrieve_is_better = (
+    best_gate_retrieve is not None
+    and best_gate_retrieve.utility > config.utility_margin
+)
+```
+
+Preference pairs (LiPO groups) vẫn dùng toàn bộ pool bao gồm oracle — chỉ gate label bị giới hạn để tránh oracle leak.
 
 Inference:
 
@@ -340,8 +397,9 @@ Pipeline hiện tại:
 ```text
 Phase 0: build AST chunk index
 Phase 1: warm up soft prompt with mixed no-context/oracle/noisy context
-Phase 2: build utility-ranked preference data
-Phase 3: train retriever with DPO and train gate with utility labels
+Phase 2: build utility-ranked preference data → LipoGroups + GateExamples
+Phase 3: train retriever with LiPO (default) or DPO (ablation)
+         train gate with utility labels (BCE, independent of retriever loss)
 Phase 4: refresh index after retriever update
 Phase 5: repeat alternating rounds
 Phase 6: evaluate held-out samples
@@ -351,7 +409,8 @@ Phase 6: evaluate held-out samples
 
 - preference data được refresh theo generator/adapter hiện tại;
 - retriever và gate không học từ static labels;
-- index được refresh sau retriever update.
+- index được refresh sau retriever update;
+- **LiPO không cần refresh reference encoder**, giảm overhead so với DPO.
 
 Điểm còn yếu:
 
@@ -360,10 +419,10 @@ Phase 6: evaluate held-out samples
 
 Sequential baselines đã được định nghĩa để kiểm tra co-training:
 
-- `sequential_adapter_first`: train adapter đủ tổng prompt steps, freeze adapter, build preference data đúng một lần, train retriever/gate đủ tổng DPO steps, refresh index một lần.
-- `sequential_retriever_first`: build preference data với adapter disabled đúng một lần, train retriever/gate đủ tổng DPO steps, freeze retriever/gate, train adapter đủ tổng prompt steps bằng contexts từ retriever đã train, refresh index một lần.
+- `sequential_adapter_first`: train adapter đủ tổng prompt steps, freeze adapter, build preference data đúng một lần, train retriever/gate đủ tổng LiPO steps, refresh index một lần.
+- `sequential_retriever_first`: build preference data với adapter disabled đúng một lần, train retriever/gate đủ tổng LiPO steps, freeze retriever/gate, train adapter đủ tổng prompt steps bằng contexts từ retriever đã train, refresh index một lần.
 
-Hai sequential baselines không được refresh preference data nhiều vòng; nếu refresh nhiều vòng thì baseline biến thành alternating trá hình. Paper phải ghi rõ cùng data, cùng model, cùng tổng prompt-gradient steps và cùng tổng DPO steps.
+Hai sequential baselines không được refresh preference data nhiều vòng; nếu refresh nhiều vòng thì baseline biến thành alternating trá hình. Paper phải ghi rõ cùng data, cùng model, cùng tổng prompt-gradient steps và cùng tổng LiPO steps.
 
 ## 5. Experiment Design
 
@@ -373,7 +432,7 @@ Không được chỉ chạy một mode rồi nói outperform. Cần ít nhất 
 
 | Mode | Mục đích |
 |---|---|
-| `intent_main` | full method |
+| `intent_main` | full method (LiPO default) |
 | `raw_query_main` | chứng minh intent sketch có ích |
 | `retriever_only` | chứng minh adapter có ích |
 | `always_retrieve` | chứng minh learned gate có ích |
@@ -382,6 +441,15 @@ Không được chỉ chạy một mode rồi nói outperform. Cần ít nhất 
 | `dense_frozen` | frozen dense retriever baseline |
 | `sequential_adapter_first` | adapter trước, retriever/gate sau, cùng tổng budget |
 | `sequential_retriever_first` | retriever/gate trước, adapter sau, cùng tổng budget |
+
+Ablation riêng cho LiPO vs DPO:
+
+| Config | Mục đích |
+|---|---|
+| `retriever_loss=lipo` (default) | listwise soft-label alignment |
+| `retriever_loss=dpo` | pairwise preference ablation |
+| `lipo_tau=0.5` | sharper target distribution |
+| `lipo_tau=2.0` | flatter target distribution (softer supervision) |
 
 Nếu alternating không thắng cả hai sequential baselines, không nên giữ co-training như core novelty.
 
@@ -406,7 +474,8 @@ Training-signal metrics:
 
 - NLL improvement;
 - utility distribution;
-- DPO pair count per sample;
+- LiPO group count per sample;
+- DPO pair count per sample (ablation only);
 - pair type counts: `current>stop`, `oracle>current`, `bm25>current`, v.v.;
 - gate positive ratio;
 - gate AUC/F1/precision/recall/confusion matrix;
@@ -415,7 +484,7 @@ Training-signal metrics:
 
 Efficiency metrics:
 
-- train GPU hours;
+- train GPU hours (LiPO vs DPO comparison expected to show LiPO faster due to no reference copy);
 - inference latency;
 - tokens added by retrieval;
 - memory footprint.
@@ -441,9 +510,11 @@ Lý thuyết mới hợp lý hơn bản cũ vì:
 
 - trực tiếp xử lý semantic gap của incomplete code bằng intent sketch;
 - định nghĩa rõ context tốt/xấu bằng utility so với stop;
-- tách gate supervision khỏi DPO ranking;
+- tách gate supervision khỏi retriever training (LiPO/DPO);
+- **LiPO sử dụng toàn bộ utility spectrum** thay vì chỉ binary chosen/rejected;
+- **LiPO không cần frozen reference** → giảm VRAM, đơn giản hóa training loop;
 - có ablation modes tương ứng trong code;
-- không claim sai rằng DPO loại bỏ reward design.
+- không claim sai rằng preference optimization loại bỏ reward design.
 
 Đây là khung có khả năng publish hơn vì reviewer có thể kiểm tra từng hypothesis.
 
@@ -463,14 +534,22 @@ Nhưng extension này phải kiểm soát hallucination bằng confidence hoặc
 
 Context có thể giảm NLL target nhưng không cải thiện greedy/beam output. Vì vậy paper phải báo cáo cả NLL và generation metrics, cùng correlation giữa NLL improvement và Edit Similarity/Identifier F1. Nếu correlation thấp, đó là warning về divergence giữa MLE training và generation evaluation hoặc metric mismatch; không được tự động kết luận utility signal thất bại, nhưng phải hạ độ mạnh của claim.
 
-**Rủi ro 3: Soft prompt có thể quá yếu.**
+**Rủi ro 3: LiPO KL divergence có thể không hội tụ tốt khi utility spectrum phẳng.**
+
+Nếu các candidates có utility gần nhau, `softmax(utilities / τ)` sẽ gần uniform distribution → gradient nhỏ → training signal yếu. Giải pháp:
+
+- điều chỉnh `lipo_tau` nhỏ hơn để sharpen distribution;
+- lọc groups có `max_utility - min_utility < threshold` trước khi train;
+- ablation so sánh `lipo_tau ∈ {0.5, 1.0, 2.0}`.
+
+**Rủi ro 4: Soft prompt có thể quá yếu.**
 
 Nếu adapter không cải thiện rõ, contribution co-adaptation sẽ yếu. Khi đó cần:
 
 - thêm LoRA adapter;
 - hoặc hạ claim thành retriever/gate framework với optional generator adapter.
 
-**Rủi ro 4: Full retriever update tốn chi phí.**
+**Rủi ro 5: Full retriever update tốn chi phí.**
 
 `jina-code-embeddings-1.5b` có thể nặng. Nếu OOM hoặc training quá chậm, cần hỗ trợ:
 
@@ -478,13 +557,21 @@ Nếu adapter không cải thiện rõ, contribution co-adaptation sẽ yếu. K
 - LoRA trên encoder;
 - cached embeddings + late interaction lightweight scorer.
 
-**Rủi ro 5: Oracle strategy có nguy cơ làm evaluation leak.**
+**Rủi ro 6: Oracle strategy có nguy cơ làm evaluation leak.**
 
-Oracle chỉ được dùng để tạo upper-bound preference trong train/analysis. Inference và eval tuyệt đối không được gọi oracle. Code cần dùng inference-safe strategy whitelist thay vì blacklist: eval/predict chỉ chấp nhận `current`, `bm25`, `dense_frozen`, `learned_retriever`; mọi strategy target-aware hiện tại hoặc tương lai phải raise lỗi.
+Oracle chỉ được dùng để tạo upper-bound preference trong train/analysis. Inference và eval tuyệt đối không được gọi oracle. Code đã dùng inference-safe strategy whitelist: eval/predict chỉ chấp nhận `current`, `bm25`, `dense_frozen`, `learned_retriever`; mọi strategy target-aware hiện tại hoặc tương lai phải raise lỗi.
 
-**Rủi ro 6: DPO trên context set không gán credit cho từng chunk.**
+**Rủi ro 7: LiPO không có reference policy → mode collapse?**
 
-Nếu top-k gồm một chunk tốt và hai chunk nhiễu, DPO chỉ biết cả set tốt/xấu. Có thể cần chunk-level attribution hoặc leave-one-out utility:
+DPO có frozen reference để ngăn policy drift quá xa. LiPO không có reference nhưng dùng KL với target distribution bên ngoài. Nếu utility estimates nhiễu, target distribution sẽ nhiễu và gradient sẽ không ổn định. Giải pháp:
+
+- validate utility bằng teacher forcing trên nhiều completions;
+- monitor `lipo_loss` variance qua steps;
+- nếu instability xuất hiện, thêm regularization hoặc dùng moving-average utility thay vì single-sample estimate.
+
+**Rủi ro 8: DPO/LiPO trên context set không gán credit cho từng chunk.**
+
+Nếu top-k gồm một chunk tốt và hai chunk nhiễu, LiPO chỉ biết cả set tốt/xấu. Có thể cần chunk-level attribution hoặc leave-one-out utility:
 
 ```text
 U(C_i | C_set) = NLL(C_set without C_i) - NLL(C_set)
@@ -498,9 +585,10 @@ Lý thuyết có khả thi, nhưng chưa đủ để đảm bảo outperform. Đ
 
 1. **Sequential baseline**: bắt buộc nếu muốn claim co-training.
 2. **Official CrossCodeEval pipeline**: bắt buộc nếu muốn claim paper-level.
-3. **LLM/semantic intent variant**: cần nếu static sketch thua AlignCoder-style query enhancement.
-4. **LoRA/projection adapter option**: cần nếu soft prompt không đủ mạnh.
-5. **Strict no-leak evaluation**: tách oracle/train/eval rõ ràng.
+3. **LiPO vs DPO ablation**: cần để justify LiPO là default, không phải DPO.
+4. **LLM/semantic intent variant**: cần nếu static sketch thua AlignCoder-style query enhancement.
+5. **LoRA/projection adapter option**: cần nếu soft prompt không đủ mạnh.
+6. **Strict no-leak evaluation**: tách oracle/train/eval rõ ràng.
 
 Nói ngắn gọn:
 
@@ -516,6 +604,7 @@ Title/abstract phải hạ theo kết quả, không chỉ hạ ở phần conclu
 | Alternating không thắng sequential | **Utility-Driven Adaptive Retrieval for Repository-Level Code Completion** |
 | Learned gate không đạt quality/compute threshold | **Utility-Supervised Retrieval for Repository-Level Code Completion** |
 | Static intent sketch không thắng raw query | **Generator-Utility Supervision for Repository-Level Code Retrieval** |
+| LiPO không thắng DPO ablation | phải viết "preference optimization" thay vì claim LiPO là novelty |
 
 Abstract và novelty statement phải theo cùng hierarchy. Nếu experiment phủ nhận một thành phần, thành phần đó phải chuyển thành analysis/engineering detail thay vì core contribution.
 
@@ -525,10 +614,15 @@ Abstract và novelty statement phải theo cùng hierarchy. Nếu experiment ph�
 
 - `IntentSketcher` cho intent-conditioned query.
 - `ContextUtilityScorer` với `U(C) = NLL(stop) - NLL(C)`.
-- `PreferencePair` lưu NLL và utility của chosen/rejected.
+- `PreferencePair` lưu NLL và utility của chosen/rejected (dùng cho DPO ablation).
+- `LipoGroup` lưu toàn bộ utility spectrum cho một query (dùng cho LiPO default).
 - `GateTrainingExample` cho retrieve/skip labels.
-- `PreferenceData` lưu pairs, gate examples và counters.
+- `PreferenceData` lưu `lipo_groups`, `pairs` (DPO), `gate_examples` và counters.
+- `DenseRetriever.lipo_loss(query, candidates, utilities, tau)` — KL divergence loss.
+- `DenseRetriever.dpo_loss(...)` — pairwise preference loss (ablation).
 - Inference-safe strategy whitelist cho eval/predict.
+- `retriever_loss`: `"lipo"` (default) hoặc `"dpo"` (ablation).
+- `lipo_tau`: temperature hyperparameter cho LiPO soft labels.
 - `experiment_mode`: `intent_main`, `raw_query_main`, `retriever_only`, `always_retrieve`, `always_skip`, `bm25`, `dense_frozen`, `sequential_adapter_first`, `sequential_retriever_first`.
 - `intent_mode`: `static`, `raw`.
 - `gate_mode`: `learned`, `always_retrieve`, `always_skip`, `rule`.
@@ -537,20 +631,25 @@ Abstract và novelty statement phải theo cùng hierarchy. Nếu experiment ph�
 - Gate ablation và calibration metrics.
 - NLL-output correlation và leave-one-out chunk utility analysis.
 - Evaluation metrics: exact match, edit similarity, identifier F1, retrieval rate, NLL improvement.
+- Gate oracle leak fix: gate labels chỉ dùng inference-safe strategies.
+- Data split by repository để tránh leakage.
+- Adapter treatment nhất quán giữa retrieve và skip branch trong eval.
 
 Chưa đủ cho paper mạnh:
 
 - official CrossCodeEval/RepoEval evaluation command;
 - LoRA hoặc lightweight projection adapter;
 - dùng leave-one-out vào training để giải quyết credit assignment, hiện chỉ analysis-only;
+- LiPO vs DPO ablation results (experimental, chưa có số);
+- `lipo_tau` sensitivity analysis;
 - statistical significance reporting;
-- latency/memory reporting.
+- latency/memory reporting (LiPO expected faster vs DPO due to no reference copy).
 
 ## 8. Final Novelty Statement
 
 Novelty đầy đủ chỉ nên viết như sau khi ablations support full hierarchy:
 
-> We propose an intent-conditioned adaptive co-retrieval framework for repository-level code completion. The method transforms incomplete left context into a structured intent sketch, ranks retrieval strategies by generator-side utility measured as NLL improvement over no retrieval, optimizes the retriever from utility-derived preferences, and trains a separate adaptive gate to retrieve only when context is expected to help. A lightweight generator adapter is alternated with retriever/gate updates so the retrieval policy and context consumer co-adapt.
+> We propose an intent-conditioned adaptive co-retrieval framework for repository-level code completion. The method transforms incomplete left context into a structured intent sketch, ranks retrieval strategies by generator-side utility measured as NLL improvement over no retrieval, optimizes the retriever via Listwise Preference Optimization (LiPO) that aligns the retriever's score distribution with a soft target derived from the full utility spectrum, and trains a separate adaptive gate to retrieve only when context is expected to help. A lightweight generator adapter is alternated with retriever/gate updates so the retrieval policy and context consumer co-adapt.
 
 Claim không nên viết:
 
@@ -564,6 +663,6 @@ Lý do:
 
 Claim nên viết:
 
-> Utility-driven, intent-conditioned adaptive retrieval with generator-side lightweight adaptation.
+> Utility-driven, intent-conditioned adaptive retrieval with listwise preference optimization (LiPO) and generator-side lightweight adaptation.
 
-Đây là claim vừa rõ, vừa test được, vừa khớp với code hiện tại. Nếu sequential/gate/intent ablations không đạt, title và abstract phải hạ theo bảng fallback ở Section 6.4.
+Đây là claim vừa rõ, vừa test được, vừa khớp với code hiện tại. Nếu sequential/gate/intent/LiPO ablations không đạt, title và abstract phải hạ theo bảng fallback ở Section 6.4.
