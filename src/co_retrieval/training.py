@@ -30,6 +30,7 @@ class TrainingSample:
     target: str
     file_path: str = "current_file.py"
     candidate_chunks: Optional[List[CodeChunk]] = None
+    repo_id: str = ""
 
 
 @dataclass

@@ -21,6 +21,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from co_retrieval.chunking import CodeChunk
+from co_retrieval.context_utility import ContextScore
 from co_retrieval.dense_retriever import DenseRetriever
 from co_retrieval.embedding_cache import EmbeddingCache
 from co_retrieval.neural_training import (
@@ -32,6 +33,7 @@ from co_retrieval.neural_training import (
     _gate_label_metrics,
     _safe_corr,
 )
+from co_retrieval.intent import CostAwareQueryEnhancer, IntentSketcher, _score_entropy
 
 
 def _chunk(symbol: str) -> CodeChunk:
@@ -98,6 +100,25 @@ def test_retriever_dpo_does_not_backprop_into_gate_by_default():
     assert gate.logit.grad is None
 
 
+def test_lipo_includes_stop_score_and_backpropagates_only_to_retriever():
+    retriever = TinyDenseRetriever()
+    gate = DummyGate()
+    loss = retriever.lipo_loss(
+        query_text="query",
+        candidate_chunks_list=[[], [_chunk("chosen")], [_chunk("rejected")]],
+        utilities=[0.0, 2.0, -1.0],
+        tau=1.0,
+    )
+
+    assert torch.isfinite(loss)
+    loss.backward()
+    assert retriever.query_param.grad is not None
+    assert gate.logit.grad is None
+
+    with pytest.raises(ValueError):
+        retriever.lipo_loss("query", [[], [_chunk("chosen")]], [0.0, 1.0], tau=0)
+
+
 class FakeRetriever:
     def __init__(self) -> None:
         self.live_retrieve_called = False
@@ -150,6 +171,107 @@ def test_inference_strategy_whitelist_rejects_target_aware_and_unknown_modes():
             trainer._assert_inference_safe_strategy(mode="predict")
 
 
+def test_gate_supervision_uses_only_deployed_strategy():
+    trainer = NeuralCoTrainer.__new__(NeuralCoTrainer)
+    trainer.config = SimpleNamespace(experiment_mode="intent_main")
+    scored = [
+        SimpleNamespace(name="oracle", is_stop=False, utility=10.0),
+        SimpleNamespace(name="bm25", is_stop=False, utility=2.0),
+        SimpleNamespace(name="current", is_stop=False, utility=-1.0),
+    ]
+
+    selected = trainer._gate_supervision_score(scored)
+
+    assert selected.name == "current"
+    assert selected.utility == -1.0
+
+
+def test_preference_data_lipo_group_includes_stop_and_deduplicates_contexts():
+    trainer = NeuralCoTrainer.__new__(NeuralCoTrainer)
+    trainer.config = SimpleNamespace(
+        experiment_mode="intent_main",
+        utility_margin=0.05,
+        preference_margin=0.1,
+        max_pairs_per_sample=4,
+    )
+    trainer.use_adapter = True
+    context = [_chunk("chosen")]
+    trainer._chunks = context
+    trainer._prepare_retrieval_query = lambda *args: ("intent query", context)
+    trainer._gate_query = lambda *args: "intent query"
+    trainer._strategy_candidates = lambda *args, **kwargs: []
+    trainer.utility_scorer = SimpleNamespace(
+        score=lambda *args, **kwargs: [
+            ContextScore("oracle", context, False, 2.0, 3.0, "intent query"),
+            ContextScore("current", context, False, 2.0, 3.0, "intent query"),
+            ContextScore("stop", [], True, 5.0, 0.0, "intent query"),
+        ]
+    )
+    sample = SimpleNamespace(
+        left_context="service.fetch_",
+        target="fetch_user()",
+        candidate_chunks=context,
+    )
+
+    data = trainer.phase2_build_preference_data([sample])
+
+    assert len(data.lipo_groups) == 1
+    group = data.lipo_groups[0]
+    assert len(group.candidate_chunks) == 2
+    assert "stop" in group.strategy_names
+    assert any(not chunks for chunks in group.candidate_chunks)
+
+
+def test_normalized_entropy_and_cost_aware_query_paths():
+    assert _score_entropy([0.0, 0.0, 0.0]) == pytest.approx(1.0)
+    assert _score_entropy([10.0, -10.0, -10.0]) < 0.01
+
+    trainer = NeuralCoTrainer.__new__(NeuralCoTrainer)
+    trainer.config = SimpleNamespace(
+        intent_mode="cost_aware",
+        top_k=3,
+        query_entropy_threshold=0.8,
+        query_num_drafts=2,
+        query_draft_max_tokens=32,
+        query_draft_temperature=0.8,
+        query_draft_top_p=0.95,
+    )
+    trainer.intent_sketcher = IntentSketcher()
+    trainer.query_enhancer = CostAwareQueryEnhancer(
+        trainer.intent_sketcher, entropy_threshold=0.8
+    )
+    trainer.use_adapter = True
+    trainer._query_enhancement_stats = {
+        "queries": 0.0,
+        "entropy_sum": 0.0,
+        "entropy_count": 0.0,
+        "sampling_count": 0.0,
+        "draft_count": 0.0,
+        "changed_count": 0.0,
+    }
+    chunks = [_chunk("alpha"), _chunk("beta"), _chunk("gamma")]
+    trainer._retrieve_current_with_scores = lambda *args, **kwargs: (
+        chunks,
+        [0.0, 0.0, 0.0],
+    )
+    reretrieved = []
+    trainer._retrieve_current = lambda query, *args, **kwargs: (
+        reretrieved.append(query) or chunks
+    )
+    trainer.generator = SimpleNamespace(
+        generate_drafts=lambda *args, **kwargs: ["refund_payment()", "refund_user"]
+    )
+    sample = SimpleNamespace(left_context="result = service.refund_", target="")
+
+    query, selected = trainer._prepare_retrieval_query(sample, chunks)
+
+    assert "refund_payment" in query
+    assert selected == chunks
+    assert len(reretrieved) == 1
+    assert trainer._query_enhancement_stats["sampling_count"] == 1
+    assert trainer._query_enhancement_stats["changed_count"] == 1
+
+
 def _preference_data():
     return PreferenceData(
         pairs=[],
@@ -187,15 +309,15 @@ def _sequential_trainer():
         return _preference_data()
 
     def phase3(preference_data, steps=None):
-        trainer.calls.append(("dpo", steps))
-        return {"phase3_dpo_loss": 0.0, "phase3_gate_loss": 0.0}
+        trainer.calls.append(("retriever", steps))
+        return {"phase3_retriever_loss": 0.0, "phase3_gate_loss": 0.0}
 
     def refresh():
         trainer.calls.append(("refresh",))
 
     trainer.phase1_warmup_soft_prompt = phase1
     trainer.phase2_build_preference_data = phase2
-    trainer.phase3_dpo_training = phase3
+    trainer.phase3_retriever_training = phase3
     trainer.phase4_refresh_index = refresh
     return trainer
 
@@ -208,12 +330,12 @@ def test_sequential_adapter_first_uses_single_preference_build_and_same_budget()
     assert trainer.calls == [
         ("prompt", 17, "mixed"),
         ("preference", True),
-        ("dpo", 21),
+        ("retriever", 21),
         ("refresh",),
     ]
     assert result[0]["preference_data_builds"] == 1
     assert result[0]["prompt_steps_budget"] == 17
-    assert result[0]["dpo_steps_budget"] == 21
+    assert result[0]["retriever_steps_budget"] == 21
 
 
 def test_sequential_retriever_first_does_not_refresh_preferences_after_adapter():
@@ -223,7 +345,7 @@ def test_sequential_retriever_first_does_not_refresh_preferences_after_adapter()
 
     assert trainer.calls == [
         ("preference", False),
-        ("dpo", 21),
+        ("retriever", 21),
         ("refresh",),
         ("prompt", 17, "retriever"),
     ]
@@ -346,3 +468,47 @@ def test_leave_one_out_analysis_identifies_helpful_and_noisy_chunks():
     assert result["num_sets"] == 1
     assert result["positive_contribution_count"] == 1
     assert result["negative_contribution_count"] == 1
+
+
+def test_phase6_keeps_adapter_enabled_for_retrieve_and_skip_branches():
+    class RecordingGenerator:
+        def __init__(self):
+            self.flags = []
+
+        def generate(self, *args, use_soft_prompt=True, **kwargs):
+            self.flags.append(("generate", use_soft_prompt))
+            return "prediction"
+
+        def teacher_forcing_nll(self, *args, use_soft_prompt=True, **kwargs):
+            self.flags.append(("nll", use_soft_prompt))
+            return torch.tensor(1.0)
+
+    trainer = NeuralCoTrainer.__new__(NeuralCoTrainer)
+    trainer.config = SimpleNamespace(max_new_tokens=4, experiment_mode="intent_main")
+    trainer.use_adapter = True
+    trainer.generator = RecordingGenerator()
+    trainer._chunks = [_chunk("ctx")]
+    trainer._query_enhancement_stats = {
+        "queries": 0.0,
+        "entropy_sum": 0.0,
+        "entropy_count": 0.0,
+        "sampling_count": 0.0,
+        "draft_count": 0.0,
+        "changed_count": 0.0,
+    }
+    trainer._assert_inference_safe_strategy = lambda *args, **kwargs: None
+    trainer._should_retrieve = lambda sample: sample.left_context == "retrieve"
+    trainer._retrieve_for_generation = lambda *args, **kwargs: [_chunk("ctx")]
+    samples = [
+        SimpleNamespace(
+            left_context="retrieve", target="target", candidate_chunks=[_chunk("ctx")]
+        ),
+        SimpleNamespace(
+            left_context="skip", target="target", candidate_chunks=[_chunk("ctx")]
+        ),
+    ]
+
+    trainer.phase6_evaluate(samples, include_analysis=False)
+
+    assert trainer.generator.flags
+    assert all(flag is True for _, flag in trainer.generator.flags)

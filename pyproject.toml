@@ -23,6 +23,9 @@ parsers = [
     "tree-sitter>=0.20",
     "tree-sitter-languages>=1.10",
 ]
+test = [
+    "pytest>=8.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

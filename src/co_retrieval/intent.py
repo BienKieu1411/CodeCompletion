@@ -139,3 +139,162 @@ class IntentSketcher:
                     seen.add(token)
                     hints.append(token)
         return hints
+
+
+# ── Cost-Aware Query Enhancement ─────────────────────────────────────────────
+
+
+def _score_entropy(scores: "List[float]") -> float:
+    """Compute normalized score entropy in ``[0, 1]``.
+
+    Parameters
+    ----------
+    scores : list of float
+        Raw similarity scores from the retriever.
+
+    Returns
+    -------
+    entropy : float
+        Shannon entropy of softmax(scores).  Higher values indicate the
+        retriever is uncertain about which chunk to prefer.
+    """
+    import math
+
+    if not scores or len(scores) < 2:
+        return 0.0
+
+    # Softmax
+    max_s = max(scores)
+    exp_scores = [math.exp(s - max_s) for s in scores]
+    total = sum(exp_scores)
+    if total < 1e-12:
+        return 0.0
+
+    probs = [e / total for e in exp_scores]
+    entropy = -sum(p * math.log(p + 1e-12) for p in probs)
+    return max(0.0, min(1.0, entropy / math.log(len(probs))))
+
+
+@dataclass(frozen=True)
+class QueryEnhancementResult:
+    """Result of adaptive query enhancement."""
+
+    query: str
+    used_sampling: bool = False
+    entropy: float = 0.0
+    num_drafts_merged: int = 0
+    query_changed: bool = False
+
+
+class CostAwareQueryEnhancer:
+    """Conditionally invoke LLM sampling based on retriever score entropy.
+
+    Inherits AlignCoder's query enhancement idea (using LLM-generated
+    completions to enrich the retrieval query) but only activates the
+    expensive sampling path when the retriever is uncertain.
+
+    Design
+    ------
+    * **Cheap path** (majority of samples): use static intent sketch.
+      Triggered when retriever score entropy is below threshold.
+    * **Expensive path** (minority): merge draft completions into query.
+      Triggered when retriever is uncertain (high entropy / flat scores).
+
+    The draft completions themselves must be provided by the caller
+    (generated externally by a lightweight LLM or the main generator).
+    """
+
+    def __init__(
+        self,
+        sketcher: IntentSketcher,
+        entropy_threshold: float = 0.8,
+        max_draft_identifiers: int = 30,
+    ) -> None:
+        self.sketcher = sketcher
+        self.entropy_threshold = entropy_threshold
+        self.max_draft_identifiers = max_draft_identifiers
+
+    def enhance(
+        self,
+        left_context: str,
+        retriever_scores: "List[float] | None" = None,
+        draft_completions: "List[str] | None" = None,
+    ) -> QueryEnhancementResult:
+        """Build an enhanced query, conditionally using draft completions.
+
+        Parameters
+        ----------
+        left_context : str
+            Code before cursor.
+        retriever_scores : list of float, optional
+            Similarity scores from the retriever for top-k chunks.
+            Used to compute entropy and decide whether to use drafts.
+            If None, always uses the cheap path.
+        draft_completions : list of str, optional
+            LLM-generated candidate completions (à la AlignCoder).
+            Only merged when retriever entropy exceeds threshold.
+
+        Returns
+        -------
+        QueryEnhancementResult
+            Contains the final query string and metadata about which
+            path was taken.
+        """
+        sketch = self.sketcher.build(left_context)
+
+        # Compute retriever confidence
+        entropy = 0.0
+        if retriever_scores is not None:
+            entropy = _score_entropy(retriever_scores)
+
+        # Cheap path: retriever is confident OR no drafts available
+        if entropy < self.entropy_threshold or not draft_completions:
+            return QueryEnhancementResult(
+                query=sketch.query,
+                used_sampling=False,
+                entropy=entropy,
+            )
+
+        # Expensive path: merge draft completions into query
+        merged_query = self._merge(sketch, draft_completions)
+        return QueryEnhancementResult(
+            query=merged_query,
+            used_sampling=True,
+            entropy=entropy,
+            num_drafts_merged=len(draft_completions),
+            query_changed=merged_query != sketch.query,
+        )
+
+    def _merge(self, sketch: IntentSketch, drafts: List[str]) -> str:
+        """Merge draft completions into the intent sketch query.
+
+        Extracts novel identifiers from drafts and appends them to the
+        sketch query, providing the retriever with tokens that may not
+        appear in the left context (e.g. ``refund_payment`` from a draft).
+        """
+        # Collect identifiers already in the sketch
+        existing = set(sketch.identifiers)
+        existing.update(sketch.import_hints)
+        existing.update(sketch.class_hints)
+        if sketch.member_owner:
+            existing.add(sketch.member_owner)
+        if sketch.member_prefix:
+            existing.add(sketch.member_prefix)
+
+        # Extract novel identifiers from drafts
+        novel: List[str] = []
+        for draft in drafts:
+            for token in _IDENTIFIER_RE.findall(draft or ""):
+                if token not in existing and not keyword.iskeyword(token):
+                    existing.add(token)
+                    novel.append(token)
+
+        if not novel:
+            return sketch.query
+
+        # Append draft hints to existing query
+        draft_section = (
+            "### Draft completion hints\n"
+            + " ".join(novel[: self.max_draft_identifiers])
+        )
+        return sketch.query + "\n" + draft_section

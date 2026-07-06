@@ -34,6 +34,11 @@ def test_train_cli_defaults_respect_max_samples_and_neural_learning_rates(monkey
     assert captured["leave_one_out_analysis_samples"] == 25
     assert captured["gate_quality_tolerance"] == 0.01
     assert captured["gate_retrieval_reduction_target"] == 0.20
+    assert captured["retriever_loss"] == "lipo"
+    assert captured["lipo_tau"] == 1.0
+    assert captured["steps_per_round_retriever"] is None
+    assert captured["query_entropy_threshold"] == 0.8
+    assert captured["query_num_drafts"] == 2
 
 
 def test_train_cli_accepts_reviewer_blocker_neural_options(monkeypatch):
@@ -67,6 +72,42 @@ def test_train_cli_accepts_reviewer_blocker_neural_options(monkeypatch):
     assert captured["leave_one_out_analysis_samples"] == 9
     assert captured["gate_quality_tolerance"] == 0.02
     assert captured["gate_retrieval_reduction_target"] == 0.3
+
+
+def test_train_cli_accepts_lipo_and_cost_aware_options(monkeypatch):
+    captured = {}
+    fake_runner = types.ModuleType("co_retrieval.runner")
+
+    def train(config):
+        captured.update(config)
+        return {"status": "ok"}
+
+    fake_runner.train = train
+    monkeypatch.setitem(sys.modules, "co_retrieval.runner", fake_runner)
+    args = build_parser().parse_args(
+        [
+            "train",
+            "--use-neural",
+            "--intent-mode",
+            "cost_aware",
+            "--retriever-loss",
+            "dpo",
+            "--lipo-tau",
+            "0.5",
+            "--steps-per-round-retriever",
+            "9",
+            "--query-entropy-threshold",
+            "0.7",
+        ]
+    )
+
+    args.func(args)
+
+    assert captured["intent_mode"] == "cost_aware"
+    assert captured["retriever_loss"] == "dpo"
+    assert captured["lipo_tau"] == 0.5
+    assert captured["steps_per_round_retriever"] == 9
+    assert captured["query_entropy_threshold"] == 0.7
 
 
 def test_train_cli_allows_explicit_proxy_overrides(monkeypatch):

@@ -423,6 +423,72 @@ class SoftPromptLLM(nn.Module):
 
         return self.tokenizer.decode(generated_ids, skip_special_tokens=True)
 
+    @torch.no_grad()
+    def generate_drafts(
+        self,
+        left_context: str,
+        num_drafts: int = 2,
+        max_new_tokens: int = 32,
+        temperature: float = 0.8,
+        top_p: float = 0.95,
+        use_soft_prompt: bool = True,
+    ) -> List[str]:
+        """Sample lightweight no-retrieval drafts for query enhancement."""
+        if num_drafts < 1 or max_new_tokens < 1:
+            return []
+        if temperature <= 0:
+            raise ValueError("temperature must be greater than zero")
+        if not 0.0 < top_p <= 1.0:
+            raise ValueError("top_p must be in (0, 1]")
+
+        drafts: List[str] = []
+        for _ in range(num_drafts):
+            if use_soft_prompt:
+                inputs_embeds, attention_mask = self._prepare_inputs(left_context)
+            else:
+                tokens = self.tokenizer(
+                    left_context,
+                    return_tensors="pt",
+                    truncation=True,
+                    max_length=self.budget_manager.max_tokens - max_new_tokens,
+                ).to(self._device)
+                inputs_embeds = self.model.get_input_embeddings()(tokens.input_ids)
+                attention_mask = tokens.attention_mask
+
+            generated_ids: List[int] = []
+            for _step in range(max_new_tokens):
+                outputs = self.model(
+                    inputs_embeds=inputs_embeds,
+                    attention_mask=attention_mask,
+                )
+                logits = outputs.logits[0, -1, :] / temperature
+                probs = torch.softmax(logits, dim=-1)
+                sorted_probs, sorted_indices = torch.sort(probs, descending=True)
+                cumulative = torch.cumsum(sorted_probs, dim=-1)
+                remove = cumulative - sorted_probs > top_p
+                sorted_probs = sorted_probs.masked_fill(remove, 0.0)
+                sorted_probs = sorted_probs / sorted_probs.sum().clamp_min(1e-12)
+                sampled = torch.multinomial(sorted_probs, num_samples=1)
+                next_id = sorted_indices[sampled].squeeze(0)
+                if next_id.item() == self.tokenizer.eos_token_id:
+                    break
+                generated_ids.append(next_id.item())
+                next_embed = self.model.get_input_embeddings()(
+                    next_id.unsqueeze(0).unsqueeze(0)
+                )
+                inputs_embeds = torch.cat([inputs_embeds, next_embed], dim=1)
+                attention_mask = torch.cat(
+                    [
+                        attention_mask,
+                        torch.ones(1, 1, dtype=torch.long, device=self._device),
+                    ],
+                    dim=1,
+                )
+            drafts.append(
+                self.tokenizer.decode(generated_ids, skip_special_tokens=True)
+            )
+        return drafts
+
     # ── Serialisation ─────────────────────────────────────────────────────
 
     def save_prompt(self, path: str) -> None:

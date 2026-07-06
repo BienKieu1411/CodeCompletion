@@ -382,6 +382,78 @@ class DenseRetriever(nn.Module):
         )
         return -F.logsigmoid(logit)
 
+    # ── LiPO loss ─────────────────────────────────────────────────────────
+
+    def lipo_loss(
+        self,
+        query_text: str,
+        candidate_chunks_list: List[List[CodeChunk]],
+        utilities: List[float],
+        tau: float = 1.0,
+    ) -> torch.Tensor:
+        """Listwise Preference Optimization with utility-derived soft labels.
+
+        Instead of pairwise DPO, LiPO aligns the retriever's score distribution
+        with a target distribution derived from context utility values.  This
+        uses the full utility spectrum (soft labels) rather than discretising
+        into chosen/rejected pairs.
+
+        Parameters
+        ----------
+        query_text : str
+            The retrieval query.
+        candidate_chunks_list : list of list of CodeChunk
+            One chunk list per candidate strategy.  Empty list = stop strategy.
+        utilities : list of float
+            Utility U(C) = NLL(stop) - NLL(C) for each candidate.
+        tau : float
+            Temperature for the target softmax distribution.
+
+        Returns
+        -------
+        loss : scalar tensor
+            KL(target_dist || pred_dist).
+        """
+        if len(candidate_chunks_list) != len(utilities):
+            raise ValueError(
+                f"Mismatch: {len(candidate_chunks_list)} candidates vs "
+                f"{len(utilities)} utilities"
+            )
+        if tau <= 0:
+            raise ValueError("tau must be greater than zero")
+        if not all(np.isfinite(value) for value in utilities):
+            raise ValueError("utilities must contain only finite values")
+        if len(candidate_chunks_list) < 2:
+            return torch.tensor(0.0, device=self._device, requires_grad=True)
+
+        q_vec = self.encode_query(query_text)
+
+        # Target distribution from utility (soft labels)
+        utility_tensor = torch.tensor(
+            utilities, device=self._device, dtype=torch.float32
+        )
+        target_dist = F.softmax(utility_tensor / tau, dim=-1)
+
+        # Retriever score distribution
+        scores: List[torch.Tensor] = []
+        for chunks in candidate_chunks_list:
+            if not chunks:
+                # Stop strategy: score = 0
+                scores.append(torch.tensor(0.0, device=self._device))
+            else:
+                c_vecs = self.encode_chunks(chunks)
+                scores.append(self.retrieval_score(q_vec, c_vecs))
+
+        score_tensor = torch.stack(scores)
+        log_pred_dist = F.log_softmax(score_tensor, dim=-1)
+
+        # KL divergence: align retriever distribution with utility distribution
+        return F.kl_div(
+            log_pred_dist.unsqueeze(0),
+            target_dist.unsqueeze(0),
+            reduction="batchmean",
+        )
+
     # ── Reference management ──────────────────────────────────────────────
 
     def refresh_reference(self) -> None:

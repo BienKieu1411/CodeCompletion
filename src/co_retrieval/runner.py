@@ -36,6 +36,7 @@ def _sample_to_training_sample(
         target=sample.get("ground_truth", ""),
         file_path=sample.get("id", "current_file.py"),
         candidate_chunks=chunks,
+        repo_id=sample.get("repo_id", ""),
     )
 
 
@@ -75,6 +76,7 @@ def _split_train_eval(
     max_eval_samples: int,
     random_seed: int,
 ) -> Tuple[List[TrainingSample], List[TrainingSample]]:
+    """Legacy random split — kept for proxy mode only."""
     sample_list = list(samples)
     if len(sample_list) < 2 or eval_ratio <= 0 or max_eval_samples <= 0:
         return sample_list, []
@@ -84,6 +86,80 @@ def _split_train_eval(
     eval_size = min(max_eval_samples, max(1, int(len(sample_list) * eval_ratio)))
     eval_size = min(eval_size, len(sample_list) - 1)
     return sample_list[eval_size:], sample_list[:eval_size]
+
+
+def _split_by_repository(
+    samples: Sequence[TrainingSample],
+    eval_ratio: float,
+    max_eval_samples: int,
+    random_seed: int,
+) -> Tuple[List[TrainingSample], List[TrainingSample]]:
+    """Repository-disjoint split to prevent data leakage.
+
+    Samples from the same repository will never appear in both train and eval.
+    """
+    sample_list = list(samples)
+    if len(sample_list) < 2 or eval_ratio <= 0 or max_eval_samples <= 0:
+        return sample_list, []
+
+    # Group only by the repository identity preserved by DatasetLoader.  File
+    # paths are repository-relative and cannot safely identify a repository.
+    repo_to_samples: Dict[str, List[TrainingSample]] = {}
+    for sample in sample_list:
+        if not sample.repo_id:
+            logger.warning(
+                "Repository-disjoint split unavailable because sample %r has "
+                "no repo_id; using all samples for training.",
+                sample.file_path,
+            )
+            return sample_list, []
+        repo_to_samples.setdefault(sample.repo_id, []).append(sample)
+
+    if len(repo_to_samples) < 2:
+        logger.warning(
+            "Repository-disjoint evaluation requires at least two repositories; "
+            "using all %d samples for training.",
+            len(sample_list),
+        )
+        return sample_list, []
+
+    repos = sorted(repo_to_samples.keys())  # deterministic ordering
+    rng = random.Random(random_seed)
+    rng.shuffle(repos)
+
+    # Split repos
+    eval_repo_count = max(1, int(len(repos) * eval_ratio))
+    eval_repo_count = min(eval_repo_count, len(repos) - 1)  # keep ≥1 train repo
+    eval_repos = set(repos[:eval_repo_count])
+
+    train = [
+        s
+        for repo_id, ss in repo_to_samples.items()
+        if repo_id not in eval_repos
+        for s in ss
+    ]
+    eval_ = [
+        s
+        for repo_id, ss in repo_to_samples.items()
+        if repo_id in eval_repos
+        for s in ss
+    ]
+
+    # Cap eval size
+    if len(eval_) > max_eval_samples:
+        rng.shuffle(eval_)
+        eval_ = eval_[:max_eval_samples]
+
+    logger.info(
+        "Repository-disjoint split: %d repos (%d train, %d eval), "
+        "%d train samples, %d eval samples",
+        len(repos),
+        len(repos) - len(eval_repos),
+        len(eval_repos),
+        len(train),
+        len(eval_),
+    )
+    return train, eval_
 
 
 def _train_proxy(cfg: Dict[str, Any]) -> Dict[str, Any]:
@@ -180,7 +256,7 @@ def _train_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
 
     eval_ratio = float(cfg.get("eval_ratio", 0.1))
     max_eval_samples = int(cfg.get("max_eval_samples", 100))
-    train_samples, eval_samples = _split_train_eval(
+    train_samples, eval_samples = _split_by_repository(
         samples,
         eval_ratio=eval_ratio,
         max_eval_samples=max_eval_samples,
@@ -204,7 +280,14 @@ def _train_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
         warmup_steps=int(cfg.get("warmup_steps", 200)),
         num_rounds=int(cfg.get("num_rounds", 2)),
         steps_per_round_prompt=int(cfg.get("steps_per_round_prompt", 100)),
+        steps_per_round_retriever=(
+            int(cfg["steps_per_round_retriever"])
+            if cfg.get("steps_per_round_retriever") is not None
+            else None
+        ),
         steps_per_round_dpo=int(cfg.get("steps_per_round_dpo", 100)),
+        retriever_loss=cfg.get("retriever_loss", "lipo"),
+        lipo_tau=float(cfg.get("lipo_tau", 1.0)),
         dpo_beta=float(cfg.get("dpo_beta", 0.1)),
         preference_margin=float(cfg.get("preference_margin", 0.1)),
         utility_margin=float(cfg.get("utility_margin", 0.05)),
@@ -231,6 +314,11 @@ def _train_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
         batch_encode_size=int(cfg.get("batch_encode_size", 32)),
         eval_ratio=eval_ratio,
         max_eval_samples=max_eval_samples,
+        query_entropy_threshold=float(cfg.get("query_entropy_threshold", 0.8)),
+        query_num_drafts=int(cfg.get("query_num_drafts", 2)),
+        query_draft_max_tokens=int(cfg.get("query_draft_max_tokens", 32)),
+        query_draft_temperature=float(cfg.get("query_draft_temperature", 0.8)),
+        query_draft_top_p=float(cfg.get("query_draft_top_p", 0.95)),
     )
 
     trainer = NeuralCoTrainer(neural_cfg)

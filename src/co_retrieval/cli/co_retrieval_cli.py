@@ -90,7 +90,10 @@ def _cmd_train(args: argparse.Namespace) -> dict:
                 "warmup_steps": args.warmup_steps,
                 "num_rounds": args.num_rounds,
                 "steps_per_round_prompt": args.steps_per_round_prompt,
+                "steps_per_round_retriever": args.steps_per_round_retriever,
                 "steps_per_round_dpo": args.steps_per_round_dpo,
+                "retriever_loss": args.retriever_loss,
+                "lipo_tau": args.lipo_tau,
                 "preference_margin": args.preference_margin,
                 "utility_margin": args.utility_margin,
                 "num_hard_negatives": args.num_hard_negatives,
@@ -111,6 +114,11 @@ def _cmd_train(args: argparse.Namespace) -> dict:
                 "eval_ratio": args.eval_ratio,
                 "max_eval_samples": args.max_eval_samples,
                 "device": args.device,
+                "query_entropy_threshold": args.query_entropy_threshold,
+                "query_num_drafts": args.query_num_drafts,
+                "query_draft_max_tokens": args.query_draft_max_tokens,
+                "query_draft_temperature": args.query_draft_temperature,
+                "query_draft_top_p": args.query_draft_top_p,
             }
         )
     else:
@@ -181,7 +189,9 @@ def build_parser() -> argparse.ArgumentParser:
         ],
         default="intent_main",
     )
-    p_train.add_argument("--intent-mode", choices=["static", "raw"], default="static")
+    p_train.add_argument(
+        "--intent-mode", choices=["static", "raw", "cost_aware"], default="static"
+    )
     p_train.add_argument(
         "--gate-mode",
         choices=["learned", "always_retrieve", "always_skip", "rule"],
@@ -194,7 +204,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_train.add_argument("--warmup-steps", type=int, default=200)
     p_train.add_argument("--num-rounds", type=int, default=2)
     p_train.add_argument("--steps-per-round-prompt", type=int, default=100)
+    p_train.add_argument("--steps-per-round-retriever", type=int, default=None)
     p_train.add_argument("--steps-per-round-dpo", type=int, default=100)
+    p_train.add_argument(
+        "--retriever-loss", choices=["lipo", "dpo"], default="lipo"
+    )
+    p_train.add_argument("--lipo-tau", type=float, default=1.0)
     p_train.add_argument("--preference-margin", type=float, default=0.1)
     p_train.add_argument("--utility-margin", type=float, default=0.05)
     p_train.add_argument("--num-hard-negatives", type=int, default=10)
@@ -218,6 +233,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_train.add_argument("--max-new-tokens", type=int, default=128)
     p_train.add_argument("--eval-ratio", type=float, default=0.1)
     p_train.add_argument("--max-eval-samples", type=int, default=100)
+    p_train.add_argument("--query-entropy-threshold", type=float, default=0.8)
+    p_train.add_argument("--query-num-drafts", type=int, default=2)
+    p_train.add_argument("--query-draft-max-tokens", type=int, default=32)
+    p_train.add_argument("--query-draft-temperature", type=float, default=0.8)
+    p_train.add_argument("--query-draft-top-p", type=float, default=0.95)
     p_train.add_argument("--device", default="cuda")
 
     p_train.set_defaults(func=_cmd_train)

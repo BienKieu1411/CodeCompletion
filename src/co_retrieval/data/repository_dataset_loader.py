@@ -433,6 +433,15 @@ class DatasetLoader:
         if len(current) >= 2:
             all_repos.append(current)
 
+        # The source parquet encodes repository boundaries via ``first`` but
+        # does not provide a stable repository name.  Preserve those boundaries
+        # explicitly so downstream train/eval splitting never has to infer a
+        # repository from a file path.
+        for repo_index, repo_files in enumerate(all_repos):
+            repo_id = f"github_repo_{repo_index:06d}"
+            for repo_file in repo_files:
+                repo_file["repo_id"] = repo_id
+
         print(f"[+] Đã gom {len(all_repos)} repos (>= 2 files).")
         return all_repos
 
@@ -511,6 +520,7 @@ class DatasetLoader:
 
         sample = {
             "id":                selected["path"],
+            "repo_id":           selected.get("repo_id", ""),
             "left_context":      "\n".join(lines[:start_line]),
             "right_context":     "\n".join(lines[end_line + 1:]) if self.use_fim else "",
             "ground_truth":      "\n".join(lines[start_line: end_line + 1]),

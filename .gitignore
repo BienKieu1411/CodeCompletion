@@ -1,2 +1,43 @@
+# Python caches and local environments
 __pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+.venv/
+venv/
+
+# OS/editor files
 .DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local repositories and downloaded model artifacts
+qiepsm/
+retriever/
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+# Training outputs
+checkpoints/
+logs/
+results/
+runs/
+wandb/
+
+# Local datasets and ad-hoc evaluation dumps
+*.parquet
+*.arrow
+*.npy
+*.npz
+*.faiss
+*.index
+test.json
+test.jsonl
+
+# Local papers
+*.pdf

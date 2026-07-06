@@ -26,3 +26,4 @@ Dựa trên các thay đổi gần nhất của dự án, các tính năng và c
 
 ---
 *Lưu ý: README này tổng hợp các tiến trình chuyển đổi sang framework `co_retrieval` gần đây. Hướng dẫn cài đặt, thiết lập môi trường và cách sử dụng chi tiết sẽ được bổ sung sau.*
+> Current neural pipeline: repository-disjoint evaluation, deployment-aligned gate labels, LiPO with `stop` as the default retriever objective, DPO as an ablation, and opt-in cost-aware draft query enhancement through `--intent-mode cost_aware`.
