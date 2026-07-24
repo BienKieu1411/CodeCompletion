@@ -437,6 +437,8 @@ def _train_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
         gate_mode=cfg.get("gate_mode", "learned"),
         adapter_type=cfg.get("adapter_type", "soft_prompt"),
         include_oracle_strategy=bool(cfg.get("include_oracle_strategy", True)),
+        build_train_index=bool(cfg.get("build_train_index", False)),
+        refresh_train_index=bool(cfg.get("refresh_train_index", False)),
         warmup_steps=int(cfg.get("warmup_steps", 200)),
         train_epochs=int(cfg.get("train_epochs", cfg.get("num_epochs", 1))),
         epoch_budget_mode=bool(cfg.get("epoch_budget_mode", False)),

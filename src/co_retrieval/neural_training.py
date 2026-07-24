@@ -114,6 +114,8 @@ class NeuralCoTrainingConfig:
     gate_mode: str = "learned"
     adapter_type: str = "soft_prompt"
     include_oracle_strategy: bool = True
+    build_train_index: bool = False
+    refresh_train_index: bool = False
 
     # Phase 1 — Soft Prompt Warm-up
     warmup_steps: int = 200
@@ -661,6 +663,16 @@ class NeuralCoTrainer:
             show_progress=True,
         )
         logger.info("Phase 0: built index with %d chunks", len(chunks))
+
+    def phase0_register_chunks(self, chunks: Sequence[CodeChunk]) -> None:
+        """Register chunks for training without pre-encoding a global index."""
+        self._chunks = list(chunks)
+        self._chunk_map = {c.chunk_id: c for c in chunks}
+        logger.info(
+            "Phase 0: registered %d chunks without global index "
+            "(sample-local retrieval during train)",
+            len(chunks),
+        )
 
     # ── Query / strategy helpers ─────────────────────────────────────────
 
@@ -1550,6 +1562,12 @@ class NeuralCoTrainer:
         """Re-embed all chunks with updated retriever → rebuild FAISS."""
         if not self._chunks:
             return
+        if not getattr(self.config, "refresh_train_index", False):
+            logger.info(
+                "Phase 4: skipped global index refresh; "
+                "sample-local retrieval will use current retriever weights"
+            )
+            return
         logger.info("Phase 4: Refreshing FAISS index (%d chunks)…", len(self._chunks))
         self.embedding_cache.build_from_chunks(
             self._chunks,
@@ -2259,7 +2277,10 @@ class NeuralCoTrainer:
             return {"status": "no_chunks"}
 
         # Phase 0
-        self.phase0_build_index(all_chunks)
+        if getattr(self.config, "build_train_index", False):
+            self.phase0_build_index(all_chunks)
+        else:
+            self.phase0_register_chunks(all_chunks)
 
         schedule = self.config.experiment_mode
         p1: Dict[str, float] = {}
@@ -2306,6 +2327,8 @@ class NeuralCoTrainer:
             "schedule": schedule,
             "train_epochs": self.config.train_epochs,
             "epoch_budget_mode": self.config.epoch_budget_mode,
+            "build_train_index": self.config.build_train_index,
+            "refresh_train_index": self.config.refresh_train_index,
             "initial_warmup": p1,
             "rounds": round_history,
             "eval": eval_metrics,

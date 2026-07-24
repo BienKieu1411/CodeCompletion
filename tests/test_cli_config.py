@@ -42,6 +42,8 @@ def test_train_cli_defaults_respect_max_samples_and_neural_learning_rates(monkey
     assert captured["retriever_loss"] == "lipo"
     assert captured["lipo_tau"] == 1.0
     assert captured["skip_train_eval"] is False
+    assert captured["build_train_index"] is False
+    assert captured["refresh_train_index"] is False
     assert captured["train_epochs"] == 1
     assert captured["epoch_budget_mode"] is False
     assert captured["gate_use_retrieval_features"] is True

@@ -95,6 +95,8 @@ def _cmd_train(args: argparse.Namespace) -> dict:
                 "gate_mode": args.gate_mode,
                 "adapter_type": args.adapter_type,
                 "include_oracle_strategy": not args.disable_oracle_strategy,
+                "build_train_index": args.build_train_index,
+                "refresh_train_index": args.refresh_train_index,
                 "skip_train_eval": args.skip_train_eval,
                 "warmup_steps": args.warmup_steps,
                 "train_epochs": train_epochs,
@@ -264,6 +266,25 @@ def build_parser() -> argparse.ArgumentParser:
         "--adapter-type", choices=["soft_prompt", "none"], default="soft_prompt"
     )
     p_train.add_argument("--disable-oracle-strategy", action="store_true", default=False)
+    p_train.add_argument(
+        "--build-train-index",
+        action="store_true",
+        default=False,
+        help=(
+            "Pre-encode all training chunks into a global dense index. "
+            "Disabled by default because learned retriever weights make the "
+            "cache stale and full-data indexing is expensive."
+        ),
+    )
+    p_train.add_argument(
+        "--refresh-train-index",
+        action="store_true",
+        default=False,
+        help=(
+            "Re-encode all training chunks after each co-training epoch. "
+            "Very expensive on full data; keep disabled for main LiPO runs."
+        ),
+    )
     p_train.add_argument("--skip-train-eval", action="store_true", default=False)
     p_train.add_argument("--warmup-steps", type=int, default=200)
     p_train.add_argument(

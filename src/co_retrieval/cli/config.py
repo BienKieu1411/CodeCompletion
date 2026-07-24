@@ -38,6 +38,8 @@ class CoRetrievalCLIConfig:
     gate_mode: str = "learned"
     adapter_type: str = "soft_prompt"
     include_oracle_strategy: bool = True
+    build_train_index: bool = False
+    refresh_train_index: bool = False
     skip_train_eval: bool = False
 
     # ── Neural: training ──────────────────────────────────────────────────

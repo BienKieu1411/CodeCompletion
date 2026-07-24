@@ -27,6 +27,13 @@ RUN_TRAIN=1 RUN_EVAL=0 \
 
 By default this uses DeepSeek-Coder 6.7B base (`GENERATOR_NAME=deepseek-ai/deepseek-coder-6.7b-base`), full Python+Java AlignCoder train data (`TRAIN_DATASETS=data/github_repos/python/train.parquet,data/github_repos/java/train.parquet`, `MAX_TRAIN_SAMPLES=0`), mixed completion sampling (`COMPLETION_LEVEL=mixed`), and 10 neural full-pass training epochs (`TRAIN_EPOCHS=10`, `EPOCH_BUDGET_MODE=1`). In epoch-budget mode, each co-training epoch uses `len(train samples)` prompt steps, one pass over LiPO preference groups for retriever training, and one pass over gate labels. The command still uses a small bootstrap warmup (`WARMUP_STEPS=200` by default). The training command intentionally passes `--skip-train-eval`, so evaluation is only run by the separate evaluate phase.
 
+Training does not pre-encode a full global dense index by default
+(`BUILD_TRAIN_INDEX=0`, `REFRESH_TRAIN_INDEX=0`). This avoids repeatedly
+encoding hundreds of thousands of chunks with a retriever whose weights are
+being updated. Retrieval during train is sample-local and uses the current
+retriever weights; the separate eval phase still builds an index for benchmark
+prediction.
+
 `NUM_EPOCHS` remains accepted as a backward-compatible alias, but prefer
 `TRAIN_EPOCHS` in new server runs.
 

@@ -21,6 +21,8 @@ EPOCH_BUDGET_MODE="${EPOCH_BUDGET_MODE:-1}"
 WARMUP_STEPS="${WARMUP_STEPS:-200}"
 STEPS_PER_ROUND_PROMPT="${STEPS_PER_ROUND_PROMPT:-100}"
 STEPS_PER_ROUND_RETRIEVER="${STEPS_PER_ROUND_RETRIEVER:-200}"
+BUILD_TRAIN_INDEX="${BUILD_TRAIN_INDEX:-0}"
+REFRESH_TRAIN_INDEX="${REFRESH_TRAIN_INDEX:-0}"
 EVAL_MAX_SAMPLES="${EVAL_MAX_SAMPLES:-0}"
 
 CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
@@ -46,6 +48,12 @@ if [[ "${RUN_TRAIN}" == "1" ]]; then
   if [[ "${EPOCH_BUDGET_MODE}" == "1" ]]; then
     TRAIN_BUDGET_ARGS+=(--epoch-budget-mode)
   fi
+  if [[ "${BUILD_TRAIN_INDEX}" == "1" ]]; then
+    TRAIN_BUDGET_ARGS+=(--build-train-index)
+  fi
+  if [[ "${REFRESH_TRAIN_INDEX}" == "1" ]]; then
+    TRAIN_BUDGET_ARGS+=(--refresh-train-index)
+  fi
 
   IFS=',' read -r -a TRAIN_DATASET_LIST <<< "${TRAIN_DATASETS}"
   for train_dataset_path in "${TRAIN_DATASET_LIST[@]}"; do
@@ -65,6 +73,7 @@ if [[ "${RUN_TRAIN}" == "1" ]]; then
 
   echo "Training ${EXPERIMENT_MODE} for TRAIN_EPOCHS=${TRAIN_EPOCHS} (epoch_budget_mode=${EPOCH_BUDGET_MODE})"
   echo "Completion level: ${COMPLETION_LEVEL}"
+  echo "Train global index: build=${BUILD_TRAIN_INDEX}, refresh=${REFRESH_TRAIN_INDEX}"
   echo "Train datasets: ${TRAIN_DATASETS}"
 
   python3 -m co_retrieval.cli.co_retrieval_cli train \

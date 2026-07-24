@@ -614,6 +614,44 @@ def test_epoch_budget_mode_uses_full_pass_steps_without_extra_refreshes():
     assert result[0]["gate_steps_budget"] == 10
 
 
+def test_train_registers_chunks_without_building_global_index_by_default():
+    trainer = NeuralCoTrainer.__new__(NeuralCoTrainer)
+    trainer.config = SimpleNamespace(
+        experiment_mode="intent_main",
+        build_train_index=False,
+        refresh_train_index=False,
+        gate_calibrate_threshold=False,
+        gate_decision_threshold=0.5,
+        train_epochs=1,
+        epoch_budget_mode=False,
+    )
+    calls = []
+    trainer.phase0_build_index = lambda chunks: calls.append(("build", len(chunks)))
+    trainer.phase0_register_chunks = lambda chunks: calls.append(
+        ("register", len(chunks))
+    )
+    trainer.phase1_warmup_soft_prompt = lambda samples: {"phase1_loss": 0.0}
+    trainer.phase5_co_training = lambda samples: []
+    trainer.gate_defense_status = lambda variants: {"status": "not_evaluated"}
+    trainer._save_checkpoint = lambda payload: calls.append(("save",))
+
+    result = trainer.train(
+        [
+            SimpleNamespace(
+                left_context="x",
+                target="y",
+                candidate_chunks=[_chunk("ctx")],
+            )
+        ],
+        eval_samples=[],
+    )
+
+    assert calls[0] == ("register", 1)
+    assert ("build", 1) not in calls
+    assert result["build_train_index"] is False
+    assert result["refresh_train_index"] is False
+
+
 def test_gate_policy_ablation_restores_original_gate_mode():
     trainer = NeuralCoTrainer.__new__(NeuralCoTrainer)
     trainer.config = SimpleNamespace(gate_mode="rule")
