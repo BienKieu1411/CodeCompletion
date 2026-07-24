@@ -73,6 +73,39 @@ print(CONSTANT)
         self.assertTrue(chunks)
         self.assertTrue(all(c.chunk_type == "fallback" for c in chunks))
 
+    def test_chunker_uses_tree_sitter_for_java_methods_when_available(self):
+        try:
+            from tree_sitter_languages import get_parser
+
+            get_parser("java")
+        except Exception as exc:
+            self.skipTest(f"tree-sitter java parser unavailable: {exc}")
+
+        source = """package demo;
+
+public class UserService extends BaseService {
+    private final Client client;
+
+    public UserService(Client client) {
+        this.client = client;
+    }
+
+    public User fetchUser(String id) {
+        return client.fetchUser(id);
+    }
+}
+"""
+        chunks = RepositoryChunker().chunk_source("src/UserService.java", source)
+
+        self.assertTrue(any(c.chunk_type == "class_header" for c in chunks))
+        method = next(
+            c for c in chunks if c.chunk_type == "method" and "fetchUser" in c.text
+        )
+        self.assertEqual("UserService", method.parent_class)
+        self.assertIn("fetchUser", method.defined_symbols)
+        self.assertIn("fetchUser", method.call_names)
+        self.assertFalse(all(c.chunk_type == "fallback" for c in chunks))
+
 
 if __name__ == "__main__":
     unittest.main()

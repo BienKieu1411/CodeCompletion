@@ -25,7 +25,7 @@ RUN_TRAIN=1 RUN_EVAL=0 \
   bash src/scripts/run_icar_lipo_a100_80gb.sh
 ```
 
-By default this uses DeepSeek-Coder 6.7B base (`GENERATOR_NAME=deepseek-ai/deepseek-coder-6.7b-base`), full Python+Java AlignCoder train data (`TRAIN_DATASETS=data/github_repos/python/train.parquet,data/github_repos/java/train.parquet`, `MAX_TRAIN_SAMPLES=0`), and 10 neural full-pass training epochs (`TRAIN_EPOCHS=10`, `EPOCH_BUDGET_MODE=1`). In epoch-budget mode, each co-training epoch uses `len(train samples)` prompt steps, one pass over LiPO preference groups for retriever training, and one pass over gate labels. The command still uses a small bootstrap warmup (`WARMUP_STEPS=200` by default). The training command intentionally passes `--skip-train-eval`, so evaluation is only run by the separate evaluate phase.
+By default this uses DeepSeek-Coder 6.7B base (`GENERATOR_NAME=deepseek-ai/deepseek-coder-6.7b-base`), full Python+Java AlignCoder train data (`TRAIN_DATASETS=data/github_repos/python/train.parquet,data/github_repos/java/train.parquet`, `MAX_TRAIN_SAMPLES=0`), mixed completion sampling (`COMPLETION_LEVEL=mixed`), and 10 neural full-pass training epochs (`TRAIN_EPOCHS=10`, `EPOCH_BUDGET_MODE=1`). In epoch-budget mode, each co-training epoch uses `len(train samples)` prompt steps, one pass over LiPO preference groups for retriever training, and one pass over gate labels. The command still uses a small bootstrap warmup (`WARMUP_STEPS=200` by default). The training command intentionally passes `--skip-train-eval`, so evaluation is only run by the separate evaluate phase.
 
 `NUM_EPOCHS` remains accepted as a backward-compatible alias, but prefer
 `TRAIN_EPOCHS` in new server runs.

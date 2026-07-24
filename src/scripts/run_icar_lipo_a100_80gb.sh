@@ -15,6 +15,7 @@ TRAIN_DATASETS="${TRAIN_DATASETS:-${TRAIN_DATASET:-${TRAIN_DATASETS_DEFAULT}}}"
 GENERATOR_NAME="${GENERATOR_NAME:-deepseek-ai/deepseek-coder-6.7b-base}"
 EXPERIMENT_MODE="${EXPERIMENT_MODE:-intent_main}"
 MAX_TRAIN_SAMPLES="${MAX_TRAIN_SAMPLES:-0}"
+COMPLETION_LEVEL="${COMPLETION_LEVEL:-mixed}"
 TRAIN_EPOCHS="${TRAIN_EPOCHS:-${NUM_EPOCHS:-10}}"
 EPOCH_BUDGET_MODE="${EPOCH_BUDGET_MODE:-1}"
 WARMUP_STEPS="${WARMUP_STEPS:-200}"
@@ -63,6 +64,7 @@ if [[ "${RUN_TRAIN}" == "1" ]]; then
   fi
 
   echo "Training ${EXPERIMENT_MODE} for TRAIN_EPOCHS=${TRAIN_EPOCHS} (epoch_budget_mode=${EPOCH_BUDGET_MODE})"
+  echo "Completion level: ${COMPLETION_LEVEL}"
   echo "Train datasets: ${TRAIN_DATASETS}"
 
   python3 -m co_retrieval.cli.co_retrieval_cli train \
@@ -84,6 +86,7 @@ if [[ "${RUN_TRAIN}" == "1" ]]; then
     --train-epochs "${TRAIN_EPOCHS}" \
     "${TRAIN_BUDGET_ARGS[@]}" \
     --max-samples "${MAX_TRAIN_SAMPLES}" \
+    --completion-level "${COMPLETION_LEVEL}" \
     --fixed-train-size "${MAX_TRAIN_SAMPLES}" \
     --max-train-samples "${MAX_TRAIN_SAMPLES}" \
     --eval-ratio 0 \

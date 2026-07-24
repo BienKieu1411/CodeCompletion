@@ -211,7 +211,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_train.add_argument("--gate-lr", type=float, default=None)
     p_train.add_argument("--soft-prompt-lr", type=float, default=None)
     p_train.add_argument(
-        "--completion-level", choices=["line", "block", "mixed"], default="line"
+        "--completion-level", choices=["line", "block", "mixed"], default="mixed"
     )
     p_train.add_argument("--fixed-train-size", type=int, default=None)
     p_train.add_argument("--max-train-samples", type=int, default=None)
@@ -349,7 +349,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_eval.add_argument("--batch-size", type=int, default=2)
     p_eval.add_argument("--top-k", type=int, default=3)
     p_eval.add_argument(
-        "--completion-level", choices=["line", "block", "mixed"], default="line"
+        "--completion-level", choices=["line", "block", "mixed"], default="mixed"
     )
     p_eval.add_argument("--min-file-lines", type=int, default=200)
     p_eval.add_argument("--min-file-chars", type=int, default=2000)

@@ -19,7 +19,7 @@ class CoRetrievalCLIConfig:
     top_k: int = 3
     num_epochs: int = 1
     batch_size: int = 2
-    completion_level: str = "line"
+    completion_level: str = "mixed"
 
     # ── Mode ──────────────────────────────────────────────────────────────
     use_neural: bool = False

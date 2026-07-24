@@ -9,14 +9,88 @@ entity-aligned evidence snippets with metadata useful for retrieval.
 from __future__ import annotations
 
 import ast
+import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, List, Optional, Sequence
+from typing import Any, Iterable, List, Optional, Sequence
 
 
 _IDENTIFIER_RE = re.compile(r"[_a-zA-Z][_a-zA-Z0-9]*")
 _CALL_RE = re.compile(r"(?<!def\s)(?<!class\s)([_a-zA-Z][_a-zA-Z0-9]*)\s*\(")
+logger = logging.getLogger(__name__)
+
+_EXTENSION_TO_LANGUAGE = {
+    ".py": "python",
+    ".java": "java",
+    ".js": "javascript",
+    ".jsx": "javascript",
+    ".ts": "typescript",
+    ".tsx": "typescript",
+    ".go": "go",
+    ".cpp": "cpp",
+    ".cc": "cpp",
+    ".cxx": "cpp",
+    ".hpp": "cpp",
+    ".hh": "cpp",
+    ".hxx": "cpp",
+    ".c": "c",
+    ".h": "c",
+    ".rb": "ruby",
+}
+_TREE_SITTER_PARSERS: dict[str, Any] = {}
+_TS_CLASS_TYPES = {
+    "class_declaration",
+    "interface_declaration",
+    "enum_declaration",
+    "record_declaration",
+    "struct_specifier",
+    "class_specifier",
+    "type_declaration",
+    "module",
+}
+_TS_FUNCTION_TYPES = {
+    "function_declaration",
+    "function_definition",
+    "method_declaration",
+    "constructor_declaration",
+    "function_item",
+    "method_definition",
+}
+_TS_FIELD_TYPES = {
+    "field_declaration",
+    "property_declaration",
+    "lexical_declaration",
+    "variable_declaration",
+    "const_declaration",
+    "var_declaration",
+}
+_TS_GLOBAL_TYPES = {
+    "import_statement",
+    "import_declaration",
+    "package_declaration",
+    "using_declaration",
+    "include_declaration",
+    "preproc_include",
+}
+
+
+def _detect_language(file_path: str | Path) -> str:
+    return _EXTENSION_TO_LANGUAGE.get(Path(str(file_path)).suffix.lower(), "python")
+
+
+def _load_tree_sitter_parser(language: str) -> Any:
+    if language in _TREE_SITTER_PARSERS:
+        return _TREE_SITTER_PARSERS[language]
+    try:
+        from tree_sitter_languages import get_parser
+
+        parser = get_parser(language)
+    except Exception as exc:
+        logger.debug("No tree-sitter parser for %s: %s", language, exc)
+        parser = None
+    _TREE_SITTER_PARSERS[language] = parser
+    return parser
 
 
 @dataclass(frozen=True)
@@ -47,14 +121,15 @@ class CodeChunk:
 
 
 class RepositoryChunker:
-    """Create entity-boundary chunks for Python repositories.
+    """Create entity-boundary chunks for repository source files.
 
-    Python is parsed with the stdlib AST because it provides reliable 1-based
-    line metadata and works without optional parser wheels. Invalid or currently
+    Python uses the stdlib AST for rich metadata. Other supported languages use
+    tree-sitter entity chunks when parser wheels are available. Invalid or
     unsupported files fall back to small line windows marked as ``fallback``.
     """
 
     PYTHON_SUFFIXES = {".py"}
+    SUPPORTED_SUFFIXES = set(_EXTENSION_TO_LANGUAGE)
     DEFAULT_EXCLUDE_DIRS = {
         ".git",
         ".hg",
@@ -79,7 +154,7 @@ class RepositoryChunker:
     def chunk_repository(self, root: str | Path, suffixes: Optional[Sequence[str]] = None) -> List[CodeChunk]:
         """Chunk all supported source files under ``root``."""
         root_path = Path(root)
-        suffix_set = set(suffixes or self.PYTHON_SUFFIXES)
+        suffix_set = set(suffixes or self.SUPPORTED_SUFFIXES)
         chunks: List[CodeChunk] = []
         for path in sorted(root_path.rglob("*")):
             if not path.is_file() or path.suffix not in suffix_set:
@@ -95,18 +170,23 @@ class RepositoryChunker:
         text = path.read_text(encoding="utf-8", errors="replace")
         display_path = self._display_path(path, repo_root)
 
-        if path.suffix not in self.PYTHON_SUFFIXES:
-            return self._fallback_chunks(display_path, text)
-
-        try:
-            tree = ast.parse(text)
-        except SyntaxError:
-            return self._fallback_chunks(display_path, text)
-
-        return self._python_chunks(display_path, text, tree)
+        return self.chunk_source(display_path, text)
 
     def chunk_source(self, file_path: str, source_code: str) -> List[CodeChunk]:
         """Chunk source text that has not been written to disk."""
+        language = _detect_language(file_path)
+        if language != "python":
+            parser = _load_tree_sitter_parser(language)
+            if parser is not None:
+                try:
+                    tree = parser.parse(bytes(source_code or "", "utf8"))
+                    return self._tree_sitter_chunks(
+                        file_path, source_code, language, tree
+                    )
+                except Exception as exc:
+                    logger.debug("tree-sitter chunking failed for %s: %s", file_path, exc)
+            return self._fallback_chunks(file_path, source_code)
+
         try:
             tree = ast.parse(source_code)
         except SyntaxError:
@@ -352,6 +432,242 @@ class RepositoryChunker:
                 )
             )
         return chunks
+
+    def _tree_sitter_chunks(
+        self,
+        file_path: str,
+        source_code: str,
+        language: str,
+        tree: Any,
+    ) -> List[CodeChunk]:
+        lines = source_code.splitlines()
+        root = getattr(tree, "root_node", None)
+        if root is None:
+            return self._fallback_chunks(file_path, source_code)
+
+        chunks: List[CodeChunk] = []
+        occupied_lines: set[int] = set()
+
+        global_nodes = [
+            child
+            for child in self._ts_named_children(root)
+            if child.type in _TS_GLOBAL_TYPES
+        ]
+        if global_nodes:
+            start = min(self._ts_start_line(node) for node in global_nodes)
+            end = max(self._ts_end_line(node) for node in global_nodes)
+            text = self._slice(lines, start, end)
+            chunks.append(
+                CodeChunk(
+                    file_path=file_path,
+                    start_line=start,
+                    end_line=end,
+                    chunk_type="global",
+                    text=text,
+                    defined_symbols=self._identifiers(text),
+                    used_symbols=self._identifiers(text),
+                    call_names=self._call_names(text),
+                )
+            )
+            self._mark_ts_lines(occupied_lines, global_nodes)
+
+        for child in self._ts_named_children(root):
+            if child.type in _TS_CLASS_TYPES:
+                chunks.extend(self._ts_class_chunks(file_path, lines, child, language))
+                self._mark_ts_lines(occupied_lines, [child])
+            elif child.type in _TS_FUNCTION_TYPES:
+                name = self._ts_node_name(child, lines)
+                chunks.extend(
+                    self._split_text_chunk(
+                        file_path=file_path,
+                        start_line=self._ts_start_line(child),
+                        text=self._ts_node_text(lines, child),
+                        chunk_type="function",
+                        defined_symbols=[name] if name else [],
+                    )
+                )
+                self._mark_ts_lines(occupied_lines, [child])
+
+        chunks.extend(self._module_body_chunks(file_path, lines, occupied_lines))
+        return chunks or self._fallback_chunks(file_path, source_code)
+
+    def _ts_class_chunks(
+        self,
+        file_path: str,
+        lines: List[str],
+        node: Any,
+        language: str,
+    ) -> List[CodeChunk]:
+        start = self._ts_start_line(node)
+        end = self._ts_end_line(node)
+        name = self._ts_node_name(node, lines) or "anonymous_class"
+        body = self._ts_child_by_field_name(node, "body")
+        body_children = self._ts_named_children(body) if body is not None else []
+
+        member_nodes = [
+            child
+            for child in body_children
+            if child.type in _TS_FUNCTION_TYPES or child.type in _TS_FIELD_TYPES
+        ]
+        method_names = [
+            self._ts_node_name(child, lines)
+            for child in member_nodes
+            if child.type in _TS_FUNCTION_TYPES
+        ]
+        method_names = [method for method in method_names if method]
+
+        header_end = start
+        if body is not None:
+            header_end = max(start, min(end, self._ts_start_line(body)))
+        elif end > start:
+            header_end = min(end, start + min(5, self.max_chunk_lines) - 1)
+        header_text = self._slice(lines, start, header_end)
+        bases = self._ts_bases_from_header(header_text, name, language)
+
+        chunks: List[CodeChunk] = [
+            CodeChunk(
+                file_path=file_path,
+                start_line=start,
+                end_line=header_end,
+                chunk_type="class_header",
+                text=header_text,
+                defined_symbols=[name],
+                used_symbols=self._identifiers(header_text),
+                call_names=self._call_names(header_text),
+                parent_class=name,
+                class_bases=bases,
+                method_names=method_names,
+            )
+        ]
+
+        for member in member_nodes:
+            member_name = self._ts_node_name(member, lines)
+            member_type = "method" if member.type in _TS_FUNCTION_TYPES else "field"
+            chunks.extend(
+                self._split_text_chunk(
+                    file_path=file_path,
+                    start_line=self._ts_start_line(member),
+                    text=self._ts_node_text(lines, member),
+                    chunk_type=member_type,
+                    defined_symbols=[member_name] if member_name else [],
+                    parent_class=name,
+                    class_bases=bases,
+                    method_names=method_names,
+                )
+            )
+
+        if len(chunks) == 1 and end > header_end:
+            body_text = self._slice(lines, start, end)
+            chunks.extend(
+                self._split_text_chunk(
+                    file_path=file_path,
+                    start_line=start,
+                    text=body_text,
+                    chunk_type="class_body",
+                    defined_symbols=[name],
+                    parent_class=name,
+                    class_bases=bases,
+                    method_names=method_names,
+                )
+            )
+        return chunks
+
+    @staticmethod
+    def _ts_named_children(node: Any) -> List[Any]:
+        return [
+            child
+            for child in getattr(node, "children", [])
+            if getattr(child, "is_named", True)
+        ]
+
+    @staticmethod
+    def _ts_child_by_field_name(node: Any, field_name: str) -> Any:
+        try:
+            return node.child_by_field_name(field_name)
+        except (AttributeError, TypeError):
+            return None
+
+    @staticmethod
+    def _ts_start_line(node: Any) -> int:
+        return int(node.start_point[0]) + 1
+
+    @staticmethod
+    def _ts_end_line(node: Any) -> int:
+        return int(node.end_point[0]) + 1
+
+    @staticmethod
+    def _ts_node_text(lines: List[str], node: Any) -> str:
+        raw = getattr(node, "text", None)
+        if isinstance(raw, bytes):
+            return raw.decode("utf-8", errors="replace")
+        if isinstance(raw, str):
+            return raw
+        return RepositoryChunker._slice(
+            lines,
+            RepositoryChunker._ts_start_line(node),
+            RepositoryChunker._ts_end_line(node),
+        )
+
+    @staticmethod
+    def _mark_ts_lines(occupied: set[int], nodes: Iterable[Any]) -> None:
+        for node in nodes:
+            occupied.update(
+                range(
+                    RepositoryChunker._ts_start_line(node),
+                    RepositoryChunker._ts_end_line(node) + 1,
+                )
+            )
+
+    def _ts_node_name(self, node: Any, lines: List[str]) -> str:
+        name_node = self._ts_child_by_field_name(node, "name")
+        if name_node is not None:
+            text = self._ts_node_text(lines, name_node).strip()
+            ids = self._identifiers(text)
+            return ids[-1] if ids else text
+
+        for child in self._ts_named_children(node):
+            if child.type in {
+                "identifier",
+                "type_identifier",
+                "property_identifier",
+                "field_identifier",
+            }:
+                text = self._ts_node_text(lines, child).strip()
+                ids = self._identifiers(text)
+                return ids[-1] if ids else text
+        return ""
+
+    def _ts_bases_from_header(
+        self,
+        header_text: str,
+        class_name: str,
+        language: str,
+    ) -> List[str]:
+        keywords = {
+            "class",
+            "interface",
+            "enum",
+            "record",
+            "struct",
+            "extends",
+            "implements",
+            "public",
+            "private",
+            "protected",
+            "abstract",
+            "final",
+            "static",
+            "type",
+            "module",
+            language,
+        }
+        bases: List[str] = []
+        for token in self._identifiers(header_text):
+            if token == class_name or token in keywords:
+                continue
+            if token not in bases:
+                bases.append(token)
+        return bases
 
     def _fallback_chunks(self, file_path: str, source_code: str) -> List[CodeChunk]:
         lines = source_code.splitlines() or [source_code]

@@ -28,6 +28,7 @@ def test_train_cli_defaults_respect_max_samples_and_neural_learning_rates(monkey
     assert captured["soft_prompt_lr"] == 5e-3
     assert captured["eval_ratio"] == 0.1
     assert captured["max_eval_samples"] == 100
+    assert captured["completion_level"] == "mixed"
     assert captured["max_pairs_per_sample"] == 4
     assert captured["experiment_mode"] == "intent_main"
     assert captured["intent_mode"] == "static"

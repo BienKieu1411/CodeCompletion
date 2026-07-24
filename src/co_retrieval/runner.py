@@ -113,7 +113,7 @@ def _collect_training_samples(
         loader = DatasetLoader(
             dataset_path=dataset_path,
             use_fim=bool(cfg.get("use_fim", False)),
-            completion_level=cfg.get("completion_level", "line"),
+            completion_level=cfg.get("completion_level", "mixed"),
             fixed_train=fixed_train,
             fixed_train_size=fixed_size_for_path,
             fixed_train_max_attempts=int(cfg.get("fixed_train_max_attempts", 20000)),
