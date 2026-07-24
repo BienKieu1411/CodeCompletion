@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import random
+import re
 from dataclasses import asdict
 from datetime import datetime
 from typing import Any, Dict, List, Sequence, Tuple
@@ -22,52 +23,192 @@ from co_retrieval.data.repository_dataset_loader import DatasetLoader
 logger = logging.getLogger(__name__)
 
 
+def _split_dataset_paths(dataset_path: Any) -> List[str]:
+    if isinstance(dataset_path, (list, tuple)):
+        return [str(path).strip() for path in dataset_path if str(path).strip()]
+    text = str(dataset_path or "").strip()
+    if not text:
+        return []
+    return [part.strip() for part in re.split(r"[,\n]+", text) if part.strip()]
+
+
+def _dataset_repo_prefix(dataset_path: str) -> str:
+    path = os.path.normpath(dataset_path)
+    parent = os.path.basename(os.path.dirname(path))
+    grandparent = os.path.basename(os.path.dirname(os.path.dirname(path)))
+    parts = [part for part in (grandparent, parent) if part]
+    return "_".join(parts) or os.path.basename(path)
+
+
+def _text_or_empty(value: Any) -> str:
+    if value is None:
+        return ""
+    try:
+        if value != value:  # NaN
+            return ""
+    except (TypeError, ValueError):
+        pass
+    return str(value)
+
+
 def _sample_to_training_sample(
     sample: Dict[str, Any], chunker: RepositoryChunker
 ) -> TrainingSample:
     chunks: List[CodeChunk] = []
+    repo_id = _text_or_empty(sample.get("repo_id", ""))
     for file_path, content in sorted(
         (sample.get("crossfile_context") or {}).items()
     ):
-        chunks.extend(chunker.chunk_source(str(file_path), str(content or "")))
+        clean_path = _text_or_empty(file_path)
+        chunk_path = f"{repo_id}/{clean_path}" if repo_id else clean_path
+        chunks.extend(
+            chunker.chunk_source(
+                chunk_path,
+                _text_or_empty(content),
+            )
+        )
 
     return TrainingSample(
-        left_context=sample.get("left_context", ""),
-        target=sample.get("ground_truth", ""),
-        file_path=sample.get("id", "current_file.py"),
+        left_context=_text_or_empty(sample.get("left_context", "")),
+        target=_text_or_empty(sample.get("ground_truth", "")),
+        file_path=_text_or_empty(sample.get("id", "current_file.py")),
         candidate_chunks=chunks,
-        repo_id=sample.get("repo_id", ""),
+        repo_id=repo_id,
+        task_id=_text_or_empty(sample.get("task_id", "")),
     )
 
 
 def _collect_training_samples(
     cfg: Dict[str, Any], chunker: RepositoryChunker
 ) -> List[TrainingSample]:
-    loader = DatasetLoader(
-        dataset_path=cfg.get("dataset_path", "data/github_repos/python/train.parquet"),
-        use_fim=bool(cfg.get("use_fim", False)),
-        completion_level=cfg.get("completion_level", "line"),
-        fixed_train=bool(cfg.get("fixed_train", True)),
-        fixed_train_size=int(
-            cfg.get("fixed_train_size", cfg.get("max_samples", 2000))
-        ),
-        fixed_train_max_attempts=int(cfg.get("fixed_train_max_attempts", 20000)),
-        min_file_lines=int(cfg.get("min_file_lines", 200)),
-        min_file_chars=int(cfg.get("min_file_chars", 2000)),
-        min_left_context_lines=int(cfg.get("min_left_context_lines", 30)),
+    random.seed(int(cfg.get("random_seed", 42)))
+    requested_fixed_size = int(
+        cfg.get("fixed_train_size", cfg.get("max_samples", 2000))
     )
-    loader.prepare_dataset()
+    max_samples = int(cfg.get("max_train_samples", requested_fixed_size))
+    fixed_train = bool(cfg.get("fixed_train", True))
+    if requested_fixed_size <= 0 or max_samples <= 0:
+        fixed_train = False
 
-    max_samples = int(cfg.get("max_train_samples", cfg.get("fixed_train_size", 2000)))
+    dataset_paths = _split_dataset_paths(
+        cfg.get("dataset_path", "data/github_repos/python/train.parquet")
+    )
+    if not dataset_paths:
+        raise RuntimeError("No training dataset path configured.")
+
     out: List[TrainingSample] = []
-    for batch in loader.get_epoch_batches(batch_size=int(cfg.get("batch_size", 4))):
-        for sample in batch:
-            item = _sample_to_training_sample(sample, chunker)
-            if item.target.strip():
-                out.append(item)
-            if 0 < max_samples <= len(out):
-                return out
+    for path_index, dataset_path in enumerate(dataset_paths):
+        if 0 < max_samples <= len(out):
+            break
+
+        remaining_paths = len(dataset_paths) - path_index
+        if fixed_train and max_samples > 0:
+            remaining_samples = max_samples - len(out)
+            fixed_size_for_path = max(
+                1, (remaining_samples + remaining_paths - 1) // remaining_paths
+            )
+        else:
+            fixed_size_for_path = max(1, requested_fixed_size)
+
+        loader = DatasetLoader(
+            dataset_path=dataset_path,
+            use_fim=bool(cfg.get("use_fim", False)),
+            completion_level=cfg.get("completion_level", "line"),
+            fixed_train=fixed_train,
+            fixed_train_size=fixed_size_for_path,
+            fixed_train_max_attempts=int(cfg.get("fixed_train_max_attempts", 20000)),
+            min_file_lines=int(cfg.get("min_file_lines", 200)),
+            min_file_chars=int(cfg.get("min_file_chars", 2000)),
+            min_left_context_lines=int(cfg.get("min_left_context_lines", 30)),
+        )
+        loader.prepare_dataset()
+        repo_prefix = _dataset_repo_prefix(dataset_path)
+
+        for batch in loader.get_epoch_batches(batch_size=int(cfg.get("batch_size", 4))):
+            for sample in batch:
+                if len(dataset_paths) > 1 and sample.get("repo_id"):
+                    sample = dict(sample)
+                    sample["repo_id"] = f"{repo_prefix}:{sample['repo_id']}"
+                item = _sample_to_training_sample(sample, chunker)
+                if item.target.strip():
+                    out.append(item)
+                if 0 < max_samples <= len(out):
+                    return out
     return out
+
+
+def _collect_global_chunks(samples: Sequence[TrainingSample]) -> List[CodeChunk]:
+    global_chunks: List[CodeChunk] = []
+    seen: set[str] = set()
+    for sample in samples:
+        for chunk in sample.candidate_chunks or []:
+            if chunk.chunk_id not in seen:
+                seen.add(chunk.chunk_id)
+                global_chunks.append(chunk)
+    return global_chunks
+
+
+def _collect_evaluation_samples(
+    cfg: Dict[str, Any],
+    chunker: RepositoryChunker,
+) -> List[TrainingSample]:
+    """Load AlignCoder-style eval parquet when present, else use train sampler."""
+    random.seed(int(cfg.get("random_seed", 42)))
+    dataset_path = cfg.get("dataset_path", "data/github_repos/python/train.parquet")
+    dataset_paths = _split_dataset_paths(dataset_path)
+    if len(dataset_paths) > 1:
+        max_samples = int(
+            cfg.get("max_eval_samples", cfg.get("max_train_samples", 100))
+        )
+        samples: List[TrainingSample] = []
+        for path in dataset_paths:
+            if 0 < max_samples <= len(samples):
+                break
+            sub_cfg = dict(cfg)
+            sub_cfg["dataset_path"] = path
+            if max_samples > 0:
+                sub_cfg["max_eval_samples"] = max_samples - len(samples)
+            samples.extend(_collect_evaluation_samples(sub_cfg, chunker))
+        return samples
+
+    if os.path.exists(dataset_path) and str(dataset_path).endswith(".parquet"):
+        import pandas as pd
+
+        df = pd.read_parquet(dataset_path)
+        columns = set(df.columns)
+        target_column = (
+            "groundtruth"
+            if "groundtruth" in columns
+            else "ground_truth"
+            if "ground_truth" in columns
+            else "target_code"
+            if "target_code" in columns
+            else None
+        )
+        if {"left_context", "crossfile_context"}.issubset(columns) and target_column:
+            max_samples = int(
+                cfg.get("max_eval_samples", cfg.get("max_train_samples", 100))
+            )
+            rows = df if max_samples <= 0 else df.head(max_samples)
+            samples: List[TrainingSample] = []
+            for idx, row in rows.iterrows():
+                task_id = row.get("task_id", row.get("id", f"task_{idx}"))
+                sample = {
+                    "id": row.get("path", task_id),
+                    "task_id": task_id,
+                    "repo_id": row.get("repo_id", str(task_id)),
+                    "left_context": row.get("left_context", ""),
+                    "right_context": row.get("right_context", ""),
+                    "ground_truth": row.get(target_column, ""),
+                    "crossfile_context": DatasetLoader._parse_crossfile(
+                        row.get("crossfile_context", {})
+                    ),
+                }
+                item = _sample_to_training_sample(sample, chunker)
+                if item.target.strip():
+                    samples.append(item)
+            return samples
+    return _collect_training_samples(cfg, chunker)
 
 
 def _split_train_eval(
@@ -256,21 +397,40 @@ def _train_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
 
     eval_ratio = float(cfg.get("eval_ratio", 0.1))
     max_eval_samples = int(cfg.get("max_eval_samples", 100))
-    train_samples, eval_samples = _split_by_repository(
-        samples,
-        eval_ratio=eval_ratio,
-        max_eval_samples=max_eval_samples,
-        random_seed=int(cfg.get("random_seed", 42)),
-    )
+    if bool(cfg.get("skip_train_eval", False)):
+        train_samples, eval_samples = samples, []
+        logger.info("Skipping train-time eval; using all %d samples for training.", len(samples))
+    else:
+        train_samples, eval_samples = _split_by_repository(
+            samples,
+            eval_ratio=eval_ratio,
+            max_eval_samples=max_eval_samples,
+            random_seed=int(cfg.get("random_seed", 42)),
+        )
 
     neural_cfg = NeuralCoTrainingConfig(
         encoder_name=cfg.get("encoder_name", "jinaai/jina-code-embeddings-1.5b"),
-        generator_name=cfg.get("generator_name", "Qwen/Qwen2.5-Coder-7B-Instruct"),
+        generator_name=cfg.get(
+            "generator_name", "deepseek-ai/deepseek-coder-6.7b-base"
+        ),
         encoder_max_length=int(cfg.get("encoder_max_length", 512)),
         num_prompt_tokens=int(cfg.get("num_prompt_tokens", 50)),
         max_context_tokens=int(cfg.get("max_context_tokens", 4096)),
         gate_hidden_dim=int(cfg.get("gate_hidden_dim", 256)),
         gate_entropy_weight=float(cfg.get("gate_entropy_weight", 0.01)),
+        gate_use_retrieval_features=bool(
+            cfg.get("gate_use_retrieval_features", True)
+        ),
+        gate_context_cost_weight=float(cfg.get("gate_context_cost_weight", 0.01)),
+        gate_context_cost_token_unit=int(
+            cfg.get("gate_context_cost_token_unit", 512)
+        ),
+        gate_decision_threshold=float(cfg.get("gate_decision_threshold", 0.5)),
+        gate_calibrate_threshold=bool(cfg.get("gate_calibrate_threshold", True)),
+        gate_calibration_samples=int(cfg.get("gate_calibration_samples", 128)),
+        gate_calibration_retrieval_penalty=float(
+            cfg.get("gate_calibration_retrieval_penalty", 0.05)
+        ),
         top_k=int(cfg.get("top_k", 3)),
         experiment_mode=cfg.get("experiment_mode", "intent_main"),
         intent_mode=cfg.get("intent_mode", "static"),
@@ -278,6 +438,8 @@ def _train_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
         adapter_type=cfg.get("adapter_type", "soft_prompt"),
         include_oracle_strategy=bool(cfg.get("include_oracle_strategy", True)),
         warmup_steps=int(cfg.get("warmup_steps", 200)),
+        train_epochs=int(cfg.get("train_epochs", cfg.get("num_epochs", 1))),
+        epoch_budget_mode=bool(cfg.get("epoch_budget_mode", False)),
         num_rounds=int(cfg.get("num_rounds", 2)),
         steps_per_round_prompt=int(cfg.get("steps_per_round_prompt", 100)),
         steps_per_round_retriever=(
@@ -329,6 +491,105 @@ def _train_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
+def _evaluate_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
+    """Neural checkpoint evaluation with AlignCoder-style prediction files."""
+    from co_retrieval.neural_training import NeuralCoTrainer, NeuralCoTrainingConfig
+
+    checkpoint_dir = cfg.get("checkpoint_dir", "checkpoints/co_retrieval_neural")
+    output_dir = cfg.get("output_dir", os.path.join("results", "co_retrieval_eval"))
+    log_dir = cfg.get("log_dir", "logs/co_retrieval_neural_eval")
+    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(log_dir, exist_ok=True)
+
+    checkpoint_cfg: Dict[str, Any] = {}
+    meta_path = os.path.join(checkpoint_dir, "meta.json")
+    if os.path.exists(meta_path):
+        with open(meta_path, "r", encoding="utf-8") as f:
+            checkpoint_cfg = json.load(f).get("config", {})
+
+    runtime_cfg = dict(checkpoint_cfg)
+    runtime_cfg.update(
+        {
+            "checkpoint_dir": checkpoint_dir,
+            "log_dir": log_dir,
+            "device": cfg.get("device", checkpoint_cfg.get("device", "cuda")),
+            "generator_dtype": cfg.get(
+                "generator_dtype", checkpoint_cfg.get("generator_dtype", "float16")
+            ),
+            "top_k": int(cfg.get("top_k", checkpoint_cfg.get("top_k", 3))),
+            "max_new_tokens": int(
+                cfg.get("max_new_tokens", checkpoint_cfg.get("max_new_tokens", 128))
+            ),
+            "batch_encode_size": int(
+                cfg.get(
+                    "batch_encode_size",
+                    checkpoint_cfg.get("batch_encode_size", 32),
+                )
+            ),
+            "leave_one_out_analysis_samples": int(
+                cfg.get(
+                    "leave_one_out_analysis_samples",
+                    checkpoint_cfg.get("leave_one_out_analysis_samples", 25),
+                )
+            ),
+        }
+    )
+    if cfg.get("gate_mode") is not None:
+        runtime_cfg["gate_mode"] = cfg["gate_mode"]
+    if cfg.get("gate_decision_threshold") is not None:
+        runtime_cfg["gate_decision_threshold"] = float(
+            cfg["gate_decision_threshold"]
+        )
+
+    valid_fields = NeuralCoTrainingConfig.__dataclass_fields__
+    neural_cfg = NeuralCoTrainingConfig(
+        **{key: value for key, value in runtime_cfg.items() if key in valid_fields}
+    )
+
+    chunker = RepositoryChunker(
+        max_chunk_lines=int(cfg.get("max_chunk_lines", 120)),
+        fallback_lines=int(cfg.get("fallback_lines", 40)),
+    )
+    samples = _collect_evaluation_samples(cfg, chunker)
+    if not samples:
+        raise RuntimeError("No evaluation samples found.")
+    chunks = _collect_global_chunks(samples)
+    if not chunks:
+        raise RuntimeError("No candidate chunks found for evaluation.")
+
+    trainer = NeuralCoTrainer(neural_cfg)
+    trainer.load_checkpoint(checkpoint_dir)
+    trainer.phase0_build_index(chunks)
+    metrics = trainer.evaluate_to_files(
+        samples,
+        output_dir,
+        include_analysis=bool(cfg.get("include_analysis", True)),
+    )
+    policy_variants = (
+        trainer.evaluate_policy_variants(samples)
+        if bool(cfg.get("include_policy_variants", False))
+        else {}
+    )
+    result = {
+        "status": "ok",
+        "framework": "Co-Retrieval (neural)",
+        "checkpoint_dir": checkpoint_dir,
+        "output_dir": output_dir,
+        "metrics": metrics,
+        "eval_policy_variants": policy_variants,
+        "num_eval_samples": len(samples),
+        "num_chunks": len(chunks),
+        "oracle_used_for_eval": False,
+        "inference_safe_strategy_check": True,
+    }
+    result_path = os.path.join(output_dir, "result.json")
+    with open(result_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, indent=2, ensure_ascii=False, default=str)
+    result["result_path"] = result_path
+    logger.info("Co-Retrieval neural evaluation complete: %s", result_path)
+    return result
+
+
 def train(config: Dict[str, Any] | None = None) -> Dict[str, Any]:
     """Run Co-Retrieval training — dispatches between proxy and neural mode."""
     cfg = config or {}
@@ -340,3 +601,12 @@ def train(config: Dict[str, Any] | None = None) -> Dict[str, Any]:
     else:
         logger.info("Starting PROXY mode training (no GPU)")
         return _train_proxy(cfg)
+
+
+def evaluate(config: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    """Run neural Co-Retrieval evaluation from a saved checkpoint."""
+    cfg = config or {}
+    if not bool(cfg.get("use_neural", True)):
+        raise ValueError("Only neural evaluation is implemented.")
+    logger.info("Starting NEURAL mode evaluation")
+    return _evaluate_neural(cfg)

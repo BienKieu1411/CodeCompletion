@@ -266,10 +266,14 @@ Mỗi sample tạo nhiều strategy candidate:
 Mỗi candidate được chấm bằng teacher-forcing NLL:
 
 ```text
-NLL(stop) = NLL(target | left_context)
+NLL(stop) = NLL(target | left_context, adapter)
 NLL(C)    = NLL(target | C, left_context, adapter)
 U(C)      = NLL(stop) - NLL(C)
 ```
+
+`stop` dùng cùng generator/adapter state với retrieved candidates; nó chỉ khác
+ở chỗ không có retrieved context. Điều này tránh confound utility giữa "adapter
+tốt hơn raw model" và "retrieval context thật sự giúp".
 
 Diễn giải:
 
@@ -301,10 +305,10 @@ target_dist = softmax(utilities / τ)
 
 # Retriever: predicted score distribution
 scores = [retrieval_score(q, C_i) for C_i in candidates]
-log_pred_dist = log_softmax(scores)
+log_pred_dist = log_softmax(scores / τ)
 
 # LiPO loss
-loss = KL(log_pred_dist, target_dist)
+loss = KL(target_dist || pred_dist)
 ```
 
 Ưu điểm so với DPO pairwise:
@@ -322,7 +326,7 @@ Config trong code:
 
 ```python
 retriever_loss: str = "lipo"   # default — listwise soft label
-lipo_tau: float = 1.0          # temperature for utility softmax
+lipo_tau: float = 1.0          # temperature for utility and score softmax
 # dpo_beta: float = 0.1        # only used when retriever_loss = "dpo"
 ```
 
@@ -333,10 +337,11 @@ Trong `phase3_retriever_training`:
 
 ### 4.5 Adaptive Gate
 
-Gate được train bằng nhãn:
+Gate được train bằng nhãn cost-aware:
 
 ```text
-retrieve_is_better = max_{C != stop} U(C) > utility_margin
+adjusted_U(C) = U(C) - λ_cost * context_cost(C)
+retrieve_is_better = adjusted_U(C_deployed) > utility_margin
 ```
 
 **Gate labels dùng inference-safe strategies only** (fix từ gate oracle leak):
@@ -347,11 +352,13 @@ gate_scored = [s for s in scored if s.name in GATE_SAFE_STRATEGIES]
 best_gate_retrieve = max(gate_scored, key=lambda s: s.utility, default=None)
 retrieve_is_better = (
     best_gate_retrieve is not None
-    and best_gate_retrieve.utility > config.utility_margin
+    and adjusted_utility(best_gate_retrieve) > config.utility_margin
 )
 ```
 
 Preference pairs (LiPO groups) vẫn dùng toàn bộ pool bao gồm oracle — chỉ gate label bị giới hạn để tránh oracle leak.
+
+Gate input thêm các feature inference-safe về độ chắc chắn và chi phí retrieval: top-1 score, top-1 margin, entropy/std của top-k scores, candidate pool ratio, query identifier ratio, context token ratio và identifier overlap. Threshold triển khai là `gate_decision_threshold`; threshold này có thể calibrate trước eval bằng utility-derived train labels, nhưng inference không tính `U(C)`.
 
 Inference:
 
@@ -367,6 +374,7 @@ Gate phải được báo cáo bằng:
 - NLL improvement theo nhóm retrieve vs skip;
 - performance của learned gate so với always retrieve/always skip;
 - gate calibration: AUC, F1, precision, recall, confusion matrix so với utility-derived labels.
+- calibrated threshold và predicted retrieval rate.
 
 Gate claim chỉ được defend theo hai mức:
 
@@ -617,14 +625,15 @@ Abstract và novelty statement phải theo cùng hierarchy. Nếu experiment ph�
 - `PreferencePair` lưu NLL và utility của chosen/rejected (dùng cho DPO ablation).
 - `LipoGroup` lưu toàn bộ utility spectrum cho một query (dùng cho LiPO default).
 - `GateTrainingExample` cho retrieve/skip labels.
+- Cost-aware stop-gate label, retrieval uncertainty features và calibrated `gate_decision_threshold`.
 - `PreferenceData` lưu `lipo_groups`, `pairs` (DPO), `gate_examples` và counters.
 - `DenseRetriever.lipo_loss(query, candidates, utilities, tau)` — KL divergence loss.
 - `DenseRetriever.dpo_loss(...)` — pairwise preference loss (ablation).
 - Inference-safe strategy whitelist cho eval/predict.
 - `retriever_loss`: `"lipo"` (default) hoặc `"dpo"` (ablation).
-- `lipo_tau`: temperature hyperparameter cho LiPO soft labels.
+- `lipo_tau`: temperature hyperparameter cho LiPO soft labels và predicted score distribution.
 - `experiment_mode`: `intent_main`, `raw_query_main`, `retriever_only`, `always_retrieve`, `always_skip`, `bm25`, `dense_frozen`, `sequential_adapter_first`, `sequential_retriever_first`.
-- `intent_mode`: `static`, `raw`.
+- `intent_mode`: `static`, `raw`, `cost_aware`.
 - `gate_mode`: `learned`, `always_retrieve`, `always_skip`, `rule`.
 - `adapter_type`: `soft_prompt`, `none`.
 - `utility_margin`, `preference_margin`, `max_pairs_per_sample`.

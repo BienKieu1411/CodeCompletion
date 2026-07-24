@@ -407,7 +407,8 @@ class DenseRetriever(nn.Module):
         utilities : list of float
             Utility U(C) = NLL(stop) - NLL(C) for each candidate.
         tau : float
-            Temperature for the target softmax distribution.
+            Temperature for both the target utility distribution and the
+            retriever score distribution.
 
         Returns
         -------
@@ -445,7 +446,7 @@ class DenseRetriever(nn.Module):
                 scores.append(self.retrieval_score(q_vec, c_vecs))
 
         score_tensor = torch.stack(scores)
-        log_pred_dist = F.log_softmax(score_tensor, dim=-1)
+        log_pred_dist = F.log_softmax(score_tensor / tau, dim=-1)
 
         # KL divergence: align retriever distribution with utility distribution
         return F.kl_div(

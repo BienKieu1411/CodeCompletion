@@ -26,6 +26,21 @@ class FakeGenerator:
         return FakeLoss(12.0)
 
 
+class RecordingGenerator:
+    def __init__(self):
+        self.calls = []
+
+    def teacher_forcing_nll(
+        self,
+        left_context,
+        target,
+        retrieved_chunks=None,
+        use_soft_prompt=True,
+    ):
+        self.calls.append((bool(retrieved_chunks), use_soft_prompt))
+        return FakeLoss(5.0 if retrieved_chunks else 7.0)
+
+
 def _chunk(symbol):
     return CodeChunk(
         file_path="service.py",
@@ -73,3 +88,21 @@ def test_context_utility_scores_nll_improvement_over_stop():
     assert by_name["helpful"].utility == 6.0
     assert by_name["noisy"].utility == -2.0
     assert scores[0].name == "helpful"
+
+
+def test_context_utility_stop_uses_same_adapter_state_as_candidates():
+    generator = RecordingGenerator()
+    scorer = ContextUtilityScorer(generator)
+    helpful = _chunk("helpful")
+
+    scorer.score(
+        "result = service.fetch_",
+        "fetch_user()",
+        [
+            ContextCandidate("stop", [], is_stop=True),
+            ContextCandidate("helpful", [helpful]),
+        ],
+        use_adapter=True,
+    )
+
+    assert generator.calls == [(False, True), (True, True)]

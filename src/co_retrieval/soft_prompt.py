@@ -126,7 +126,8 @@ class SoftPromptLLM(nn.Module):
     Parameters
     ----------
     model_name : str
-        Any HuggingFace causal LM (e.g. ``Qwen/Qwen2.5-Coder-7B-Instruct``).
+        Any HuggingFace causal LM, e.g.
+        ``deepseek-ai/deepseek-coder-6.7b-base``.
     num_prompt_tokens : int
         Number of learnable prompt tokens to prepend.
     max_context_tokens : int
@@ -139,7 +140,7 @@ class SoftPromptLLM(nn.Module):
 
     def __init__(
         self,
-        model_name: str = "Qwen/Qwen2.5-Coder-7B-Instruct",
+        model_name: str = "deepseek-ai/deepseek-coder-6.7b-base",
         num_prompt_tokens: int = 50,
         max_context_tokens: int = 4096,
         device: str = "cuda",
@@ -212,20 +213,26 @@ class SoftPromptLLM(nn.Module):
     # ── Build inputs with soft prompt ─────────────────────────────────────
 
     def _prepare_inputs(
-        self, text: str
+        self,
+        text: str,
+        *,
+        max_text_tokens: Optional[int] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Tokenise *text* and prepend soft prompt embeddings.
 
         Returns (inputs_embeds, attention_mask).
         """
-        max_text_tokens = (
-            self.budget_manager.max_tokens - self.num_prompt_tokens
+        token_budget = (
+            max_text_tokens
+            if max_text_tokens is not None
+            else self.budget_manager.max_tokens - self.num_prompt_tokens
         )
+        token_budget = max(1, token_budget)
         tokens = self.tokenizer(
             text,
             return_tensors="pt",
             truncation=True,
-            max_length=max_text_tokens,
+            max_length=token_budget,
         ).to(self._device)
 
         with torch.no_grad():
@@ -262,7 +269,9 @@ class SoftPromptLLM(nn.Module):
         left_context : str
         target : str — ground truth completion.
         retrieved_chunks : optional — if given, pack into prompt.
-        use_soft_prompt : bool — False for C_stop (no prompt, no context).
+        use_soft_prompt : bool — whether to apply the generator adapter.
+            C_stop uses the same value as retrieved candidates; it differs only
+            by having no retrieved chunks.
 
         Returns
         -------
@@ -385,7 +394,14 @@ class SoftPromptLLM(nn.Module):
             context_text = left_context
 
         if use_soft_prompt:
-            inputs_embeds, attention_mask = self._prepare_inputs(context_text)
+            inputs_embeds, attention_mask = self._prepare_inputs(
+                context_text,
+                max_text_tokens=(
+                    self.budget_manager.max_tokens
+                    - self.num_prompt_tokens
+                    - max_new_tokens
+                ),
+            )
         else:
             tokens = self.tokenizer(
                 context_text,
@@ -444,7 +460,14 @@ class SoftPromptLLM(nn.Module):
         drafts: List[str] = []
         for _ in range(num_drafts):
             if use_soft_prompt:
-                inputs_embeds, attention_mask = self._prepare_inputs(left_context)
+                inputs_embeds, attention_mask = self._prepare_inputs(
+                    left_context,
+                    max_text_tokens=(
+                        self.budget_manager.max_tokens
+                        - self.num_prompt_tokens
+                        - max_new_tokens
+                    ),
+                )
             else:
                 tokens = self.tokenizer(
                     left_context,

@@ -26,7 +26,7 @@ class CoRetrievalCLIConfig:
 
     # ── Neural: model names ───────────────────────────────────────────────
     encoder_name: str = "jinaai/jina-code-embeddings-1.5b"
-    generator_name: str = "Qwen/Qwen2.5-Coder-7B-Instruct"
+    generator_name: str = "deepseek-ai/deepseek-coder-6.7b-base"
 
     # ── Neural: architecture ──────────────────────────────────────────────
     num_prompt_tokens: int = 50
@@ -38,15 +38,21 @@ class CoRetrievalCLIConfig:
     gate_mode: str = "learned"
     adapter_type: str = "soft_prompt"
     include_oracle_strategy: bool = True
+    skip_train_eval: bool = False
 
     # ── Neural: training ──────────────────────────────────────────────────
     retriever_lr: float = 2e-5
     gate_lr: float = 1e-4
     soft_prompt_lr: float = 5e-3
+    retriever_loss: str = "lipo"
+    lipo_tau: float = 1.0
     dpo_beta: float = 0.1
     warmup_steps: int = 200
+    train_epochs: int = 1
+    epoch_budget_mode: bool = False
     num_rounds: int = 2
     steps_per_round_prompt: int = 100
+    steps_per_round_retriever: int | None = None
     steps_per_round_dpo: int = 100
     preference_margin: float = 0.1
     utility_margin: float = 0.05
@@ -56,6 +62,13 @@ class CoRetrievalCLIConfig:
     leave_one_out_analysis_samples: int = 25
     gate_quality_tolerance: float = 0.01
     gate_retrieval_reduction_target: float = 0.20
+    gate_use_retrieval_features: bool = True
+    gate_context_cost_weight: float = 0.01
+    gate_context_cost_token_unit: int = 512
+    gate_decision_threshold: float = 0.5
+    gate_calibrate_threshold: bool = True
+    gate_calibration_samples: int = 128
+    gate_calibration_retrieval_penalty: float = 0.05
     grad_clip_norm: float = 1.0
     gate_entropy_weight: float = 0.01
     batch_encode_size: int = 32

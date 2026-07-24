@@ -1,0 +1,14 @@
+numpy>=1.24
+pandas>=2.0
+pyarrow>=14.0
+huggingface-hub>=0.20
+torch>=2.1
+transformers>=4.40
+accelerate>=0.30
+sentencepiece>=0.1.99
+protobuf>=4.25
+safetensors>=0.4
+faiss-cpu>=1.7
+tree-sitter==0.20.1
+tree-sitter-languages==1.10.2
+tqdm

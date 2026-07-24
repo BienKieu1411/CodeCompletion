@@ -1,7 +1,10 @@
-import pandas as pd
+import pytest
+
+pandas = pytest.importorskip("pandas")
+pd = pandas
 
 from co_retrieval.data.repository_dataset_loader import DatasetLoader
-from co_retrieval.runner import _split_by_repository
+from co_retrieval.runner import _sample_to_training_sample, _split_by_repository
 from co_retrieval.training import TrainingSample
 
 
@@ -32,6 +35,56 @@ def test_loader_preserves_repository_boundaries_as_ids(tmp_path, monkeypatch):
     assert len(repos) == 2
     assert {item["repo_id"] for item in repos[0]} == {"github_repo_000000"}
     assert {item["repo_id"] for item in repos[1]} == {"github_repo_000001"}
+
+
+def test_sample_conversion_turns_nan_fields_into_empty_text():
+    class DummyChunker:
+        def chunk_source(self, file_path, content):
+            assert file_path == ""
+            assert content == ""
+            return []
+
+    converted = _sample_to_training_sample(
+        {
+            "id": float("nan"),
+            "task_id": float("nan"),
+            "repo_id": float("nan"),
+            "left_context": float("nan"),
+            "ground_truth": float("nan"),
+            "crossfile_context": {float("nan"): float("nan")},
+        },
+        DummyChunker(),
+    )
+
+    assert converted.left_context == ""
+    assert converted.target == ""
+    assert converted.file_path == ""
+    assert converted.repo_id == ""
+    assert converted.task_id == ""
+
+
+def test_sample_conversion_prefixes_candidate_chunks_with_repo_id():
+    class RecordingChunker:
+        def __init__(self):
+            self.paths = []
+
+        def chunk_source(self, file_path, content):
+            self.paths.append(file_path)
+            return []
+
+    chunker = RecordingChunker()
+    _sample_to_training_sample(
+        {
+            "id": "current.py",
+            "repo_id": "repo-a",
+            "left_context": "x",
+            "ground_truth": "y",
+            "crossfile_context": {"src/utils.py": "def helper(): pass"},
+        },
+        chunker,
+    )
+
+    assert chunker.paths == ["repo-a/src/utils.py"]
 
 
 def test_repository_split_is_disjoint_and_deterministic():

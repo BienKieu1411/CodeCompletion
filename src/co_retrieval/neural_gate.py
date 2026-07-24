@@ -48,12 +48,16 @@ class NeuralGate(nn.Module):
         hidden_dim: int = 256,
         dropout: float = 0.1,
         entropy_weight: float = 0.01,
+        feature_dim: int = 0,
     ) -> None:
         super().__init__()
         self.entropy_weight = entropy_weight
+        self.input_dim = input_dim
+        self.feature_dim = feature_dim
+        total_input_dim = input_dim + feature_dim
 
         self.mlp = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
+            nn.Linear(total_input_dim, hidden_dim),
             nn.GELU(),
             nn.Dropout(dropout),
             nn.Linear(hidden_dim, 1),
@@ -65,7 +69,43 @@ class NeuralGate(nn.Module):
 
     # ── Forward ───────────────────────────────────────────────────────────
 
-    def forward(self, query_vec: torch.Tensor) -> torch.Tensor:
+    def _with_features(
+        self,
+        query_vec: torch.Tensor,
+        extra_features: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        if self.feature_dim <= 0:
+            return query_vec
+        if extra_features is None:
+            feature_shape = query_vec.shape[:-1] + (self.feature_dim,)
+            extra_features = torch.zeros(
+                feature_shape,
+                dtype=query_vec.dtype,
+                device=query_vec.device,
+            )
+        else:
+            extra_features = extra_features.to(
+                dtype=query_vec.dtype,
+                device=query_vec.device,
+            )
+            if query_vec.dim() == 1 and extra_features.dim() == 2:
+                extra_features = extra_features.squeeze(0)
+            if query_vec.dim() == 2 and extra_features.dim() == 1:
+                extra_features = extra_features.unsqueeze(0).expand(
+                    query_vec.shape[0], -1
+                )
+        if extra_features.shape[-1] != self.feature_dim:
+            raise ValueError(
+                f"Expected {self.feature_dim} gate features, got "
+                f"{extra_features.shape[-1]}"
+            )
+        return torch.cat([query_vec, extra_features], dim=-1)
+
+    def forward(
+        self,
+        query_vec: torch.Tensor,
+        extra_features: torch.Tensor | None = None,
+    ) -> torch.Tensor:
         """Compute gate probability g = P(continue/retrieve | query).
 
         Parameters
@@ -76,12 +116,14 @@ class NeuralGate(nn.Module):
         -------
         g : (*, 1) tensor with values in [0, 1].
         """
-        return torch.sigmoid(self.mlp(query_vec))
+        return torch.sigmoid(self.mlp(self._with_features(query_vec, extra_features)))
 
     # ── Log-probabilities for optional joint scoring ──────────────────────
 
     def log_probs(
-        self, query_vec: torch.Tensor
+        self,
+        query_vec: torch.Tensor,
+        extra_features: torch.Tensor | None = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return (log P_gate(continue|q), log P_gate(stop|q)).
 
@@ -91,7 +133,7 @@ class NeuralGate(nn.Module):
 
         The main training loop keeps gate supervision separate.
         """
-        logit = self.mlp(query_vec)  # raw logit before sigmoid
+        logit = self.mlp(self._with_features(query_vec, extra_features))
         log_continue = F.logsigmoid(logit)          # log σ(x)
         log_stop = F.logsigmoid(-logit)              # log(1 - σ(x)) = log σ(-x)
         return log_continue.squeeze(-1), log_stop.squeeze(-1)
@@ -101,11 +143,15 @@ class NeuralGate(nn.Module):
     def should_retrieve(
         self,
         query_vec: torch.Tensor,
+        extra_features: torch.Tensor | None = None,
         threshold: float = 0.5,
     ) -> bool:
         """Deterministic decision for inference."""
+        if isinstance(extra_features, (float, int)):
+            threshold = float(extra_features)
+            extra_features = None
         with torch.no_grad():
-            g = self.forward(query_vec)
+            g = self.forward(query_vec, extra_features)
         return bool(g.item() >= threshold)
 
     # ── Loss ──────────────────────────────────────────────────────────────

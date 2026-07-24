@@ -54,11 +54,14 @@ class ContextUtilityScorer:
         Utility is defined as ``NLL(stop) - NLL(candidate)``.  Stop itself has
         utility 0.0 by definition.
         """
+        # The stop baseline must use the same generator/adapter state as
+        # retrieved candidates. Otherwise utility would conflate "retrieval
+        # helped" with "the adapter helped", producing oracle-like gate labels.
         stop_nll = self._nll(
             left_context,
             target,
             chunks=None,
-            use_soft_prompt=False,
+            use_soft_prompt=use_adapter,
         )
         scores: list[ContextScore] = []
         for candidate in candidates:

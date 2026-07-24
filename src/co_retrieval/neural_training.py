@@ -5,7 +5,7 @@ Phase 1 — Warm-up soft prompt (20% no-ctx, 50% oracle, 30% noisy; CE loss)
 Phase 2 — Build preference data (6 strategies, teacher-forcing NLL)
 Phase 3 — DPO-style train retriever; train gate from utility labels
 Phase 4 — Refresh FAISS index (re-embed after retriever update)
-Phase 5 — Alternating co-training rounds (P1→P2→P3→P4 repeated)
+Phase 5 — Alternating co-training epochs/rounds (P1→P2→P3→P4 repeated)
 Phase 6 — Final evaluation (retrieval + generation metrics)
 """
 
@@ -25,6 +25,10 @@ import torch
 from torch.optim import AdamW
 
 from co_retrieval.chunking import CodeChunk
+from co_retrieval.aligncoder_metrics import (
+    compute_aligncoder_metrics,
+    write_aligncoder_metric_files,
+)
 from co_retrieval.context_utility import ContextCandidate, ContextUtilityScorer
 from co_retrieval.dense_retriever import DenseRetriever
 from co_retrieval.embedding_cache import EmbeddingCache
@@ -59,6 +63,17 @@ TRAIN_ONLY_STRATEGIES = {
     "gold_overlap",
     "future_context",
 }
+GATE_FEATURE_NAMES = (
+    "top1_score",
+    "top1_margin",
+    "score_entropy",
+    "score_std",
+    "selected_count_ratio",
+    "candidate_pool_ratio",
+    "query_identifier_ratio",
+    "context_token_ratio",
+    "identifier_overlap_ratio",
+)
 # Gate labels are selected from the single deployed strategy, while these sets
 # enforce the broader train/inference safety boundary.
 
@@ -72,7 +87,7 @@ class NeuralCoTrainingConfig:
 
     # Model names
     encoder_name: str = "jinaai/jina-code-embeddings-1.5b"
-    generator_name: str = "Qwen/Qwen2.5-Coder-7B-Instruct"
+    generator_name: str = "deepseek-ai/deepseek-coder-6.7b-base"
 
     # Encoder
     encoder_max_length: int = 512
@@ -84,6 +99,13 @@ class NeuralCoTrainingConfig:
     # Gate
     gate_hidden_dim: int = 256
     gate_entropy_weight: float = 0.01
+    gate_use_retrieval_features: bool = True
+    gate_context_cost_weight: float = 0.01
+    gate_context_cost_token_unit: int = 512
+    gate_decision_threshold: float = 0.5
+    gate_calibrate_threshold: bool = True
+    gate_calibration_samples: int = 128
+    gate_calibration_retrieval_penalty: float = 0.05
 
     # Retrieval
     top_k: int = 3
@@ -114,7 +136,9 @@ class NeuralCoTrainingConfig:
     lipo_tau: float = 1.0  # temperature for LiPO soft label distribution
     dpo_beta: float = 0.1  # beta for DPO loss (only used when retriever_loss="dpo")
 
-    # Phase 5 — Co-training rounds
+    # Phase 5 — Co-training epochs / legacy fixed-step rounds
+    train_epochs: int = 1
+    epoch_budget_mode: bool = False
     num_rounds: int = 2
     steps_per_round_prompt: int = 100
     steps_per_round_retriever: Optional[int] = None
@@ -178,6 +202,27 @@ def _bm25_retrieve(
 
     scored.sort(key=lambda x: x[0], reverse=True)
     return [c for _, c in scored[:top_k]]
+
+
+def _approx_token_count(text: str) -> int:
+    """Cheap token estimate for gate cost features without invoking LLM tokenizers."""
+    return max(1, int(np.ceil(len(text) / 4.0))) if text else 0
+
+
+def _scheduled_training_items(
+    items: Sequence[Any],
+    steps: int,
+    rng: random.Random,
+) -> List[Any]:
+    """Return exactly ``steps`` items by reshuffling and cycling through data."""
+    if steps <= 0 or not items:
+        return []
+    pool = list(items)
+    scheduled: List[Any] = []
+    while len(scheduled) < steps:
+        rng.shuffle(pool)
+        scheduled.extend(pool)
+    return scheduled[:steps]
 
 
 def _oracle_chunks(
@@ -268,6 +313,52 @@ def _gate_label_metrics(
     }
 
 
+def _select_gate_threshold(
+    labels: Sequence[bool],
+    probabilities: Sequence[float],
+    *,
+    retrieval_penalty: float = 0.05,
+) -> Dict[str, Any]:
+    """Choose a gate threshold from utility labels with a retrieval-rate penalty."""
+    if len(labels) != len(probabilities) or not labels:
+        return {
+            "threshold": 0.5,
+            "objective": 0.0,
+            "predicted_retrieval_rate": 0.0,
+            "metrics": _gate_label_metrics([], []),
+        }
+    candidates = sorted(set(float(p) for p in probabilities))
+    candidates = [0.0] + candidates + [1.0]
+    best: Dict[str, Any] | None = None
+    for threshold in candidates:
+        metrics = _gate_label_metrics(labels, probabilities, threshold=threshold)
+        predicted_rate = sum(p >= threshold for p in probabilities) / max(
+            1, len(probabilities)
+        )
+        objective = metrics["f1"] - retrieval_penalty * predicted_rate
+        candidate = {
+            "threshold": float(threshold),
+            "objective": float(objective),
+            "predicted_retrieval_rate": float(predicted_rate),
+            "metrics": metrics,
+        }
+        if best is None:
+            best = candidate
+            continue
+        if objective > best["objective"] + 1e-12:
+            best = candidate
+        elif abs(objective - best["objective"]) <= 1e-12 and predicted_rate < best[
+            "predicted_retrieval_rate"
+        ]:
+            best = candidate
+    return best or {
+        "threshold": 0.5,
+        "objective": 0.0,
+        "predicted_retrieval_rate": 0.0,
+        "metrics": _gate_label_metrics([], []),
+    }
+
+
 def _gate_defense_status(
     learned: Dict[str, float],
     always_retrieve: Dict[str, float],
@@ -276,10 +367,29 @@ def _gate_defense_status(
     retrieval_reduction_target: float = 0.20,
 ) -> Dict[str, Any]:
     """Classify whether learned gate supports quality or efficiency claims."""
-    metrics = ("exact_match", "edit_similarity", "identifier_f1")
+    metric_sources = {
+        "exact_match": (
+            "aligncoder_exact_match"
+            if "aligncoder_exact_match" in learned
+            and "aligncoder_exact_match" in always_retrieve
+            else "exact_match"
+        ),
+        "edit_similarity": (
+            "aligncoder_edit_similarity"
+            if "aligncoder_edit_similarity" in learned
+            and "aligncoder_edit_similarity" in always_retrieve
+            else "edit_similarity"
+        ),
+        "identifier_f1": (
+            "aligncoder_identifier_f1"
+            if "aligncoder_identifier_f1" in learned
+            and "aligncoder_identifier_f1" in always_retrieve
+            else "identifier_f1"
+        ),
+    }
     deltas = {
-        metric: learned.get(metric, 0.0) - always_retrieve.get(metric, 0.0)
-        for metric in metrics
+        metric: learned.get(source, 0.0) - always_retrieve.get(source, 0.0)
+        for metric, source in metric_sources.items()
     }
     retrieval_reduction = always_retrieve.get("retrieval_rate", 0.0) - learned.get(
         "retrieval_rate", 0.0
@@ -304,6 +414,7 @@ def _gate_defense_status(
     return {
         "status": status,
         "quality_deltas": deltas,
+        "metric_sources": metric_sources,
         "retrieval_rate_reduction": retrieval_reduction,
         "quality_tolerance": quality_tolerance,
         "retrieval_reduction_target": retrieval_reduction_target,
@@ -339,6 +450,9 @@ class GateTrainingExample:
     retrieve_is_better: bool
     max_utility: float
     best_strategy: str = ""
+    adjusted_utility: float = 0.0
+    context_cost: float = 0.0
+    features: Tuple[float, ...] = field(default_factory=tuple)
 
 
 @dataclass
@@ -353,6 +467,8 @@ class PreferenceData:
     gate_positive_count: int = 0
     gate_negative_count: int = 0
     mean_max_utility: float = 0.0
+    mean_gate_adjusted_utility: float = 0.0
+    mean_gate_context_cost: float = 0.0
 
 
 @dataclass
@@ -403,6 +519,11 @@ class NeuralCoTrainer:
             input_dim=self.retriever.hidden_size,
             hidden_dim=config.gate_hidden_dim,
             entropy_weight=config.gate_entropy_weight,
+            feature_dim=(
+                len(GATE_FEATURE_NAMES)
+                if config.gate_use_retrieval_features
+                else 0
+            ),
         ).to(config.device)
 
         logger.info("Init SoftPromptLLM (%s)…", config.generator_name)
@@ -455,6 +576,16 @@ class NeuralCoTrainer:
             raise ValueError("retriever_loss must be either 'lipo' or 'dpo'")
         if self.config.lipo_tau <= 0:
             raise ValueError("lipo_tau must be greater than zero")
+        if self.config.gate_context_cost_weight < 0:
+            raise ValueError("gate_context_cost_weight must be non-negative")
+        if self.config.gate_context_cost_token_unit <= 0:
+            raise ValueError("gate_context_cost_token_unit must be positive")
+        if not 0.0 <= self.config.gate_decision_threshold <= 1.0:
+            raise ValueError("gate_decision_threshold must be in [0, 1]")
+        if self.config.gate_calibration_samples < 0:
+            raise ValueError("gate_calibration_samples must be non-negative")
+        if self.config.gate_calibration_retrieval_penalty < 0:
+            raise ValueError("gate_calibration_retrieval_penalty must be non-negative")
         if self.config.intent_mode not in {"raw", "static", "cost_aware"}:
             raise ValueError(
                 "intent_mode must be one of 'raw', 'static', or 'cost_aware'"
@@ -473,6 +604,28 @@ class NeuralCoTrainer:
     def _retriever_steps_per_round(self) -> int:
         value = getattr(self.config, "steps_per_round_retriever", None)
         return self.config.steps_per_round_dpo if value is None else value
+
+    def _prompt_steps_per_round(self, samples: Sequence[TrainingSample]) -> int:
+        if getattr(self.config, "epoch_budget_mode", False):
+            return len(samples)
+        return self.config.steps_per_round_prompt
+
+    def _retriever_budget(
+        self,
+        preference_data: PreferenceData,
+        epochs: int = 1,
+    ) -> tuple[Optional[int], Optional[int]]:
+        if not getattr(self.config, "epoch_budget_mode", False):
+            steps = epochs * self._retriever_steps_per_round()
+            return steps, steps
+
+        epochs = max(0, epochs)
+        if getattr(self.config, "retriever_loss", "lipo") == "lipo":
+            retriever_unit = len(preference_data.lipo_groups)
+        else:
+            retriever_unit = len(preference_data.pairs)
+        gate_unit = len(preference_data.gate_examples)
+        return epochs * retriever_unit, epochs * gate_unit
 
     def _apply_experiment_defaults(self) -> None:
         mode = self.config.experiment_mode
@@ -577,7 +730,7 @@ class NeuralCoTrainer:
     ) -> List[CodeChunk]:
         """Retrieve with the refreshed Phase 0/4 embedding cache when possible."""
         chunk_list = list(candidates)
-        k = top_k or self.config.top_k
+        k = self.config.top_k if top_k is None else top_k
         if not chunk_list:
             return []
         if self.embedding_cache.is_empty or any(
@@ -603,7 +756,7 @@ class NeuralCoTrainer:
     ) -> tuple[List[CodeChunk], List[float]]:
         """Retrieve once and expose selected scores for entropy estimation."""
         chunk_list = list(candidates)
-        k = top_k or self.config.top_k
+        k = self.config.top_k if top_k is None else top_k
         if not chunk_list:
             return [], []
         if not self.embedding_cache.is_empty and all(
@@ -629,6 +782,117 @@ class NeuralCoTrainer:
             return selected, [float(value) for value in scores.detach().cpu().tolist()]
         except (AttributeError, RuntimeError, TypeError, ValueError):
             return selected, []
+
+    def _context_cost_units(self, chunks: Sequence[CodeChunk]) -> float:
+        """Normalised context cost used by the stop gate label."""
+        if not chunks:
+            return 0.0
+        approx_tokens = sum(_approx_token_count(chunk.text) for chunk in chunks)
+        max_context_tokens = getattr(self.config, "max_context_tokens", 4096)
+        cost_token_unit = getattr(self.config, "gate_context_cost_token_unit", 512)
+        capped_tokens = min(approx_tokens, max(1, max_context_tokens))
+        return capped_tokens / max(1, cost_token_unit)
+
+    def _gate_adjusted_utility(self, score: Any) -> float:
+        """Utility after charging a small retrieval/context cost."""
+        if score is None or getattr(score, "is_stop", False):
+            return 0.0
+        context_cost = self._context_cost_units(getattr(score, "chunks", []))
+        cost_weight = getattr(self.config, "gate_context_cost_weight", 0.0)
+        return float(score.utility) - (
+            cost_weight * context_cost
+        )
+
+    def _identifier_overlap_ratio(
+        self,
+        query: str,
+        chunks: Sequence[CodeChunk],
+    ) -> float:
+        query_ids = set(_IDENTIFIER_RE.findall(query))
+        if not query_ids or not chunks:
+            return 0.0
+        chunk_ids: set[str] = set()
+        for chunk in chunks:
+            chunk_ids.update(chunk.defined_symbols)
+            chunk_ids.update(chunk.used_symbols)
+            chunk_ids.update(chunk.call_names)
+            chunk_ids.update(chunk.method_names)
+        return len(query_ids & chunk_ids) / max(1, len(query_ids))
+
+    def _gate_features(
+        self,
+        sample: TrainingSample,
+        candidates: Sequence[CodeChunk],
+        *,
+        retrieval_query: Optional[str] = None,
+        current_context: Optional[List[CodeChunk]] = None,
+        scores: Optional[Sequence[float]] = None,
+    ) -> Tuple[float, ...]:
+        """Inference-safe uncertainty and cost features for the stop gate."""
+        if not getattr(self.config, "gate_use_retrieval_features", True):
+            return ()
+        query = retrieval_query or self._gate_query(sample)
+        selected = current_context
+        score_values = list(scores or [])
+        if selected is None:
+            selected, score_values = self._retrieve_current_with_scores(
+                query, candidates, top_k=getattr(self.config, "top_k", 3)
+            )
+        selected = list(selected or [])
+        if not score_values and selected:
+            score_values = [0.0 for _ in selected]
+
+        top1 = float(score_values[0]) if score_values else 0.0
+        top1_margin = (
+            float(score_values[0]) - float(score_values[1])
+            if len(score_values) >= 2
+            else 0.0
+        )
+        entropy = _score_entropy(score_values) if score_values else 1.0
+        score_std = float(np.std(np.asarray(score_values, dtype=np.float32))) if score_values else 0.0
+        top_k = getattr(self.config, "top_k", 3)
+        preference_pool_top_k = getattr(self.config, "preference_pool_top_k", 20)
+        max_context_tokens = getattr(self.config, "max_context_tokens", 4096)
+        cost_token_unit = getattr(self.config, "gate_context_cost_token_unit", 512)
+        selected_ratio = len(selected) / max(1, top_k)
+        candidate_pool_ratio = min(
+            1.0,
+            len(candidates) / max(1, preference_pool_top_k),
+        )
+        query_identifier_ratio = min(
+            1.0,
+            len(set(_IDENTIFIER_RE.findall(query))) / 32.0,
+        )
+        context_token_ratio = min(
+            1.0,
+            self._context_cost_units(selected)
+            * cost_token_unit
+            / max(1, max_context_tokens),
+        )
+        identifier_overlap = self._identifier_overlap_ratio(query, selected)
+        return (
+            top1,
+            top1_margin,
+            entropy,
+            score_std,
+            selected_ratio,
+            candidate_pool_ratio,
+            query_identifier_ratio,
+            context_token_ratio,
+            identifier_overlap,
+        )
+
+    def _gate_feature_tensor(self, features: Sequence[float]) -> Optional[torch.Tensor]:
+        if not getattr(self.config, "gate_use_retrieval_features", True):
+            return None
+        values = list(features)
+        if not values:
+            values = [0.0] * len(GATE_FEATURE_NAMES)
+        return torch.tensor(
+            values,
+            dtype=torch.float32,
+            device=getattr(self.config, "device", "cpu"),
+        )
 
     def _prepare_retrieval_query(
         self,
@@ -764,7 +1028,11 @@ class NeuralCoTrainer:
             return current_context
         return self._retrieve_current(query, candidates, top_k=self.config.top_k)
 
-    def _should_retrieve(self, sample: TrainingSample) -> bool:
+    def _should_retrieve(
+        self,
+        sample: TrainingSample,
+        candidates: Sequence[CodeChunk],
+    ) -> bool:
         if self.config.gate_mode == "always_retrieve":
             return True
         if self.config.gate_mode == "always_skip":
@@ -776,12 +1044,27 @@ class NeuralCoTrainer:
             return "." in sample.left_context.rstrip().splitlines()[-1]
         with torch.no_grad():
             q_vec = self.retriever.encode_query(query)
-            return self.gate.should_retrieve(q_vec)
+            features = self._gate_feature_tensor(
+                self._gate_features(sample, candidates, retrieval_query=query)
+            )
+            return self.gate.should_retrieve(
+                q_vec,
+                features,
+                threshold=getattr(self.config, "gate_decision_threshold", 0.5),
+            )
 
-    def _gate_probability(self, sample: TrainingSample) -> float:
+    def _gate_probability(
+        self,
+        sample: TrainingSample,
+        candidates: Sequence[CodeChunk],
+    ) -> float:
         with torch.no_grad():
-            q_vec = self.retriever.encode_query(self._gate_query(sample))
-            value = self.gate(q_vec.detach())
+            query = self._gate_query(sample)
+            q_vec = self.retriever.encode_query(query)
+            features = self._gate_feature_tensor(
+                self._gate_features(sample, candidates, retrieval_query=query)
+            )
+            value = self.gate(q_vec.detach(), features)
         return float(value.view(-1)[0].item())
 
     def _utility_gate_label(
@@ -811,7 +1094,8 @@ class NeuralCoTrainer:
             )
         best_retrieve = self._gate_supervision_score(scored)
         max_utility = best_retrieve.utility if best_retrieve else 0.0
-        return max_utility > self.config.utility_margin, max_utility
+        adjusted_utility = self._gate_adjusted_utility(best_retrieve)
+        return adjusted_utility > self.config.utility_margin, max_utility
 
     # ══════════════════════════════════════════════════════════════════════
     #  Phase 1 — Warm-up Soft Prompt
@@ -831,20 +1115,20 @@ class NeuralCoTrainer:
         if not self.use_adapter:
             return {"phase1_loss": 0.0}
 
-        n_steps = steps or self.config.warmup_steps
-        n_steps = min(n_steps, len(samples))
+        n_steps = self.config.warmup_steps if steps is None else steps
         if n_steps <= 0:
             return {"phase1_loss": 0.0}
 
         logger.info("Phase 1: Warm-up Soft Prompt (%d steps)…", n_steps)
         total_loss = 0.0
-        sample_list = list(samples)
-        self.rng.shuffle(sample_list)
+        sample_schedule = _scheduled_training_items(samples, n_steps, self.rng)
+        if not sample_schedule:
+            return {"phase1_loss": 0.0}
 
         no_ctx_ratio = self.config.warmup_no_context_ratio
         oracle_ratio = self.config.warmup_oracle_ratio
 
-        for i, sample in enumerate(sample_list[:n_steps]):
+        for i, sample in enumerate(sample_schedule):
             candidates = list(sample.candidate_chunks or self._chunks)
             r = self.rng.random()
 
@@ -918,6 +1202,8 @@ class NeuralCoTrainer:
         strategy_counter: Counter[str] = Counter()
         gate_positive_count = 0
         total_max_utility = 0.0
+        total_gate_adjusted_utility = 0.0
+        total_gate_context_cost = 0.0
 
         for i, sample in enumerate(samples):
             candidates = list(sample.candidate_chunks or self._chunks)
@@ -946,15 +1232,20 @@ class NeuralCoTrainer:
             # not "does a good context EXIST somewhere in the repo?".
             # Oracle/hard_neg must NOT influence gate labels.
             best_gate_retrieve = self._gate_supervision_score(scored)
-            retrieve_is_better = (
-                best_gate_retrieve is not None
-                and best_gate_retrieve.utility > self.config.utility_margin
+            gate_adjusted_utility = self._gate_adjusted_utility(best_gate_retrieve)
+            gate_context_cost = (
+                self._context_cost_units(best_gate_retrieve.chunks)
+                if best_gate_retrieve
+                else 0.0
             )
+            retrieve_is_better = gate_adjusted_utility > self.config.utility_margin
             gate_max_utility = (
                 best_gate_retrieve.utility if best_gate_retrieve else 0.0
             )
             gate_positive_count += int(retrieve_is_better)
             total_max_utility += gate_max_utility
+            total_gate_adjusted_utility += gate_adjusted_utility
+            total_gate_context_cost += gate_context_cost
             gate_examples.append(
                 GateTrainingExample(
                     query=self._gate_query(sample),
@@ -962,6 +1253,13 @@ class NeuralCoTrainer:
                     max_utility=gate_max_utility,
                     best_strategy=(
                         best_gate_retrieve.name if best_gate_retrieve else "stop"
+                    ),
+                    adjusted_utility=gate_adjusted_utility,
+                    context_cost=gate_context_cost,
+                    features=self._gate_features(
+                        sample,
+                        candidates,
+                        retrieval_query=self._gate_query(sample),
                     ),
                 )
             )
@@ -1045,6 +1343,10 @@ class NeuralCoTrainer:
             gate_positive_count=gate_positive_count,
             gate_negative_count=len(gate_examples) - gate_positive_count,
             mean_max_utility=total_max_utility / max(1, len(gate_examples)),
+            mean_gate_adjusted_utility=total_gate_adjusted_utility
+            / max(1, len(gate_examples)),
+            mean_gate_context_cost=total_gate_context_cost
+            / max(1, len(gate_examples)),
         )
 
     def _mine_hard_negatives(
@@ -1084,6 +1386,7 @@ class NeuralCoTrainer:
         self,
         preference_data: PreferenceData,
         steps: Optional[int] = None,
+        gate_steps: Optional[int] = None,
     ) -> Dict[str, float]:
         """Train retriever (LiPO or DPO) and gate (BCE from utility labels).
 
@@ -1096,25 +1399,36 @@ class NeuralCoTrainer:
         gate_examples = preference_data.gate_examples
 
         if use_lipo:
-            retriever_steps = min(steps or len(lipo_groups), len(lipo_groups))
+            retriever_steps = (len(lipo_groups) if steps is None else max(0, steps))
             loss_name = "LiPO"
         else:
-            retriever_steps = min(steps or len(pairs), len(pairs))
+            retriever_steps = (len(pairs) if steps is None else max(0, steps))
             loss_name = "DPO"
 
-        gate_steps = min(steps or len(gate_examples), len(gate_examples))
-        if retriever_steps <= 0 and gate_steps <= 0:
+        if gate_steps is None:
+            gate_step_budget = len(gate_examples) if steps is None else max(0, steps)
+        else:
+            gate_step_budget = max(0, gate_steps)
+        if use_lipo and not lipo_groups:
+            retriever_steps = 0
+        if not use_lipo and not pairs:
+            retriever_steps = 0
+        if not gate_examples:
+            gate_step_budget = 0
+        if retriever_steps <= 0 and gate_step_budget <= 0:
             return {
                 "phase3_retriever_loss": 0.0,
                 "phase3_retriever_loss_type": loss_name,
                 "phase3_gate_loss": 0.0,
+                "phase3_retriever_steps": 0,
+                "phase3_gate_steps": 0,
             }
 
         logger.info(
             "Phase 3: %s training (%d retriever steps, %d gate labels)…",
             loss_name,
             retriever_steps,
-            gate_steps,
+            gate_step_budget,
         )
 
         # Only DPO needs a frozen reference encoder. Copying a large encoder for
@@ -1127,9 +1441,10 @@ class NeuralCoTrainer:
 
         # ── Retriever training ─────────────────────────────────────────
         if use_lipo:
-            group_list = list(lipo_groups)
-            self.rng.shuffle(group_list)
-            for i, group in enumerate(group_list[:retriever_steps]):
+            group_schedule = _scheduled_training_items(
+                lipo_groups, retriever_steps, self.rng
+            )
+            for i, group in enumerate(group_schedule):
                 self.retriever_opt.zero_grad()
                 loss = self.retriever.lipo_loss(
                     query_text=group.query,
@@ -1154,9 +1469,10 @@ class NeuralCoTrainer:
                         total_retriever_loss / (i + 1),
                     )
         else:
-            pair_list = list(pairs)
-            self.rng.shuffle(pair_list)
-            for i, pair in enumerate(pair_list[:retriever_steps]):
+            pair_schedule = _scheduled_training_items(
+                pairs, retriever_steps, self.rng
+            )
+            for i, pair in enumerate(pair_schedule):
                 self.retriever_opt.zero_grad()
                 loss = self.retriever.dpo_loss(
                     query_text=pair.query,
@@ -1183,13 +1499,15 @@ class NeuralCoTrainer:
                         total_retriever_loss / (i + 1),
                     )
 
-        # ── Gate training (unchanged — BCE from utility labels) ─────────
-        gate_list = list(gate_examples)
-        self.rng.shuffle(gate_list)
-        for i, example in enumerate(gate_list[:gate_steps]):
+        # ── Gate training — BCE from cost-aware utility labels ──────────
+        gate_schedule = _scheduled_training_items(
+            gate_examples, gate_step_budget, self.rng
+        )
+        for i, example in enumerate(gate_schedule):
             with torch.no_grad():
                 q_vec = self.retriever.encode_query(example.query)
-            g = self.gate(q_vec.detach())
+            features = self._gate_feature_tensor(example.features)
+            g = self.gate(q_vec.detach(), features)
             g_loss = self.gate.gate_loss(g, example.retrieve_is_better)
             if not torch.isnan(g_loss):
                 self.gate_opt.zero_grad()
@@ -1199,17 +1517,19 @@ class NeuralCoTrainer:
 
             if (i + 1) % 50 == 0:
                 logger.info(
-                    "  Phase 3 gate step %d/%d  gate=%.4f",
-                    i + 1,
-                    gate_steps,
-                    total_gate_loss / (i + 1),
-                )
+                        "  Phase 3 gate step %d/%d  gate=%.4f",
+                        i + 1,
+                        gate_step_budget,
+                        total_gate_loss / (i + 1),
+                    )
 
         result = {
             "phase3_retriever_loss": total_retriever_loss / max(1, retriever_steps),
             "phase3_retriever_loss_type": loss_name,
-            "phase3_gate_loss": total_gate_loss / max(1, gate_steps),
-            "phase3_gate_labels": gate_steps,
+            "phase3_gate_loss": total_gate_loss / max(1, gate_step_budget),
+            "phase3_gate_labels": gate_step_budget,
+            "phase3_retriever_steps": retriever_steps,
+            "phase3_gate_steps": gate_step_budget,
         }
         logger.info("Phase 3 done: %s", result)
         return result
@@ -1248,24 +1568,32 @@ class NeuralCoTrainer:
         samples: Sequence[TrainingSample],
         num_rounds: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
-        """Alternating rounds: P1 → P2 → P3 → P4, repeated."""
-        rounds = num_rounds or self.config.num_rounds
+        """Alternating epochs/rounds: P1 → P2 → P3 → P4, repeated."""
+        rounds = self.config.num_rounds if num_rounds is None else num_rounds
+        epoch_budget = getattr(self.config, "epoch_budget_mode", False)
+        unit_label = "epoch" if epoch_budget else "round"
+        if epoch_budget and num_rounds is None:
+            rounds = self.config.train_epochs
         round_history: List[Dict[str, Any]] = []
 
         for r in range(1, rounds + 1):
-            logger.info("═══ Co-training Round %d/%d ═══", r, rounds)
+            logger.info("═══ Co-training %s %d/%d ═══", unit_label, r, rounds)
+            prompt_steps = self._prompt_steps_per_round(samples)
 
             # P1: Train soft prompt
             p1 = self.phase1_warmup_soft_prompt(
-                samples, steps=self.config.steps_per_round_prompt
+                samples, steps=prompt_steps
             )
 
             # P2: Build preference data
             preference_data = self.phase2_build_preference_data(samples)
 
             # P3: DPO train retriever; BCE train gate from utility labels
+            retriever_steps, gate_steps = self._retriever_budget(preference_data)
             p3 = self.phase3_retriever_training(
-                preference_data, steps=self._retriever_steps_per_round()
+                preference_data,
+                steps=retriever_steps,
+                gate_steps=gate_steps,
             )
 
             # P4: Refresh index
@@ -1273,6 +1601,11 @@ class NeuralCoTrainer:
 
             round_result = {
                 "round": r,
+                "epoch": r if epoch_budget else None,
+                "epoch_budget_mode": epoch_budget,
+                "prompt_steps_budget": prompt_steps,
+                "retriever_steps_budget": retriever_steps,
+                "gate_steps_budget": gate_steps,
                 **p1,
                 "num_dpo_pairs": len(preference_data.pairs),
                 "num_gate_examples": len(preference_data.gate_examples),
@@ -1280,12 +1613,16 @@ class NeuralCoTrainer:
                 "gate_positive_ratio": preference_data.gate_positive_count
                 / max(1, len(preference_data.gate_examples)),
                 "mean_max_utility": preference_data.mean_max_utility,
+                "mean_gate_adjusted_utility": (
+                    preference_data.mean_gate_adjusted_utility
+                ),
+                "mean_gate_context_cost": preference_data.mean_gate_context_cost,
                 "pair_type_counts": preference_data.pair_type_counts,
                 "strategy_counts": preference_data.strategy_counts,
                 **p3,
             }
             round_history.append(round_result)
-            logger.info("Round %d result: %s", r, round_result)
+            logger.info("Co-training %s %d result: %s", unit_label, r, round_result)
 
         return round_history
 
@@ -1294,20 +1631,32 @@ class NeuralCoTrainer:
         samples: Sequence[TrainingSample],
     ) -> List[Dict[str, Any]]:
         """Sequential baseline: adapter first, then retriever/gate once."""
-        prompt_steps = self.config.warmup_steps + (
-            self.config.num_rounds * self.config.steps_per_round_prompt
+        epochs = (
+            self.config.train_epochs
+            if getattr(self.config, "epoch_budget_mode", False)
+            else self.config.num_rounds
         )
-        retriever_steps = self.config.num_rounds * self._retriever_steps_per_round()
+        prompt_steps = self.config.warmup_steps + (
+            epochs * self._prompt_steps_per_round(samples)
+        )
         p1 = self.phase1_warmup_soft_prompt(samples, steps=prompt_steps)
         preference_data = self.phase2_build_preference_data(samples)
-        p3 = self.phase3_retriever_training(preference_data, steps=retriever_steps)
+        retriever_steps, gate_steps = self._retriever_budget(preference_data, epochs)
+        p3 = self.phase3_retriever_training(
+            preference_data,
+            steps=retriever_steps,
+            gate_steps=gate_steps,
+        )
         self.phase4_refresh_index()
         return [
             {
                 "round": 1,
                 "schedule": "sequential_adapter_first",
+                "epoch_budget_mode": getattr(self.config, "epoch_budget_mode", False),
+                "train_epochs": epochs,
                 "prompt_steps_budget": prompt_steps,
                 "retriever_steps_budget": retriever_steps,
+                "gate_steps_budget": gate_steps,
                 "preference_data_builds": 1,
                 "index_refreshes": 1,
                 **p1,
@@ -1317,6 +1666,10 @@ class NeuralCoTrainer:
                 "gate_positive_ratio": preference_data.gate_positive_count
                 / max(1, len(preference_data.gate_examples)),
                 "mean_max_utility": preference_data.mean_max_utility,
+                "mean_gate_adjusted_utility": (
+                    preference_data.mean_gate_adjusted_utility
+                ),
+                "mean_gate_context_cost": preference_data.mean_gate_context_cost,
                 "pair_type_counts": preference_data.pair_type_counts,
                 "strategy_counts": preference_data.strategy_counts,
                 **p3,
@@ -1328,17 +1681,26 @@ class NeuralCoTrainer:
         samples: Sequence[TrainingSample],
     ) -> List[Dict[str, Any]]:
         """Sequential baseline: retriever/gate first, then adapter once."""
-        prompt_steps = self.config.warmup_steps + (
-            self.config.num_rounds * self.config.steps_per_round_prompt
+        epochs = (
+            self.config.train_epochs
+            if getattr(self.config, "epoch_budget_mode", False)
+            else self.config.num_rounds
         )
-        retriever_steps = self.config.num_rounds * self._retriever_steps_per_round()
+        prompt_steps = self.config.warmup_steps + (
+            epochs * self._prompt_steps_per_round(samples)
+        )
 
         original_use_adapter = self.use_adapter
         self.use_adapter = False
         try:
             preference_data = self.phase2_build_preference_data(samples)
+            retriever_steps, gate_steps = self._retriever_budget(
+                preference_data, epochs
+            )
             p3 = self.phase3_retriever_training(
-                preference_data, steps=retriever_steps
+                preference_data,
+                steps=retriever_steps,
+                gate_steps=gate_steps,
             )
         finally:
             self.use_adapter = original_use_adapter
@@ -1353,8 +1715,11 @@ class NeuralCoTrainer:
             {
                 "round": 1,
                 "schedule": "sequential_retriever_first",
+                "epoch_budget_mode": getattr(self.config, "epoch_budget_mode", False),
+                "train_epochs": epochs,
                 "prompt_steps_budget": prompt_steps,
                 "retriever_steps_budget": retriever_steps,
+                "gate_steps_budget": gate_steps,
                 "preference_data_builds": 1,
                 "index_refreshes": 1,
                 **p1,
@@ -1364,6 +1729,10 @@ class NeuralCoTrainer:
                 "gate_positive_ratio": preference_data.gate_positive_count
                 / max(1, len(preference_data.gate_examples)),
                 "mean_max_utility": preference_data.mean_max_utility,
+                "mean_gate_adjusted_utility": (
+                    preference_data.mean_gate_adjusted_utility
+                ),
+                "mean_gate_context_cost": preference_data.mean_gate_context_cost,
                 "pair_type_counts": preference_data.pair_type_counts,
                 "strategy_counts": preference_data.strategy_counts,
                 **p3,
@@ -1395,12 +1764,13 @@ class NeuralCoTrainer:
         id_f1_values: List[float] = []
         gate_labels: List[bool] = []
         gate_probs: List[float] = []
+        aligncoder_records: List[Dict[str, Any]] = []
         query_stats = {key: 0.0 for key in self._query_enhancement_stats}
         n = 0
 
-        for sample in test_samples:
+        for idx, sample in enumerate(test_samples):
             candidates = list(sample.candidate_chunks or self._chunks)
-            should_retrieve = self._should_retrieve(sample)
+            should_retrieve = self._should_retrieve(sample, candidates)
             query_stats_before = dict(self._query_enhancement_stats)
 
             if should_retrieve and candidates:
@@ -1433,6 +1803,22 @@ class NeuralCoTrainer:
             total_id_f1 += id_f1
             edit_values.append(edit)
             id_f1_values.append(id_f1)
+            raw_task_id = getattr(sample, "task_id", "")
+            task_id = str(raw_task_id) if raw_task_id not in ("", None) else str(
+                getattr(sample, "repo_id", "")
+            )
+            file_path = str(getattr(sample, "file_path", "current_file.py"))
+            if not task_id:
+                task_id = f"{file_path}:{idx}"
+            aligncoder_records.append(
+                {
+                    "task_id": task_id,
+                    "prompt": sample.left_context,
+                    "target": sample.target,
+                    "pred": pred,
+                    "file_path": file_path,
+                }
+            )
 
             # NLL comparison — consistent adapter treatment
             with torch.no_grad():
@@ -1451,7 +1837,7 @@ class NeuralCoTrainer:
             if include_analysis:
                 label, _ = self._utility_gate_label(sample, candidates)
                 gate_labels.append(label)
-                gate_probs.append(self._gate_probability(sample))
+                gate_probs.append(self._gate_probability(sample, candidates))
             n += 1
 
         denom = max(1, n)
@@ -1461,11 +1847,34 @@ class NeuralCoTrainer:
                 nll_improvements, id_f1_values
             ),
         }
+        aligncoder_metric_values = compute_aligncoder_metrics(aligncoder_records)
+        aligncoder_public = {
+            key: aligncoder_metric_values[key]
+            for key in (
+                "em",
+                "es",
+                "id_em",
+                "id_precision",
+                "id_recall",
+                "id_f1",
+                "total",
+                "repoeval_em",
+                "repoeval_es",
+                "repoeval_total",
+            )
+        }
         metrics = {
             "exact_match": total_em / denom,
             "edit_similarity": total_edit_sim / denom,
             "identifier_f1": total_id_f1 / denom,
+            "aligncoder_exact_match": aligncoder_metric_values["em"] / 100.0,
+            "aligncoder_edit_similarity": aligncoder_metric_values["es"] / 100.0,
+            "aligncoder_identifier_f1": aligncoder_metric_values["id_f1"] / 100.0,
+            "aligncoder_metrics": aligncoder_public,
             "retrieval_rate": total_retrieve_count / denom,
+            "gate_decision_threshold": getattr(
+                self.config, "gate_decision_threshold", 0.5
+            ),
             "avg_nll_with_retrieval": total_nll_with / denom,
             "avg_nll_without_retrieval": total_nll_without / denom,
             "nll_improvement": (total_nll_without - total_nll_with) / denom,
@@ -1498,6 +1907,187 @@ class NeuralCoTrainer:
                 for k, v in metrics.items()
             },
         )
+        return metrics
+
+    def evaluate_to_files(
+        self,
+        test_samples: Sequence[TrainingSample],
+        output_dir: str,
+        *,
+        include_analysis: bool = True,
+    ) -> Dict[str, Any]:
+        """Generate AlignCoder-style prediction files and summary metrics."""
+        import json
+
+        self._assert_inference_safe_strategy(mode="evaluate_to_files")
+        os.makedirs(output_dir, exist_ok=True)
+        pred_path = os.path.join(output_dir, "prediction.jsonl")
+        cand_path = os.path.join(output_dir, "prediction_with_candidates.jsonl")
+
+        total_em = 0.0
+        total_edit_sim = 0.0
+        total_id_f1 = 0.0
+        total_retrieve_count = 0
+        total_nll_with = 0.0
+        total_nll_without = 0.0
+        nll_improvements: List[float] = []
+        edit_values: List[float] = []
+        id_f1_values: List[float] = []
+        gate_labels: List[bool] = []
+        gate_probs: List[float] = []
+        aligncoder_records: List[Dict[str, Any]] = []
+        n = 0
+
+        with open(pred_path, "w", encoding="utf-8") as f_pred, open(
+            cand_path, "w", encoding="utf-8"
+        ) as f_cand:
+            for idx, sample in enumerate(test_samples):
+                candidates = list(sample.candidate_chunks or self._chunks)
+                ctx: List[CodeChunk] = []
+                should_retrieve = self._should_retrieve(sample, candidates)
+                if should_retrieve and candidates:
+                    ctx = self._retrieve_for_generation(
+                        sample, candidates, mode="evaluate_to_files"
+                    )
+                    total_retrieve_count += 1
+                    pred = self.generator.generate(
+                        sample.left_context,
+                        max_new_tokens=self.config.max_new_tokens,
+                        retrieved_chunks=ctx,
+                        use_soft_prompt=self.use_adapter,
+                    )
+                else:
+                    pred = self.generator.generate(
+                        sample.left_context,
+                        max_new_tokens=self.config.max_new_tokens,
+                        use_soft_prompt=self.use_adapter,
+                    )
+
+                raw_task_id = getattr(sample, "task_id", "")
+                task_id = str(raw_task_id) if raw_task_id not in ("", None) else str(
+                    getattr(sample, "repo_id", "")
+                )
+                file_path = str(getattr(sample, "file_path", "current_file.py"))
+                if not task_id:
+                    task_id = f"{file_path}:{idx}"
+                f_pred.write(
+                    json.dumps({"task_id": task_id, "pred": pred}, ensure_ascii=False)
+                    + "\n"
+                )
+                aligncoder_records.append(
+                    {
+                        "task_id": task_id,
+                        "prompt": sample.left_context,
+                        "target": sample.target,
+                        "pred": pred,
+                        "file_path": file_path,
+                    }
+                )
+                f_cand.write(
+                    json.dumps(
+                        {
+                            "task_id": task_id,
+                            "input": sample.left_context[-512:],
+                            "target": sample.target,
+                            "pred": pred,
+                            "retrieval_used": bool(ctx),
+                            "gate_probability": self._gate_probability(
+                                sample, candidates
+                            ),
+                            "gate_decision_threshold": getattr(
+                                self.config, "gate_decision_threshold", 0.5
+                            ),
+                            "candidates": [
+                                {
+                                    "chunk_id": chunk.chunk_id,
+                                    "file_path": chunk.file_path,
+                                    "start_line": chunk.start_line,
+                                    "end_line": chunk.end_line,
+                                    "chunk_type": chunk.chunk_type,
+                                    "defined_symbols": chunk.defined_symbols,
+                                    "text": chunk.text,
+                                }
+                                for chunk in ctx
+                            ],
+                        },
+                        ensure_ascii=False,
+                    )
+                    + "\n"
+                )
+
+                em = exact_match(pred, sample.target)
+                edit = edit_similarity(pred, sample.target)
+                id_f1 = identifier_f1(pred, sample.target)
+                total_em += em
+                total_edit_sim += edit
+                total_id_f1 += id_f1
+                edit_values.append(edit)
+                id_f1_values.append(id_f1)
+
+                with torch.no_grad():
+                    nll_with = self.generator.teacher_forcing_nll(
+                        sample.left_context,
+                        sample.target,
+                        retrieved_chunks=ctx if ctx else None,
+                        use_soft_prompt=self.use_adapter,
+                    ).item()
+                    nll_without = self.generator.teacher_forcing_nll(
+                        sample.left_context,
+                        sample.target,
+                        retrieved_chunks=None,
+                        use_soft_prompt=self.use_adapter,
+                    ).item()
+                total_nll_with += nll_with
+                total_nll_without += nll_without
+                nll_improvements.append(nll_without - nll_with)
+                if include_analysis:
+                    label, _ = self._utility_gate_label(sample, candidates)
+                    gate_labels.append(label)
+                    gate_probs.append(self._gate_probability(sample, candidates))
+                n += 1
+
+        aligncoder_metrics = write_aligncoder_metric_files(
+            output_dir, aligncoder_records
+        )
+        denom = max(1, n)
+        metrics = {
+            "exact_match": total_em / denom,
+            "edit_similarity": total_edit_sim / denom,
+            "identifier_f1": total_id_f1 / denom,
+            "aligncoder_exact_match": aligncoder_metrics["em"] / 100.0,
+            "aligncoder_edit_similarity": aligncoder_metrics["es"] / 100.0,
+            "aligncoder_identifier_f1": aligncoder_metrics["id_f1"] / 100.0,
+            "retrieval_rate": total_retrieve_count / denom,
+            "gate_decision_threshold": getattr(
+                self.config, "gate_decision_threshold", 0.5
+            ),
+            "avg_nll_with_retrieval": total_nll_with / denom,
+            "avg_nll_without_retrieval": total_nll_without / denom,
+            "nll_improvement": (total_nll_without - total_nll_with) / denom,
+            "num_samples": n,
+            "nll_output_correlation": {
+                "nll_vs_edit_corr": _safe_corr(nll_improvements, edit_values),
+                "nll_vs_identifier_f1_corr": _safe_corr(
+                    nll_improvements, id_f1_values
+                ),
+            },
+            "gate_label_metrics": _gate_label_metrics(gate_labels, gate_probs)
+            if include_analysis
+            else {},
+            "prediction_path": pred_path,
+            "prediction_with_candidates_path": cand_path,
+            "aligncoder_metrics": aligncoder_metrics,
+            "oracle_used_for_eval": False,
+            "inference_safe_strategy_check": True,
+        }
+        if include_analysis:
+            metrics["leave_one_out_analysis"] = self.leave_one_out_analysis(
+                test_samples
+            )
+        metrics_path = os.path.join(output_dir, "metrics.json")
+        with open(metrics_path, "w", encoding="utf-8") as f:
+            json.dump(metrics, f, indent=2, ensure_ascii=False, default=str)
+        metrics["metrics_path"] = metrics_path
         return metrics
 
     def leave_one_out_analysis(
@@ -1577,6 +2167,49 @@ class NeuralCoTrainer:
             self.config.gate_mode = original_gate_mode
         return variants
 
+    def calibrate_gate_threshold(
+        self,
+        samples: Sequence[TrainingSample],
+    ) -> Dict[str, Any]:
+        """Tune the learned gate threshold from utility-derived labels."""
+        if self.config.gate_mode != "learned":
+            return {
+                "status": "skipped",
+                "reason": f"gate_mode={self.config.gate_mode}",
+                "threshold": self.config.gate_decision_threshold,
+            }
+        limit = max(0, self.config.gate_calibration_samples)
+        if limit <= 0:
+            return {
+                "status": "skipped",
+                "reason": "gate_calibration_samples=0",
+                "threshold": self.config.gate_decision_threshold,
+            }
+
+        labels: List[bool] = []
+        probabilities: List[float] = []
+        for sample in list(samples)[:limit]:
+            candidates = list(sample.candidate_chunks or self._chunks)
+            if not candidates:
+                continue
+            label, _ = self._utility_gate_label(sample, candidates)
+            labels.append(label)
+            probabilities.append(self._gate_probability(sample, candidates))
+
+        selected = _select_gate_threshold(
+            labels,
+            probabilities,
+            retrieval_penalty=self.config.gate_calibration_retrieval_penalty,
+        )
+        self.config.gate_decision_threshold = float(selected["threshold"])
+        return {
+            "status": "ok" if labels else "no_labels",
+            "threshold": self.config.gate_decision_threshold,
+            "num_samples": len(labels),
+            "retrieval_penalty": self.config.gate_calibration_retrieval_penalty,
+            **selected,
+        }
+
     def gate_defense_status(
         self,
         variants: Dict[str, Dict[str, Any]],
@@ -1638,8 +2271,17 @@ class NeuralCoTrainer:
             schedule = "alternating"
             # Phase 1 — Initial soft prompt warm-up
             p1 = self.phase1_warmup_soft_prompt(samples)
-            # Phase 5 — Alternating co-training rounds (contains P1-P4)
+            # Phase 5 — Alternating co-training epochs/rounds (contains P1-P4)
             round_history = self.phase5_co_training(samples)
+
+        gate_calibration = (
+            self.calibrate_gate_threshold(samples)
+            if self.config.gate_calibrate_threshold
+            else {
+                "status": "disabled",
+                "threshold": self.config.gate_decision_threshold,
+            }
+        )
 
         # Phase 6 — Final held-out evaluation when provided.
         eval_metrics = self.phase6_evaluate(eval_samples) if eval_samples else {}
@@ -1655,17 +2297,21 @@ class NeuralCoTrainer:
                 "eval": eval_metrics,
                 "eval_policy_variants": eval_policy_variants,
                 "gate_defense_status": gate_status,
+                "gate_calibration": gate_calibration,
             }
         )
 
         return {
             "status": "ok",
             "schedule": schedule,
+            "train_epochs": self.config.train_epochs,
+            "epoch_budget_mode": self.config.epoch_budget_mode,
             "initial_warmup": p1,
             "rounds": round_history,
             "eval": eval_metrics,
             "eval_policy_variants": eval_policy_variants,
             "gate_defense_status": gate_status,
+            "gate_calibration": gate_calibration,
             "gate_label_metrics": eval_metrics.get("gate_label_metrics", {}),
             "nll_output_correlation": eval_metrics.get(
                 "nll_output_correlation", {}
@@ -1686,7 +2332,7 @@ class NeuralCoTrainer:
         """Single-sample inference with trained pipeline."""
         self._assert_inference_safe_strategy(mode="predict")
         candidates = list(sample.candidate_chunks or self._chunks)
-        if self._should_retrieve(sample) and candidates:
+        if self._should_retrieve(sample, candidates) and candidates:
             ctx = self._retrieve_for_generation(sample, candidates, mode="predict")
             return self.generator.generate(
                 sample.left_context,
