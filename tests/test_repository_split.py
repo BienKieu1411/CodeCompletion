@@ -3,6 +3,7 @@ import pytest
 pandas = pytest.importorskip("pandas")
 pd = pandas
 
+import co_retrieval.data.repository_dataset_loader as loader_module
 from co_retrieval.data.repository_dataset_loader import DatasetLoader
 from co_retrieval.runner import _sample_to_training_sample, _split_by_repository
 from co_retrieval.training import TrainingSample
@@ -35,6 +36,42 @@ def test_loader_preserves_repository_boundaries_as_ids(tmp_path, monkeypatch):
     assert len(repos) == 2
     assert {item["repo_id"] for item in repos[0]} == {"github_repo_000000"}
     assert {item["repo_id"] for item in repos[1]} == {"github_repo_000001"}
+
+
+def test_loader_records_actual_cut_level_after_ast_fallback(monkeypatch, caplog):
+    def fake_ast_cut(_content, _language, level):
+        if level == "block":
+            return None
+        if level == "line":
+            return (5, 5)
+        raise AssertionError(f"unexpected level: {level}")
+
+    monkeypatch.setattr(loader_module, "_sample_cut_level", lambda _dist: "block")
+    monkeypatch.setattr(loader_module, "_ast_cut", fake_ast_cut)
+    monkeypatch.setattr(loader_module.random, "choice", lambda items: items[0])
+
+    loader = DatasetLoader(
+        completion_level="mixed",
+        min_file_lines=1,
+        min_file_chars=1,
+        min_left_context_lines=1,
+    )
+    repo_files = [
+        {
+            "path": "src/service.py",
+            "content": "\n".join(f"line_{index}" for index in range(20)),
+            "repo_id": "repo-a",
+        },
+        {"path": "src/helper.py", "content": "def helper(): pass"},
+    ]
+
+    sample = loader.construct_train_sample_safe(repo_files)
+
+    assert sample is not None
+    assert sample["_requested_cut_level"] == "block"
+    assert sample["_cut_level"] == "line"
+    assert sample["_n_lines"] == 1
+    assert "Block sample nhưng chỉ có 1 dòng" not in caplog.text
 
 
 def test_sample_conversion_turns_nan_fields_into_empty_text():

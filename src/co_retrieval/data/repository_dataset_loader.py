@@ -494,6 +494,7 @@ class DatasetLoader:
             return None
 
         chosen_level = _sample_cut_level(dist)
+        actual_level = chosen_level
 
         cut = _ast_cut(content, language, chosen_level)
 
@@ -503,6 +504,7 @@ class DatasetLoader:
             for fallback_level in fallback_order:
                 cut = _ast_cut(content, language, fallback_level)
                 if cut:
+                    actual_level = fallback_level
                     logger.debug(
                         f"[DataLoader] AST fallback: {chosen_level} → {fallback_level} "
                         f"({language}, {selected['path']})"
@@ -513,6 +515,7 @@ class DatasetLoader:
             start_line, end_line = cut
         else:
             # Fallback cuối: random 1 dòng (Từ 50% đến 80% file)
+            actual_level = "random_line"
             start_line = int(len(lines) * random.uniform(0.5, 0.8))
             end_line = start_line
 
@@ -529,7 +532,8 @@ class DatasetLoader:
                 for f in repo_files if f["path"] != selected["path"]
             },
             # Metadata để debug/phân tích phân phối sau train
-            "_cut_level":        chosen_level,
+            "_requested_cut_level": chosen_level,
+            "_cut_level":        actual_level,
             "_n_lines":          end_line - start_line + 1,
         }
 
@@ -707,4 +711,3 @@ class DatasetLoader:
             total += len(block)
 
         return "".join(parts).strip()
-
