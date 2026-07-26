@@ -21,6 +21,11 @@ EPOCH_BUDGET_MODE="${EPOCH_BUDGET_MODE:-1}"
 WARMUP_STEPS="${WARMUP_STEPS:-200}"
 STEPS_PER_ROUND_PROMPT="${STEPS_PER_ROUND_PROMPT:-100}"
 STEPS_PER_ROUND_RETRIEVER="${STEPS_PER_ROUND_RETRIEVER:-200}"
+PREFERENCE_POOL_TOP_K="${PREFERENCE_POOL_TOP_K:-20}"
+MAX_PAIRS_PER_SAMPLE="${MAX_PAIRS_PER_SAMPLE:-4}"
+TRAIN_BATCH_SIZE="${TRAIN_BATCH_SIZE:-4}"
+BATCH_ENCODE_SIZE="${BATCH_ENCODE_SIZE:-64}"
+EVAL_BATCH_SIZE="${EVAL_BATCH_SIZE:-2}"
 BUILD_TRAIN_INDEX="${BUILD_TRAIN_INDEX:-0}"
 REFRESH_TRAIN_INDEX="${REFRESH_TRAIN_INDEX:-0}"
 EVAL_MAX_SAMPLES="${EVAL_MAX_SAMPLES:-0}"
@@ -73,6 +78,8 @@ if [[ "${RUN_TRAIN}" == "1" ]]; then
 
   echo "Training ${EXPERIMENT_MODE} for TRAIN_EPOCHS=${TRAIN_EPOCHS} (epoch_budget_mode=${EPOCH_BUDGET_MODE})"
   echo "Completion level: ${COMPLETION_LEVEL}"
+  echo "Preference pool top-k: ${PREFERENCE_POOL_TOP_K}; max pairs/sample: ${MAX_PAIRS_PER_SAMPLE}"
+  echo "Batch sizes: train=${TRAIN_BATCH_SIZE}, encode=${BATCH_ENCODE_SIZE}, eval=${EVAL_BATCH_SIZE}"
   echo "Train global index: build=${BUILD_TRAIN_INDEX}, refresh=${REFRESH_TRAIN_INDEX}"
   echo "Train datasets: ${TRAIN_DATASETS}"
 
@@ -104,8 +111,8 @@ if [[ "${RUN_TRAIN}" == "1" ]]; then
     --steps-per-round-prompt "${STEPS_PER_ROUND_PROMPT}" \
     --steps-per-round-retriever "${STEPS_PER_ROUND_RETRIEVER}" \
     --top-k 3 \
-    --preference-pool-top-k 20 \
-    --max-pairs-per-sample 4 \
+    --preference-pool-top-k "${PREFERENCE_POOL_TOP_K}" \
+    --max-pairs-per-sample "${MAX_PAIRS_PER_SAMPLE}" \
     --num-hard-negatives 10 \
     --utility-margin 0.05 \
     --preference-margin 0.1 \
@@ -124,8 +131,8 @@ if [[ "${RUN_TRAIN}" == "1" ]]; then
     --gate-lr 1e-4 \
     --soft-prompt-lr 5e-3 \
     --grad-clip-norm 1.0 \
-    --batch-encode-size 64 \
-    --batch-size 4 \
+    --batch-encode-size "${BATCH_ENCODE_SIZE}" \
+    --batch-size "${TRAIN_BATCH_SIZE}" \
     --max-new-tokens 128 \
     --generator-dtype bfloat16 \
     --device cuda \
@@ -183,8 +190,8 @@ if [[ "${RUN_EVAL}" == "1" ]]; then
       --log-dir "${LOG_DIR}/eval/${dataset_name}" \
       --max-samples "${EVAL_MAX_SAMPLES}" \
       --top-k 3 \
-      --batch-size 2 \
-      --batch-encode-size 64 \
+      --batch-size "${EVAL_BATCH_SIZE}" \
+      --batch-encode-size "${BATCH_ENCODE_SIZE}" \
       --max-new-tokens 128 \
       --leave-one-out-analysis-samples 25 \
       "${EVAL_EXTRA_ARGS[@]}" \

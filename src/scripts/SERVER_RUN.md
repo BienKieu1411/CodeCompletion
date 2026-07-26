@@ -76,6 +76,20 @@ MAX_TRAIN_SAMPLES=5000 TRAIN_EPOCHS=3 EVAL_MAX_SAMPLES=1000 CUDA_VISIBLE_DEVICES
   bash src/scripts/run_icar_lipo_a100_80gb.sh
 ```
 
+Faster full-data debugging run:
+
+```bash
+PREFERENCE_POOL_TOP_K=5 TRAIN_BATCH_SIZE=6 BATCH_ENCODE_SIZE=96 \
+RUN_TRAIN=1 RUN_EVAL=0 CUDA_VISIBLE_DEVICES=0 \
+  bash src/scripts/run_icar_lipo_a100_80gb.sh
+```
+
+`PREFERENCE_POOL_TOP_K` is the main Phase 2 speed knob: lowering it reduces how
+many candidate context sets the generator scores per sample. `TRAIN_BATCH_SIZE`
+mostly affects data iteration/prompt warmup bookkeeping; Phase 2 still scores
+sample/context utilities one at a time. `BATCH_ENCODE_SIZE` affects dense
+retriever encoding and index/eval embedding throughput.
+
 Train on a single language for a quick ablation:
 
 ```bash
