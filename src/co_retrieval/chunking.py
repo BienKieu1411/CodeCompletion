@@ -9,6 +9,7 @@ entity-aligned evidence snippets with metadata useful for retrieval.
 from __future__ import annotations
 
 import ast
+import importlib
 import logging
 import re
 from dataclasses import dataclass, field
@@ -87,8 +88,40 @@ def _load_tree_sitter_parser(language: str) -> Any:
 
         parser = get_parser(language)
     except Exception as exc:
-        logger.debug("No tree-sitter parser for %s: %s", language, exc)
+        logger.debug("tree-sitter-languages unavailable for %s: %s", language, exc)
         parser = None
+
+    # Some server environments have the grammar wheels installed but an
+    # incompatible tree-sitter-languages binary. Keep AST chunking alive by
+    # falling back to the grammar module directly before using line windows.
+    if parser is None:
+        grammar_modules = {
+            "python": "tree_sitter_python",
+            "java": "tree_sitter_java",
+            "javascript": "tree_sitter_javascript",
+            "typescript": "tree_sitter_typescript",
+            "go": "tree_sitter_go",
+            "cpp": "tree_sitter_cpp",
+            "c": "tree_sitter_c",
+            "ruby": "tree_sitter_ruby",
+        }
+        module_name = grammar_modules.get(language)
+        if module_name:
+            try:
+                grammar = importlib.import_module(module_name)
+                import tree_sitter
+
+                language_factory = getattr(grammar, "language")
+                try:
+                    parser = tree_sitter.Parser(
+                        tree_sitter.Language(language_factory())
+                    )
+                except (TypeError, AttributeError):
+                    language_obj = tree_sitter.Language(language_factory())
+                    parser = tree_sitter.Parser()
+                    parser.set_language(language_obj)
+            except Exception as exc:
+                logger.debug("No direct tree-sitter parser for %s: %s", language, exc)
     _TREE_SITTER_PARSERS[language] = parser
     return parser
 

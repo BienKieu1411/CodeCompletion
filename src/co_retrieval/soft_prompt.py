@@ -39,6 +39,23 @@ DEFAULT_GENERATOR_INSTRUCTION = (
 )
 
 
+def _backend_token_ids(tokenizer: AutoTokenizer, text: str) -> List[int]:
+    """Tokenize without HF's misleading overlength warning.
+
+    We intentionally inspect the full token sequence before applying our own
+    left-context/target budget. Fast tokenizers expose the Rust backend for
+    this operation and do not emit the warning that is triggered by calling
+    ``encode`` without a truncation policy.
+    """
+    backend = getattr(tokenizer, "backend_tokenizer", None)
+    if backend is not None:
+        try:
+            return list(backend.encode(text, add_special_tokens=False).ids)
+        except (AttributeError, TypeError, ValueError):
+            pass
+    return list(tokenizer.encode(text, add_special_tokens=False))
+
+
 # ── Token budget ──────────────────────────────────────────────────────────────
 
 
@@ -79,7 +96,7 @@ class TokenBudgetManager:
         Layout: ``[chunk_1]\\n[chunk_2]\\n...\\n[left_context_tail]``
         """
         # Left context: keep tail (closest to cursor)
-        lc_ids = tokenizer.encode(left_context, add_special_tokens=False)
+        lc_ids = _backend_token_ids(tokenizer, left_context)
         if len(lc_ids) > self.left_context_max_tokens:
             lc_ids = lc_ids[-self.left_context_max_tokens :]
         left_text = tokenizer.decode(lc_ids, skip_special_tokens=True)
@@ -98,13 +115,12 @@ class TokenBudgetManager:
         used = 0
         for chunk in retrieved_chunks:
             text = chunk.retrieval_text()
-            n = len(tokenizer.encode(text, add_special_tokens=False))
+            text_ids = _backend_token_ids(tokenizer, text)
+            n = len(text_ids)
             if used + n > budget_for_chunks:
                 remaining = budget_for_chunks - used
                 if remaining > 20:
-                    trunc_ids = tokenizer.encode(
-                        text, add_special_tokens=False
-                    )[:remaining]
+                    trunc_ids = text_ids[:remaining]
                     chunk_parts.append(
                         tokenizer.decode(trunc_ids, skip_special_tokens=True)
                     )
@@ -165,8 +181,12 @@ class SoftPromptLLM(nn.Module):
             model_name, torch_dtype=dtype, trust_remote_code=True
         )
         self.model.eval()
-        for p in self.model.parameters():
-            p.requires_grad = False
+        self.model.requires_grad_(False)
+        # The generator is a teacher/inference model. Only the prompt tensor
+        # below may receive gradients; disabling KV caching also avoids
+        # retaining useless cache tensors during prompt warm-up/NLL scoring.
+        if hasattr(self.model.config, "use_cache"):
+            self.model.config.use_cache = False
 
         # Learnable prompt embeddings
         embed_dim = self.model.get_input_embeddings().weight.shape[1]
@@ -183,6 +203,21 @@ class SoftPromptLLM(nn.Module):
         )
 
         self.to(device)
+
+    def assert_backbone_frozen(self) -> None:
+        """Fail fast if any generator backbone parameter became trainable."""
+        trainable = [
+            name for name, parameter in self.model.named_parameters()
+            if parameter.requires_grad
+        ]
+        if trainable:
+            preview = ", ".join(trainable[:8])
+            raise RuntimeError(
+                "Generator backbone must remain frozen; trainable parameters: "
+                f"{preview}"
+            )
+        if self.model.training:
+            self.model.eval()
 
     # ── Instruction-based init ────────────────────────────────────────────
 
@@ -250,6 +285,31 @@ class SoftPromptLLM(nn.Module):
 
         return inputs_embeds, attention_mask
 
+    def _prepare_teacher_forcing_ids(
+        self,
+        context_text: str,
+        target: str,
+        *,
+        use_soft_prompt: bool,
+    ) -> Tuple[List[int], List[int], int]:
+        """Build bounded context/target ids without invoking model compute."""
+        context_ids = _backend_token_ids(self.tokenizer, context_text)
+        target_ids = _backend_token_ids(self.tokenizer, target)
+        prompt_offset = self.num_prompt_tokens if use_soft_prompt else 0
+        text_budget = self.budget_manager.max_tokens - prompt_offset
+        if text_budget <= 0:
+            return [], [], prompt_offset
+
+        if len(target_ids) >= text_budget:
+            target_ids = target_ids[:text_budget]
+            context_ids = []
+        else:
+            context_budget = text_budget - len(target_ids)
+            context_ids = (
+                context_ids[-context_budget:] if context_budget > 0 else []
+            )
+        return context_ids, target_ids, prompt_offset
+
     # ── Teacher-forcing NLL (core method — no decoding) ───────────────────
 
     def teacher_forcing_nll(
@@ -285,26 +345,13 @@ class SoftPromptLLM(nn.Module):
         else:
             context_text = left_context
 
-        context_ids = self.tokenizer.encode(
-            context_text, add_special_tokens=False
+        context_ids, target_ids, prompt_offset = self._prepare_teacher_forcing_ids(
+            context_text,
+            target,
+            use_soft_prompt=use_soft_prompt,
         )
-        target_ids = self.tokenizer.encode(target, add_special_tokens=False)
         if not target_ids:
             return torch.tensor(0.0, device=self._device, requires_grad=True)
-
-        prompt_offset = self.num_prompt_tokens if use_soft_prompt else 0
-        text_budget = self.budget_manager.max_tokens - prompt_offset
-        if text_budget <= 0:
-            return torch.tensor(0.0, device=self._device, requires_grad=True)
-
-        if len(target_ids) >= text_budget:
-            target_ids = target_ids[:text_budget]
-            context_ids = []
-        else:
-            context_budget = text_budget - len(target_ids)
-            context_ids = (
-                context_ids[-context_budget:] if context_budget > 0 else []
-            )
 
         input_ids = torch.tensor(
             [context_ids + target_ids],
@@ -359,6 +406,123 @@ class SoftPromptLLM(nn.Module):
 
         return outputs.loss
 
+    @torch.inference_mode()
+    def teacher_forcing_nll_batch(
+        self,
+        left_context: str,
+        target: str,
+        retrieved_chunks_list: Sequence[Optional[Sequence[CodeChunk]]],
+        use_soft_prompt: bool = True,
+    ) -> List[float]:
+        """Score several context candidates in one frozen-model forward.
+
+        Phase 2 compares multiple retrieval strategies for the same example.
+        Batching those candidates preserves exact token-level NLL while
+        replacing one model launch per strategy with one padded batch.
+        """
+        if not retrieved_chunks_list:
+            return []
+
+        rows: List[Tuple[List[int], List[int], int]] = []
+        for retrieved_chunks in retrieved_chunks_list:
+            if retrieved_chunks:
+                context_text = self.budget_manager.pack(
+                    retrieved_chunks, left_context, self.tokenizer
+                )
+            else:
+                context_text = left_context
+            rows.append(
+                self._prepare_teacher_forcing_ids(
+                    context_text,
+                    target,
+                    use_soft_prompt=use_soft_prompt,
+                )
+            )
+
+        valid_rows = [index for index, (_, target_ids, _) in enumerate(rows) if target_ids]
+        if not valid_rows:
+            return [0.0 for _ in rows]
+
+        prompt_offset = rows[valid_rows[0]][2]
+        max_text_len = max(
+            len(context_ids) + len(target_ids)
+            for context_ids, target_ids, _ in rows
+        )
+        pad_id = self.tokenizer.pad_token_id
+        if pad_id is None:
+            pad_id = self.tokenizer.eos_token_id or 0
+        input_ids = torch.full(
+            (len(rows), max_text_len),
+            int(pad_id),
+            dtype=torch.long,
+            device=self._device,
+        )
+        text_mask = torch.zeros_like(input_ids)
+        labels = torch.full_like(input_ids, -100)
+
+        for row_index, (context_ids, target_ids, row_prompt_offset) in enumerate(rows):
+            if not target_ids:
+                continue
+            ids = context_ids + target_ids
+            length = len(ids)
+            input_ids[row_index, :length] = torch.tensor(
+                ids, dtype=torch.long, device=self._device
+            )
+            text_mask[row_index, :length] = 1
+            target_start = len(context_ids)
+            labels[row_index, target_start:length] = torch.tensor(
+                target_ids, dtype=torch.long, device=self._device
+            )
+
+        with torch.no_grad():
+            text_embeds = self.model.get_input_embeddings()(input_ids)
+        if use_soft_prompt:
+            prompt_embeds = self.prompt_embeddings.unsqueeze(0).to(
+                dtype=text_embeds.dtype, device=self._device
+            ).expand(len(rows), -1, -1)
+            inputs_embeds = torch.cat([prompt_embeds, text_embeds], dim=1)
+            prompt_mask = torch.ones(
+                len(rows), self.num_prompt_tokens,
+                dtype=torch.long,
+                device=self._device,
+            )
+            attention_mask = torch.cat([prompt_mask, text_mask], dim=1)
+            padded_labels = torch.cat(
+                [
+                    torch.full(
+                        (len(rows), self.num_prompt_tokens),
+                        -100,
+                        dtype=torch.long,
+                        device=self._device,
+                    ),
+                    labels,
+                ],
+                dim=1,
+            )
+        else:
+            inputs_embeds = text_embeds
+            attention_mask = text_mask
+            padded_labels = labels
+
+        outputs = self.model(
+            inputs_embeds=inputs_embeds,
+            attention_mask=attention_mask,
+            use_cache=False,
+        )
+        logits = outputs.logits[:, :-1, :].float()
+        shifted_labels = padded_labels[:, 1:]
+        token_loss = torch.nn.functional.cross_entropy(
+            logits.reshape(-1, logits.shape[-1]),
+            shifted_labels.reshape(-1),
+            ignore_index=-100,
+            reduction="none",
+        ).view(shifted_labels.shape)
+        token_mask = shifted_labels.ne(-100)
+        totals = (token_loss * token_mask).sum(dim=1)
+        counts = token_mask.sum(dim=1).clamp_min(1)
+        values = (totals / counts).detach().cpu().tolist()
+        return [float(value) if target_ids else 0.0 for value, (_, target_ids, _) in zip(values, rows)]
+
     # ── Generation loss (for Phase 1 soft prompt warm-up) ─────────────────
 
     def generation_loss(
@@ -376,6 +540,54 @@ class SoftPromptLLM(nn.Module):
         )
 
     # ── Generate (inference / evaluation only) ────────────────────────────
+
+    @torch.no_grad()
+    def _greedy_with_cache(
+        self,
+        inputs_embeds: torch.Tensor,
+        attention_mask: torch.Tensor,
+        max_new_tokens: int,
+    ) -> Optional[List[int]]:
+        """Greedy decode with KV cache; return ``None`` if unsupported."""
+        try:
+            outputs = self.model(
+                inputs_embeds=inputs_embeds,
+                attention_mask=attention_mask,
+                use_cache=True,
+            )
+        except TypeError:
+            return None
+        past_key_values = getattr(outputs, "past_key_values", None)
+        if past_key_values is None:
+            return None
+
+        generated_ids: List[int] = []
+        next_id = outputs.logits[0, -1, :].argmax()
+        for _ in range(max_new_tokens):
+            if next_id.item() == self.tokenizer.eos_token_id:
+                break
+            generated_ids.append(next_id.item())
+            next_embed = self.model.get_input_embeddings()(
+                next_id.view(1, 1)
+            )
+            attention_mask = torch.cat(
+                [
+                    attention_mask,
+                    torch.ones(1, 1, dtype=torch.long, device=self._device),
+                ],
+                dim=1,
+            )
+            outputs = self.model(
+                inputs_embeds=next_embed,
+                attention_mask=attention_mask,
+                past_key_values=past_key_values,
+                use_cache=True,
+            )
+            past_key_values = getattr(outputs, "past_key_values", None)
+            if past_key_values is None:
+                return None
+            next_id = outputs.logits[0, -1, :].argmax()
+        return generated_ids
 
     @torch.no_grad()
     def generate(
@@ -412,6 +624,17 @@ class SoftPromptLLM(nn.Module):
             inputs_embeds = self.model.get_input_embeddings()(tokens.input_ids)
             attention_mask = tokens.attention_mask
 
+        cached_ids = self._greedy_with_cache(
+            inputs_embeds,
+            attention_mask,
+            max_new_tokens,
+        )
+        if cached_ids is not None:
+            return self.tokenizer.decode(cached_ids, skip_special_tokens=True)
+
+        # Compatibility fallback for custom causal-LM implementations that do
+        # not expose past_key_values. This path is slower but preserves the
+        # previous behavior.
         generated_ids: List[int] = []
         for _ in range(max_new_tokens):
             outputs = self.model(

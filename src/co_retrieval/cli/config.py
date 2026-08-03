@@ -18,14 +18,14 @@ class CoRetrievalCLIConfig:
     max_samples: int = 50
     top_k: int = 3
     num_epochs: int = 1
-    batch_size: int = 2
+    batch_size: int = 8
     completion_level: str = "mixed"
 
     # ── Mode ──────────────────────────────────────────────────────────────
     use_neural: bool = False
 
     # ── Neural: model names ───────────────────────────────────────────────
-    encoder_name: str = "jinaai/jina-code-embeddings-1.5b"
+    encoder_name: str = "microsoft/unixcoder-base"
     generator_name: str = "deepseek-ai/deepseek-coder-6.7b-base"
 
     # ── Neural: architecture ──────────────────────────────────────────────

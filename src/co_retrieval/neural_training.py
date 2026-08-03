@@ -1,6 +1,6 @@
 """Neural Co-Training pipeline — 7-phase training specification.
 
-Phase 0 — Build repo index (AST chunking → Jina embed → FAISS)
+Phase 0 — Build repo index (AST chunking → UniXcoder embed → FAISS)
 Phase 1 — Warm-up soft prompt (20% no-ctx, 50% oracle, 30% noisy; CE loss)
 Phase 2 — Build preference data (6 strategies, teacher-forcing NLL)
 Phase 3 — DPO-style train retriever; train gate from utility labels
@@ -86,7 +86,7 @@ class NeuralCoTrainingConfig:
     """Full configuration for the 7-phase training pipeline."""
 
     # Model names
-    encoder_name: str = "jinaai/jina-code-embeddings-1.5b"
+    encoder_name: str = "microsoft/unixcoder-base"
     generator_name: str = "deepseek-ai/deepseek-coder-6.7b-base"
 
     # Encoder
@@ -513,8 +513,9 @@ class NeuralCoTrainer:
             model_name=config.encoder_name,
             max_length=config.encoder_max_length,
             device=config.device,
+            encode_batch_size=config.batch_encode_size,
         )
-        self.retriever.save_initial_copy()  # C_jina baseline
+        self.retriever.save_initial_copy()  # frozen pretrained encoder baseline
 
         logger.info("Init NeuralGate…")
         self.gate = NeuralGate(
@@ -536,6 +537,9 @@ class NeuralCoTrainer:
             device=config.device,
             dtype=gen_dtype,
         )
+        assert_frozen = getattr(getattr(self, "generator", None), "assert_backbone_frozen", None)
+        if callable(assert_frozen):
+            assert_frozen()
         self.use_adapter = config.adapter_type == "soft_prompt"
         if config.adapter_type not in {"soft_prompt", "none"}:
             raise ValueError(
@@ -568,6 +572,10 @@ class NeuralCoTrainer:
         self.prompt_opt = AdamW(
             [self.generator.prompt_embeddings], lr=config.soft_prompt_lr
         )
+
+        if torch.cuda.is_available() and str(config.device).startswith("cuda"):
+            torch.backends.cuda.matmul.allow_tf32 = True
+            torch.backends.cudnn.allow_tf32 = True
 
         # Global chunks
         self._chunks: List[CodeChunk] = []
@@ -652,7 +660,7 @@ class NeuralCoTrainer:
     # ══════════════════════════════════════════════════════════════════════
 
     def phase0_build_index(self, chunks: Sequence[CodeChunk]) -> None:
-        """AST chunks → Jina embed → FAISS index."""
+        """AST chunks → UniXcoder embeddings → FAISS index."""
         self._chunks = list(chunks)
         self._chunk_map = {c.chunk_id: c for c in chunks}
 
@@ -974,7 +982,7 @@ class NeuralCoTrainer:
         )
 
         if self.retriever.initial_encoder is not None:
-            jina_ctx = self.retriever.retrieve_with_encoder(
+            frozen_ctx = self.retriever.retrieve_with_encoder(
                 retrieval_query,
                 candidates,
                 top_k=self.config.top_k,
@@ -982,21 +990,29 @@ class NeuralCoTrainer:
             )
             strategies.append(
                 ContextCandidate(
-                    "dense_frozen", jina_ctx, retrieval_query=retrieval_query
+                    "dense_frozen", frozen_ctx, retrieval_query=retrieval_query
                 )
             )
 
         current_ctx = current_context
+        ranked_current: Optional[List[CodeChunk]] = None
         if current_ctx is None:
-            current_ctx = self._retrieve_current(
-                retrieval_query, candidates, top_k=self.config.top_k
+            pool_k = max(self.config.top_k, self.config.preference_pool_top_k)
+            ranked_current = self._retrieve_current(
+                retrieval_query, candidates, top_k=pool_k
             )
+            current_ctx = ranked_current[: self.config.top_k]
         strategies.append(
             ContextCandidate("current", current_ctx, retrieval_query=retrieval_query)
         )
 
         if include_train_only:
-            hard_neg_ctx = self._mine_hard_negatives(sample, candidates, retrieval_query)
+            hard_neg_ctx = self._mine_hard_negatives(
+                sample,
+                candidates,
+                retrieval_query,
+                ranked_chunks=ranked_current,
+            )
             if hard_neg_ctx:
                 strategies.append(
                     ContextCandidate(
@@ -1124,6 +1140,9 @@ class NeuralCoTrainer:
         Context mixing: 20% no-ctx, 50% oracle, 30% noisy/retrieved.
         Freeze: LLM, Retriever, Gate.  Update: Soft Prompt only.
         """
+        assert_frozen = getattr(getattr(self, "generator", None), "assert_backbone_frozen", None)
+        if callable(assert_frozen):
+            assert_frozen()
         if not self.use_adapter:
             return {"phase1_loss": 0.0}
 
@@ -1206,6 +1225,9 @@ class NeuralCoTrainer:
 
         Strategies are ranked by context utility: NLL(stop) - NLL(context).
         """
+        assert_frozen = getattr(getattr(self, "generator", None), "assert_backbone_frozen", None)
+        if callable(assert_frozen):
+            assert_frozen()
         logger.info("Phase 2: Building preference data (%d samples)…", len(samples))
         pairs: List[PreferencePair] = []
         lipo_groups: List[LipoGroup] = []
@@ -1231,7 +1253,7 @@ class NeuralCoTrainer:
                 retrieval_query,
                 current_context=current_context,
             )
-            with torch.no_grad():
+            with torch.inference_mode():
                 scored = self.utility_scorer.score(
                     sample.left_context,
                     sample.target,
@@ -1366,13 +1388,14 @@ class NeuralCoTrainer:
         sample: TrainingSample,
         candidates: Sequence[CodeChunk],
         retrieval_query: str,
+        ranked_chunks: Optional[Sequence[CodeChunk]] = None,
     ) -> List[CodeChunk]:
         """Find chunks that the retriever ranks high but are not relevant."""
         target_symbols = identifier_set(sample.target)
         if not target_symbols:
             return []
 
-        top_ranked = self._retrieve_current(
+        top_ranked = list(ranked_chunks) if ranked_chunks is not None else self._retrieve_current(
             retrieval_query,
             candidates,
             top_k=self.config.preference_pool_top_k,
@@ -1405,6 +1428,9 @@ class NeuralCoTrainer:
         Freeze: LLM, Soft Prompt.  Update: Retriever, Gate.
         Default loss is LiPO (listwise); DPO (pairwise) is available as ablation.
         """
+        assert_frozen = getattr(getattr(self, "generator", None), "assert_backbone_frozen", None)
+        if callable(assert_frozen):
+            assert_frozen()
         use_lipo = self.config.retriever_loss == "lipo"
         lipo_groups = preference_data.lipo_groups
         pairs = preference_data.pairs
@@ -2344,6 +2370,8 @@ class NeuralCoTrainer:
             ),
             "oracle_used_for_eval": False,
             "inference_safe_strategy_check": True,
+            "generator_backbone_frozen": True,
+            "adapter_type": getattr(self.config, "adapter_type", "soft_prompt"),
             "num_samples": len(samples),
             "num_eval_samples": len(eval_samples or []),
             "num_chunks": len(all_chunks),

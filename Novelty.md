@@ -392,6 +392,11 @@ Code hiện tại hỗ trợ:
 
 Soft prompt là lựa chọn nhẹ, ít tham số, phù hợp để chứng minh generator-side adaptation. Tuy nhiên về mặt outperform, soft prompt có thể chưa đủ mạnh so với LoRA hoặc full fine-tuning.
 
+Để chạy trong giới hạn 24–32 giờ, launcher production mặc định dùng
+`adapter_type=none`: DeepSeek-Coder 6.7B vẫn là generator/teacher frozen và
+chỉ retriever/gate được cập nhật. `adapter_type=soft_prompt` là nhánh ablation
+tùy chọn, không được ngầm coi là đã chạy trong kết quả fast run.
+
 Vì vậy claim hiện tại nên là:
 
 > lightweight generator adaptation through soft prompt.
@@ -403,9 +408,9 @@ Không nên claim đã có LoRA nếu code chưa triển khai. LoRA nên là hư
 Pipeline hiện tại:
 
 ```text
-Phase 0: build AST chunk index
-Phase 1: warm up soft prompt with mixed no-context/oracle/noisy context
-Phase 2: build utility-ranked preference data → LipoGroups + GateExamples
+Phase 0: register AST chunks (global embedding index is optional)
+Phase 1: optional warm up soft prompt with mixed no-context/oracle/noisy context
+Phase 2: build utility-ranked preference data → LiPOGroups + GateExamples
 Phase 3: train retriever with LiPO (default) or DPO (ablation)
          train gate with utility labels (BCE, independent of retriever loss)
 Phase 4: refresh index after retriever update
@@ -419,6 +424,8 @@ Phase 6: evaluate held-out samples
 - retriever và gate không học từ static labels;
 - index được refresh sau retriever update;
 - **LiPO không cần refresh reference encoder**, giảm overhead so với DPO.
+- Phase 2 scores all strategies for one sample in a single padded
+  teacher-forcing batch; this changes execution cost, not the utility definition.
 
 Điểm còn yếu:
 
@@ -429,6 +436,11 @@ Sequential baselines đã được định nghĩa để kiểm tra co-training:
 
 - `sequential_adapter_first`: train adapter đủ tổng prompt steps, freeze adapter, build preference data đúng một lần, train retriever/gate đủ tổng LiPO steps, refresh index một lần.
 - `sequential_retriever_first`: build preference data với adapter disabled đúng một lần, train retriever/gate đủ tổng LiPO steps, freeze retriever/gate, train adapter đủ tổng prompt steps bằng contexts từ retriever đã train, refresh index một lần.
+
+Fast production path sets `adapter_type=none`, so Phase 1 becomes a no-op and
+the effective train path is Phase 0 registration → one Phase 2 preference build
+→ Phase 3 LiPO/gate training. The DeepSeek-Coder backbone remains frozen in all
+paths; only the optional soft-prompt tensor can receive gradients.
 
 Hai sequential baselines không được refresh preference data nhiều vòng; nếu refresh nhiều vòng thì baseline biến thành alternating trá hình. Paper phải ghi rõ cùng data, cùng model, cùng tổng prompt-gradient steps và cùng tổng LiPO steps.
 

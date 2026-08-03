@@ -13,7 +13,13 @@ OUTPUT_ROOT="${OUTPUT_ROOT:-${WORK_DIR}/results/icar_lipo_deepseek_6p7b_a100_80g
 TRAIN_DATASETS_DEFAULT="${DATA_DIR}/github_repos/python/train.parquet,${DATA_DIR}/github_repos/java/train.parquet"
 TRAIN_DATASETS="${TRAIN_DATASETS:-${TRAIN_DATASET:-${TRAIN_DATASETS_DEFAULT}}}"
 GENERATOR_NAME="${GENERATOR_NAME:-deepseek-ai/deepseek-coder-6.7b-base}"
-EXPERIMENT_MODE="${EXPERIMENT_MODE:-intent_main}"
+ENCODER_NAME="${ENCODER_NAME:-microsoft/unixcoder-base}"
+# Retriever-first with no optional adapter is the wall-clock-safe default: it
+# keeps the generator frozen and builds the expensive preference pool once.
+# Set EXPERIMENT_MODE=intent_main and ADAPTER_TYPE=soft_prompt explicitly for
+# the full alternating paper run.
+EXPERIMENT_MODE="${EXPERIMENT_MODE:-sequential_retriever_first}"
+ADAPTER_TYPE="${ADAPTER_TYPE:-none}"
 MAX_TRAIN_SAMPLES="${MAX_TRAIN_SAMPLES:-0}"
 COMPLETION_LEVEL="${COMPLETION_LEVEL:-mixed}"
 TRAIN_EPOCHS="${TRAIN_EPOCHS:-${NUM_EPOCHS:-10}}"
@@ -21,20 +27,22 @@ EPOCH_BUDGET_MODE="${EPOCH_BUDGET_MODE:-1}"
 WARMUP_STEPS="${WARMUP_STEPS:-200}"
 STEPS_PER_ROUND_PROMPT="${STEPS_PER_ROUND_PROMPT:-100}"
 STEPS_PER_ROUND_RETRIEVER="${STEPS_PER_ROUND_RETRIEVER:-200}"
-PREFERENCE_POOL_TOP_K="${PREFERENCE_POOL_TOP_K:-20}"
+PREFERENCE_POOL_TOP_K="${PREFERENCE_POOL_TOP_K:-5}"
 MAX_PAIRS_PER_SAMPLE="${MAX_PAIRS_PER_SAMPLE:-4}"
-TRAIN_BATCH_SIZE="${TRAIN_BATCH_SIZE:-4}"
-BATCH_ENCODE_SIZE="${BATCH_ENCODE_SIZE:-64}"
+TRAIN_BATCH_SIZE="${TRAIN_BATCH_SIZE:-8}"
+BATCH_ENCODE_SIZE="${BATCH_ENCODE_SIZE:-128}"
 EVAL_BATCH_SIZE="${EVAL_BATCH_SIZE:-2}"
 BUILD_TRAIN_INDEX="${BUILD_TRAIN_INDEX:-0}"
 REFRESH_TRAIN_INDEX="${REFRESH_TRAIN_INDEX:-0}"
 EVAL_MAX_SAMPLES="${EVAL_MAX_SAMPLES:-0}"
+INCLUDE_ANALYSIS="${INCLUDE_ANALYSIS:-0}"
+LEAVE_ONE_OUT_ANALYSIS_SAMPLES="${LEAVE_ONE_OUT_ANALYSIS_SAMPLES:-0}"
 
 CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
 RUN_DOWNLOAD="${RUN_DOWNLOAD:-0}"
 RUN_TRAIN="${RUN_TRAIN:-1}"
 RUN_EVAL="${RUN_EVAL:-1}"
-INCLUDE_POLICY_VARIANTS="${INCLUDE_POLICY_VARIANTS:-1}"
+INCLUDE_POLICY_VARIANTS="${INCLUDE_POLICY_VARIANTS:-0}"
 
 export CUDA_VISIBLE_DEVICES
 export PYTHONPATH="${SRC_DIR}:${PYTHONPATH:-}"
@@ -49,6 +57,10 @@ if [[ "${RUN_DOWNLOAD}" == "1" ]]; then
 fi
 
 if [[ "${RUN_TRAIN}" == "1" ]]; then
+  if [[ "${EXPERIMENT_MODE}" == "intent_main" && "${EPOCH_BUDGET_MODE}" == "1" && "${TRAIN_EPOCHS}" -gt 1 ]]; then
+    echo "WARNING: intent_main repeats generator-heavy Phase 2 ${TRAIN_EPOCHS} times."
+    echo "Use EXPERIMENT_MODE=sequential_retriever_first ADAPTER_TYPE=none for the 24-32 hour run." >&2
+  fi
   TRAIN_BUDGET_ARGS=()
   if [[ "${EPOCH_BUDGET_MODE}" == "1" ]]; then
     TRAIN_BUDGET_ARGS+=(--epoch-budget-mode)
@@ -77,9 +89,12 @@ if [[ "${RUN_TRAIN}" == "1" ]]; then
   fi
 
   echo "Training ${EXPERIMENT_MODE} for TRAIN_EPOCHS=${TRAIN_EPOCHS} (epoch_budget_mode=${EPOCH_BUDGET_MODE})"
+  echo "Encoder: ${ENCODER_NAME}"
+  echo "Generator: ${GENERATOR_NAME}"
+  echo "Generator backbone: frozen; adapter: ${ADAPTER_TYPE}"
   echo "Completion level: ${COMPLETION_LEVEL}"
   echo "Preference pool top-k: ${PREFERENCE_POOL_TOP_K}; max pairs/sample: ${MAX_PAIRS_PER_SAMPLE}"
-  echo "Batch sizes: train=${TRAIN_BATCH_SIZE}, encode=${BATCH_ENCODE_SIZE}, eval=${EVAL_BATCH_SIZE}"
+  echo "Batch sizes: data_loader=${TRAIN_BATCH_SIZE}, encoder_microbatch=${BATCH_ENCODE_SIZE}, eval_loader=${EVAL_BATCH_SIZE}"
   echo "Train global index: build=${BUILD_TRAIN_INDEX}, refresh=${REFRESH_TRAIN_INDEX}"
   echo "Train datasets: ${TRAIN_DATASETS}"
 
@@ -90,12 +105,12 @@ if [[ "${RUN_TRAIN}" == "1" ]]; then
     --output-dir "${OUTPUT_ROOT}/train" \
     --checkpoint-dir "${CHECKPOINT_DIR}" \
     --log-dir "${LOG_DIR}/train" \
-    --encoder-name jinaai/jina-code-embeddings-1.5b \
+    --encoder-name "${ENCODER_NAME}" \
     --generator-name "${GENERATOR_NAME}" \
     --experiment-mode "${EXPERIMENT_MODE}" \
     --intent-mode static \
     --gate-mode learned \
-    --adapter-type soft_prompt \
+    --adapter-type "${ADAPTER_TYPE}" \
     --retriever-loss lipo \
     --lipo-tau 1.0 \
     --num-epochs "${TRAIN_EPOCHS}" \
@@ -143,6 +158,9 @@ if [[ "${RUN_EVAL}" == "1" ]]; then
   EVAL_EXTRA_ARGS=()
   if [[ "${INCLUDE_POLICY_VARIANTS}" == "1" ]]; then
     EVAL_EXTRA_ARGS+=(--include-policy-variants)
+  fi
+  if [[ "${INCLUDE_ANALYSIS}" != "1" ]]; then
+    EVAL_EXTRA_ARGS+=(--no-analysis)
   fi
 
   declare -a EVAL_DATASETS_DEFAULT=(
@@ -193,7 +211,7 @@ if [[ "${RUN_EVAL}" == "1" ]]; then
       --batch-size "${EVAL_BATCH_SIZE}" \
       --batch-encode-size "${BATCH_ENCODE_SIZE}" \
       --max-new-tokens 128 \
-      --leave-one-out-analysis-samples 25 \
+      --leave-one-out-analysis-samples "${LEAVE_ONE_OUT_ANALYSIS_SAMPLES}" \
       "${EVAL_EXTRA_ARGS[@]}" \
       --generator-dtype bfloat16 \
       --device cuda \

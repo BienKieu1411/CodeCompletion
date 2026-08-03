@@ -409,7 +409,7 @@ def _train_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
         )
 
     neural_cfg = NeuralCoTrainingConfig(
-        encoder_name=cfg.get("encoder_name", "jinaai/jina-code-embeddings-1.5b"),
+        encoder_name=cfg.get("encoder_name", "microsoft/unixcoder-base"),
         generator_name=cfg.get(
             "generator_name", "deepseek-ai/deepseek-coder-6.7b-base"
         ),
@@ -583,6 +583,8 @@ def _evaluate_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
         "num_chunks": len(chunks),
         "oracle_used_for_eval": False,
         "inference_safe_strategy_check": True,
+        "generator_backbone_frozen": True,
+        "adapter_type": neural_cfg.adapter_type,
     }
     result_path = os.path.join(output_dir, "result.json")
     with open(result_path, "w", encoding="utf-8") as f:
@@ -598,7 +600,12 @@ def train(config: Dict[str, Any] | None = None) -> Dict[str, Any]:
     use_neural = bool(cfg.get("use_neural", False))
 
     if use_neural:
-        logger.info("Starting NEURAL mode training (7-phase pipeline)")
+        logger.info(
+            "Starting NEURAL mode training (schedule=%s, adapter=%s, "
+            "generator frozen)",
+            cfg.get("experiment_mode", "intent_main"),
+            cfg.get("adapter_type", "soft_prompt"),
+        )
         return _train_neural(cfg)
     else:
         logger.info("Starting PROXY mode training (no GPU)")

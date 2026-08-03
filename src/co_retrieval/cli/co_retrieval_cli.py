@@ -206,7 +206,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_train.add_argument("--checkpoint-dir", default="checkpoints/co_retrieval")
     p_train.add_argument("--log-dir", default="logs/co_retrieval")
     p_train.add_argument("--num-epochs", type=int, default=1)
-    p_train.add_argument("--batch-size", type=int, default=2)
+    p_train.add_argument("--batch-size", type=int, default=8)
     p_train.add_argument("--top-k", type=int, default=3)
     p_train.add_argument("--dpo-beta", type=float, default=0.1)
     p_train.add_argument("--retriever-lr", type=float, default=None)
@@ -227,7 +227,7 @@ def build_parser() -> argparse.ArgumentParser:
     # Mode selection
     p_train.add_argument(
         "--use-neural", action="store_true", default=False,
-        help="Use neural pipeline (7-phase, requires GPU) instead of proxy mode",
+        help="Use neural retrieval/generation pipeline (requires GPU) instead of proxy mode",
     )
 
     # Proxy-only args
@@ -235,7 +235,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_train.add_argument("--gate-threshold", type=float, default=0.5)
 
     # Neural-only args
-    p_train.add_argument("--encoder-name", default="jinaai/jina-code-embeddings-1.5b")
+    p_train.add_argument("--encoder-name", default="microsoft/unixcoder-base")
     p_train.add_argument(
         "--generator-name", default="deepseek-ai/deepseek-coder-6.7b-base"
     )

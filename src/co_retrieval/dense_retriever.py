@@ -2,7 +2,7 @@
 
 Architecture
 ------------
-* **Encoder**: ``jinaai/jina-code-embeddings-1.5b`` (or any HF encoder) —
+* **Encoder**: ``microsoft/unixcoder-base`` (or any HF encoder) —
   ALL parameters trainable (full fine-tune).
 * **Scoring**: cosine similarity between query and chunk embeddings.
 * **DPO score**:
@@ -58,7 +58,7 @@ class DenseRetriever(nn.Module):
     Parameters
     ----------
     model_name : str
-        HuggingFace encoder model (e.g. ``jinaai/jina-code-embeddings-1.5b``).
+        HuggingFace encoder model (e.g. ``microsoft/unixcoder-base``).
     max_length : int
         Maximum token length for the encoder.
     device : str
@@ -67,19 +67,27 @@ class DenseRetriever(nn.Module):
 
     def __init__(
         self,
-        model_name: str = "jinaai/jina-code-embeddings-1.5b",
+        model_name: str = "microsoft/unixcoder-base",
         max_length: int = 512,
         device: str = "cuda",
+        encode_batch_size: int = 32,
     ) -> None:
         super().__init__()
         self.model_name = model_name
         self.max_length = max_length
         self._device = device
+        self.encode_batch_size = max(1, int(encode_batch_size))
+        self._load_dtype = (
+            torch.bfloat16
+            if str(device).startswith("cuda") and torch.cuda.is_available()
+            else None
+        )
 
         # Full fine-tune encoder
-        self.encoder = AutoModel.from_pretrained(
-            model_name, trust_remote_code=True
-        )
+        load_kwargs = {"trust_remote_code": True}
+        if self._load_dtype is not None:
+            load_kwargs["torch_dtype"] = self._load_dtype
+        self.encoder = AutoModel.from_pretrained(model_name, **load_kwargs)
         self.tokenizer = AutoTokenizer.from_pretrained(
             model_name, trust_remote_code=True
         )
@@ -88,10 +96,14 @@ class DenseRetriever(nn.Module):
         # Reference copy for DPO (frozen snapshot)
         self._reference_encoder: Optional[nn.Module] = None
 
-        # Frozen initial copy for C_jina baseline strategy
+        # Frozen initial copy for the dense_frozen baseline strategy
         self._initial_encoder: Optional[nn.Module] = None
 
         self.to(device)
+
+    def _configured_encode_batch_size(self) -> int:
+        """Keep tiny test doubles/backward-compatible subclasses working."""
+        return max(1, int(getattr(self, "encode_batch_size", 32)))
 
     # ── Encoding ──────────────────────────────────────────────────────────
 
@@ -290,7 +302,9 @@ class DenseRetriever(nn.Module):
             return gate_log_stop
 
         q_vec = self.encode_query(query_text)
-        c_vecs = self.encode_chunks(context_chunks)
+        c_vecs = self.encode_chunks(
+            context_chunks, batch_size=self._configured_encode_batch_size()
+        )
         r_score = self.retrieval_score(q_vec, c_vecs)
         return gate_log_continue + r_score
 
@@ -342,13 +356,17 @@ class DenseRetriever(nn.Module):
         if chosen_is_stop:
             s_chosen = gate_log_stop
         else:
-            c_chosen_vecs = self.encode_chunks(chosen_chunks)
+            c_chosen_vecs = self.encode_chunks(
+                chosen_chunks, batch_size=self._configured_encode_batch_size()
+            )
             s_chosen = gate_log_continue + self.retrieval_score(q_vec, c_chosen_vecs)
 
         if rejected_is_stop:
             s_rejected = gate_log_stop
         else:
-            c_rejected_vecs = self.encode_chunks(rejected_chunks)
+            c_rejected_vecs = self.encode_chunks(
+                rejected_chunks, batch_size=self._configured_encode_batch_size()
+            )
             s_rejected = gate_log_continue + self.retrieval_score(q_vec, c_rejected_vecs)
 
         # Reference policy scores (frozen)
@@ -365,7 +383,9 @@ class DenseRetriever(nn.Module):
                 s_ref_chosen = ref_gate_log_stop
             else:
                 ref_c_chosen = self.encode_chunks(
-                    chosen_chunks, encoder=self._reference_encoder
+                    chosen_chunks,
+                    batch_size=self._configured_encode_batch_size(),
+                    encoder=self._reference_encoder,
                 ) if self._reference_encoder else c_chosen_vecs.detach()
                 s_ref_chosen = ref_gate_log_continue + self.retrieval_score(ref_q_vec, ref_c_chosen)
 
@@ -373,7 +393,9 @@ class DenseRetriever(nn.Module):
                 s_ref_rejected = ref_gate_log_stop
             else:
                 ref_c_rejected = self.encode_chunks(
-                    rejected_chunks, encoder=self._reference_encoder
+                    rejected_chunks,
+                    batch_size=self._configured_encode_batch_size(),
+                    encoder=self._reference_encoder,
                 ) if self._reference_encoder else c_rejected_vecs.detach()
                 s_ref_rejected = ref_gate_log_continue + self.retrieval_score(ref_q_vec, ref_c_rejected)
 
@@ -435,14 +457,37 @@ class DenseRetriever(nn.Module):
         )
         target_dist = F.softmax(utility_tensor / tau, dim=-1)
 
-        # Retriever score distribution
+        # Retriever score distribution. Candidate strategies frequently share
+        # the same top-k chunks (current/oracle/hard-neg). Encode each unique
+        # chunk once per LiPO step instead of running the encoder once per
+        # strategy; this is a large speedup without changing the objective.
+        unique_chunks: List[CodeChunk] = []
+        seen_chunk_ids: set[str] = set()
+        for chunks in candidate_chunks_list:
+            for chunk in chunks:
+                if chunk.chunk_id not in seen_chunk_ids:
+                    seen_chunk_ids.add(chunk.chunk_id)
+                    unique_chunks.append(chunk)
+
+        encoded_by_id: Dict[str, torch.Tensor] = {}
+        if unique_chunks:
+            unique_vecs = self.encode_chunks(
+                unique_chunks, batch_size=self._configured_encode_batch_size()
+            )
+            encoded_by_id = {
+                chunk.chunk_id: unique_vecs[index]
+                for index, chunk in enumerate(unique_chunks)
+            }
+
         scores: List[torch.Tensor] = []
         for chunks in candidate_chunks_list:
             if not chunks:
                 # Stop strategy: score = 0
                 scores.append(torch.tensor(0.0, device=self._device))
             else:
-                c_vecs = self.encode_chunks(chunks)
+                c_vecs = torch.stack(
+                    [encoded_by_id[chunk.chunk_id] for chunk in chunks]
+                )
                 scores.append(self.retrieval_score(q_vec, c_vecs))
 
         score_tensor = torch.stack(scores)
@@ -466,7 +511,7 @@ class DenseRetriever(nn.Module):
         logger.info("DenseRetriever: reference snapshot updated")
 
     def save_initial_copy(self) -> None:
-        """Save the pretrained encoder as frozen baseline (for C_jina strategy)."""
+        """Save the pretrained encoder as the frozen baseline strategy."""
         self._initial_encoder = copy.deepcopy(self.encoder)
         self._initial_encoder.eval()
         for p in self._initial_encoder.parameters():
@@ -489,9 +534,10 @@ class DenseRetriever(nn.Module):
     def load_pretrained(self, path: str) -> None:
         import os
         encoder_path = os.path.join(path, "encoder")
-        self.encoder = AutoModel.from_pretrained(
-            encoder_path, trust_remote_code=True
-        )
+        load_kwargs = {"trust_remote_code": True}
+        if self._load_dtype is not None:
+            load_kwargs["torch_dtype"] = self._load_dtype
+        self.encoder = AutoModel.from_pretrained(encoder_path, **load_kwargs)
         self.tokenizer = AutoTokenizer.from_pretrained(
             encoder_path, trust_remote_code=True
         )

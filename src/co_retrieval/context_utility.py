@@ -57,17 +57,43 @@ class ContextUtilityScorer:
         # The stop baseline must use the same generator/adapter state as
         # retrieved candidates. Otherwise utility would conflate "retrieval
         # helped" with "the adapter helped", producing oracle-like gate labels.
-        stop_nll = self._nll(
-            left_context,
-            target,
-            chunks=None,
-            use_soft_prompt=use_adapter,
-        )
+        # SoftPromptLLM batches all strategy candidates on the frozen generator
+        # when available; lightweight test doubles keep the scalar fallback.
+        batch_scorer = getattr(self.generator, "teacher_forcing_nll_batch", None)
+        if callable(batch_scorer):
+            nlls = batch_scorer(
+                left_context,
+                target,
+                [None if candidate.is_stop else candidate.chunks for candidate in candidates],
+                use_soft_prompt=use_adapter,
+            )
+            stop_indices = [
+                index for index, candidate in enumerate(candidates) if candidate.is_stop
+            ]
+            if stop_indices:
+                stop_nll = float(nlls[stop_indices[0]])
+            else:
+                stop_nll = self._nll(
+                    left_context,
+                    target,
+                    chunks=None,
+                    use_soft_prompt=use_adapter,
+                )
+        else:
+            stop_nll = self._nll(
+                left_context,
+                target,
+                chunks=None,
+                use_soft_prompt=use_adapter,
+            )
         scores: list[ContextScore] = []
-        for candidate in candidates:
+        for index, candidate in enumerate(candidates):
             if candidate.is_stop:
                 nll = stop_nll
                 utility = 0.0
+            elif callable(batch_scorer):
+                nll = float(nlls[index])
+                utility = stop_nll - nll
             else:
                 nll = self._nll(
                     left_context,
