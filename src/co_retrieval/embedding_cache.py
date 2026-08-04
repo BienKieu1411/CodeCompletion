@@ -46,10 +46,13 @@ def _l2_normalize(vectors: np.ndarray) -> np.ndarray:
 
 
 def _chunks_fingerprint(chunks: Sequence[CodeChunk]) -> str:
-    """Deterministic hash over chunk IDs for cache invalidation."""
+    """Deterministic hash over chunk identity and retrieval content."""
     hasher = hashlib.sha256()
     for chunk in chunks:
         hasher.update(chunk.chunk_id.encode("utf-8"))
+        hasher.update(b"\0")
+        hasher.update(chunk.retrieval_text().encode("utf-8"))
+        hasher.update(b"\0")
     return hasher.hexdigest()[:16]
 
 
@@ -104,9 +107,18 @@ class EmbeddingCache:
         batch_size
             How many chunks to encode in a single call to *encode_fn*.
         """
+        if batch_size <= 0:
+            raise ValueError("batch_size must be positive")
+
         texts = [chunk.retrieval_text() for chunk in chunks]
         self.chunk_ids = [chunk.chunk_id for chunk in chunks]
         self.chunk_map = {cid: idx for idx, cid in enumerate(self.chunk_ids)}
+
+        if not texts:
+            self._vectors = None
+            self._fingerprint = _chunks_fingerprint(chunks)
+            self._build_faiss_index()
+            return
 
         all_vecs: List[np.ndarray] = []
         total = len(texts)
@@ -162,7 +174,9 @@ class EmbeddingCache:
             return []
 
         query = np.asarray(query_vec, dtype=np.float32).reshape(1, -1)
-        k = min(top_k, len(self.chunk_ids))
+        k = min(max(0, int(top_k)), len(self.chunk_ids))
+        if k == 0:
+            return []
 
         if self._faiss_index is not None:
             scores, indices = self._faiss_index.search(query, k)  # type: ignore[union-attr]
@@ -231,9 +245,27 @@ class EmbeddingCache:
             )
             return False
 
-        self.chunk_ids = meta["chunk_ids"]
+        chunk_ids = meta.get("chunk_ids")
+        if not isinstance(chunk_ids, list) or not all(
+            isinstance(chunk_id, str) for chunk_id in chunk_ids
+        ):
+            logger.warning("EmbeddingCache: invalid chunk_ids metadata in %s", path)
+            return False
+
+        vectors = np.load(str(vec_path), allow_pickle=False).astype(np.float32)
+        if vectors.ndim != 2 or vectors.shape != (len(chunk_ids), self.dim):
+            logger.warning(
+                "EmbeddingCache: invalid vector shape %s for %d ids (expected (%d, %d))",
+                vectors.shape,
+                len(chunk_ids),
+                len(chunk_ids),
+                self.dim,
+            )
+            return False
+
+        self.chunk_ids = chunk_ids
         self.chunk_map = {cid: idx for idx, cid in enumerate(self.chunk_ids)}
-        self._vectors = np.load(str(vec_path)).astype(np.float32)
+        self._vectors = vectors
         self._fingerprint = meta.get("fingerprint")
         self._build_faiss_index()
         logger.info(
@@ -246,6 +278,14 @@ class EmbeddingCache:
         if self._fingerprint is None:
             return False
         return self._fingerprint == _chunks_fingerprint(chunks)
+
+    def clear(self) -> None:
+        """Discard vectors and metadata while retaining the configured dimension."""
+        self.chunk_ids = []
+        self.chunk_map = {}
+        self._vectors = None
+        self._faiss_index = None
+        self._fingerprint = None
 
     # ── Properties ────────────────────────────────────────────────────────
 

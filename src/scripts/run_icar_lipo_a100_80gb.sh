@@ -30,13 +30,14 @@ STEPS_PER_ROUND_RETRIEVER="${STEPS_PER_ROUND_RETRIEVER:-200}"
 PREFERENCE_POOL_TOP_K="${PREFERENCE_POOL_TOP_K:-5}"
 MAX_PAIRS_PER_SAMPLE="${MAX_PAIRS_PER_SAMPLE:-4}"
 TRAIN_BATCH_SIZE="${TRAIN_BATCH_SIZE:-8}"
-BATCH_ENCODE_SIZE="${BATCH_ENCODE_SIZE:-128}"
+BATCH_ENCODE_SIZE="${BATCH_ENCODE_SIZE:-64}"
 EVAL_BATCH_SIZE="${EVAL_BATCH_SIZE:-2}"
 BUILD_TRAIN_INDEX="${BUILD_TRAIN_INDEX:-0}"
 REFRESH_TRAIN_INDEX="${REFRESH_TRAIN_INDEX:-0}"
 EVAL_MAX_SAMPLES="${EVAL_MAX_SAMPLES:-0}"
 INCLUDE_ANALYSIS="${INCLUDE_ANALYSIS:-0}"
 LEAVE_ONE_OUT_ANALYSIS_SAMPLES="${LEAVE_ONE_OUT_ANALYSIS_SAMPLES:-0}"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
 
 CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
 RUN_DOWNLOAD="${RUN_DOWNLOAD:-0}"
@@ -49,6 +50,11 @@ export PYTHONPATH="${SRC_DIR}:${PYTHONPATH:-}"
 export TOKENIZERS_PARALLELISM="${TOKENIZERS_PARALLELISM:-false}"
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True,max_split_size_mb:256}"
 export HF_HUB_ENABLE_HF_TRANSFER="${HF_HUB_ENABLE_HF_TRANSFER:-0}"
+
+if ! command -v "${PYTHON_BIN}" >/dev/null 2>&1; then
+  echo "Python executable not found: ${PYTHON_BIN}" >&2
+  exit 1
+fi
 
 mkdir -p "${CHECKPOINT_DIR}" "${LOG_DIR}" "${OUTPUT_ROOT}"
 
@@ -98,7 +104,7 @@ if [[ "${RUN_TRAIN}" == "1" ]]; then
   echo "Train global index: build=${BUILD_TRAIN_INDEX}, refresh=${REFRESH_TRAIN_INDEX}"
   echo "Train datasets: ${TRAIN_DATASETS}"
 
-  python3 -m co_retrieval.cli.co_retrieval_cli train \
+  "${PYTHON_BIN}" -m co_retrieval.cli.co_retrieval_cli train \
     --use-neural \
     --skip-train-eval \
     --dataset-path "${TRAIN_DATASETS}" \
@@ -201,7 +207,7 @@ if [[ "${RUN_EVAL}" == "1" ]]; then
     out_dir="${OUTPUT_ROOT}/eval/${dataset_name}"
     mkdir -p "${out_dir}" "${LOG_DIR}/eval"
 
-    python3 -m co_retrieval.cli.co_retrieval_cli evaluate \
+    "${PYTHON_BIN}" -m co_retrieval.cli.co_retrieval_cli evaluate \
       --dataset-path "${dataset_path}" \
       --checkpoint-dir "${CHECKPOINT_DIR}" \
       --output-dir "${out_dir}" \

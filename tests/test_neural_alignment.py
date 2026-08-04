@@ -220,6 +220,62 @@ def test_soft_prompt_generation_reserves_new_token_headroom():
     assert seen["max_text_tokens"] == 11
 
 
+def test_teacher_forcing_nll_batch_limits_generator_candidate_microbatches():
+    class TinyTokenizer:
+        backend_tokenizer = None
+        pad_token_id = 0
+        eos_token_id = 0
+
+        def encode(self, text, add_special_tokens=False):
+            return [1] * max(1, len(text.split()))
+
+        def decode(self, ids, skip_special_tokens=True):
+            return "x " * len(ids)
+
+    class TinyEmbeddings:
+        def __call__(self, input_ids):
+            return torch.zeros(*input_ids.shape, 2)
+
+    class TinyModel:
+        def __init__(self):
+            self.batch_sizes = []
+            self.embeddings = TinyEmbeddings()
+
+        def get_input_embeddings(self):
+            return self.embeddings
+
+        def __call__(self, inputs_embeds, attention_mask, use_cache=False):
+            self.batch_sizes.append(inputs_embeds.shape[0])
+            logits = torch.zeros(
+                inputs_embeds.shape[0], inputs_embeds.shape[1], 4
+            )
+            logits[..., 1] = 1.0
+            return SimpleNamespace(logits=logits)
+
+    model = SoftPromptLLM.__new__(SoftPromptLLM)
+    model.num_prompt_tokens = 1
+    model.budget_manager = TokenBudgetManager(
+        max_tokens=20,
+        num_prompt_tokens=1,
+        generation_headroom=2,
+        left_context_max_tokens=5,
+    )
+    model._device = "cpu"
+    model.tokenizer = TinyTokenizer()
+    model.model = TinyModel()
+    model.prompt_embeddings = torch.zeros(1, 2)
+    chunk = _chunk("helper")
+
+    values = model.teacher_forcing_nll_batch(
+        "left context",
+        "target",
+        [None, [chunk], [chunk], [chunk], [chunk]],
+    )
+
+    assert len(values) == 5
+    assert model.model.batch_sizes == [2, 2, 1]
+
+
 def test_evaluate_to_files_preserves_task_id_and_writes_aligncoder_files(tmp_path):
     class FileEvalGenerator:
         def generate(self, *args, **kwargs):
@@ -307,6 +363,48 @@ def test_current_retrieval_respects_explicit_zero_top_k():
     trainer.retriever = FakeRetriever()
 
     assert trainer._retrieve_current("query", chunks, top_k=0) == []
+
+
+def test_embedding_cache_rejects_zero_top_k_and_detects_content_changes():
+    chunk = _chunk("alpha")
+    cache = EmbeddingCache(dim=2, use_faiss=False)
+    cache.build_from_chunks(
+        [chunk], lambda texts: np.asarray([[1.0, 0.0]], dtype=np.float32)
+    )
+
+    assert cache.search(np.asarray([1.0, 0.0], dtype=np.float32), top_k=0) == []
+    changed = CodeChunk(
+        file_path=chunk.file_path,
+        start_line=chunk.start_line,
+        end_line=chunk.end_line,
+        chunk_type=chunk.chunk_type,
+        text="def alpha(): return 1",
+        defined_symbols=chunk.defined_symbols,
+    )
+    assert not cache.is_valid_for([changed])
+
+
+def test_phase4_clears_stale_global_index_when_refresh_is_disabled():
+    chunks = [_chunk("alpha")]
+    cache = EmbeddingCache(dim=2, use_faiss=False)
+    cache.build_from_chunks(
+        chunks, lambda texts: np.asarray([[1.0, 0.0]], dtype=np.float32)
+    )
+    trainer = NeuralCoTrainer.__new__(NeuralCoTrainer)
+    trainer.config = SimpleNamespace(refresh_train_index=False)
+    trainer._chunks = chunks
+    trainer.embedding_cache = cache
+    trainer.phase4_refresh_index()
+
+    assert trainer.embedding_cache.is_empty
+
+
+def test_retrieve_with_encoder_returns_empty_for_nonpositive_top_k():
+    retriever = DenseRetriever.__new__(DenseRetriever)
+    chunks = [_chunk("alpha")]
+
+    assert retriever.retrieve_with_encoder("query", chunks, top_k=0) == []
+    assert retriever.retrieve_with_encoder("query", chunks, top_k=-1) == []
 
 
 def test_inference_strategy_whitelist_rejects_target_aware_and_unknown_modes():
@@ -413,6 +511,34 @@ def test_gate_training_features_use_inference_available_gate_query():
 
     assert data.gate_examples[0].query == "cheap gate query"
     assert seen_queries == ["cheap gate query"]
+
+
+def test_load_checkpoint_rebuilds_retriever_optimizer_after_reload(tmp_path):
+    old_parameter = nn.Parameter(torch.tensor(1.0))
+    new_parameter = nn.Parameter(torch.tensor(2.0))
+
+    class ReloadableRetriever:
+        def __init__(self):
+            self.parameter = old_parameter
+
+        def parameters(self):
+            return [self.parameter]
+
+        def load_pretrained(self, path):
+            self.parameter = new_parameter
+
+    trainer = NeuralCoTrainer.__new__(NeuralCoTrainer)
+    trainer.config = SimpleNamespace(device="cpu", retriever_lr=0.123)
+    trainer.retriever = ReloadableRetriever()
+    trainer.retriever_opt = torch.optim.AdamW(
+        trainer.retriever.parameters(), lr=0.456
+    )
+
+    trainer.load_checkpoint(str(tmp_path))
+
+    params = trainer.retriever_opt.param_groups[0]["params"]
+    assert params == [new_parameter]
+    assert trainer.retriever_opt.param_groups[0]["lr"] == pytest.approx(0.123)
 
 
 def test_gate_adjusted_utility_penalizes_context_cost_for_stop_label():

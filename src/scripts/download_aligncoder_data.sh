@@ -6,13 +6,14 @@ SRC_DIR="${SRC_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 WORK_DIR="${WORK_DIR:-$(pwd)}"
 DATA_DIR="${DATA_DIR:-${WORK_DIR}/data}"
 HF_DATASET_REPO="${HF_DATASET_REPO:-AlignCoder/Data4AlignCoder}"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
 
 mkdir -p "${DATA_DIR}"
 
 export PYTHONPATH="${SRC_DIR}:${PYTHONPATH:-}"
 export HF_HUB_ENABLE_HF_TRANSFER="${HF_HUB_ENABLE_HF_TRANSFER:-0}"
 
-python3 - <<PY
+"${PYTHON_BIN}" - <<PY
 from pathlib import Path
 from huggingface_hub import snapshot_download
 

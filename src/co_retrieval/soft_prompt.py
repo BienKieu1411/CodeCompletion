@@ -413,15 +413,34 @@ class SoftPromptLLM(nn.Module):
         target: str,
         retrieved_chunks_list: Sequence[Optional[Sequence[CodeChunk]]],
         use_soft_prompt: bool = True,
+        micro_batch_size: int = 2,
     ) -> List[float]:
         """Score several context candidates in one frozen-model forward.
 
         Phase 2 compares multiple retrieval strategies for the same example.
         Batching those candidates preserves exact token-level NLL while
-        replacing one model launch per strategy with one padded batch.
+        replacing one model launch per strategy with one padded batch.  The
+        candidate list is split into small micro-batches so the full-vocab
+        logits do not multiply the generator's peak VRAM by the number of
+        retrieval strategies (usually 5--7).
         """
         if not retrieved_chunks_list:
             return []
+        if micro_batch_size <= 0:
+            raise ValueError("micro_batch_size must be positive")
+        if len(retrieved_chunks_list) > micro_batch_size:
+            values: List[float] = []
+            for start in range(0, len(retrieved_chunks_list), micro_batch_size):
+                values.extend(
+                    self.teacher_forcing_nll_batch(
+                        left_context,
+                        target,
+                        retrieved_chunks_list[start : start + micro_batch_size],
+                        use_soft_prompt=use_soft_prompt,
+                        micro_batch_size=micro_batch_size,
+                    )
+                )
+            return values
 
         rows: List[Tuple[List[int], List[int], int]] = []
         for retrieved_chunks in retrieved_chunks_list:

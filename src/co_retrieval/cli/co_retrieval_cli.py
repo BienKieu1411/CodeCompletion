@@ -14,6 +14,13 @@ logging.basicConfig(
 logger = logging.getLogger("co_retrieval_cli")
 
 
+def _positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("value must be positive")
+    return parsed
+
+
 def _add_shared_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--dataset-path",
@@ -206,8 +213,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_train.add_argument("--checkpoint-dir", default="checkpoints/co_retrieval")
     p_train.add_argument("--log-dir", default="logs/co_retrieval")
     p_train.add_argument("--num-epochs", type=int, default=1)
-    p_train.add_argument("--batch-size", type=int, default=8)
-    p_train.add_argument("--top-k", type=int, default=3)
+    p_train.add_argument("--batch-size", type=_positive_int, default=8)
+    p_train.add_argument("--top-k", type=_positive_int, default=3)
     p_train.add_argument("--dpo-beta", type=float, default=0.1)
     p_train.add_argument("--retriever-lr", type=float, default=None)
     p_train.add_argument("--gate-lr", type=float, default=None)
@@ -347,8 +354,8 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["float16", "bfloat16", "float32"],
         default="float16",
     )
-    p_train.add_argument("--batch-encode-size", type=int, default=32)
-    p_train.add_argument("--max-new-tokens", type=int, default=128)
+    p_train.add_argument("--batch-encode-size", type=_positive_int, default=32)
+    p_train.add_argument("--max-new-tokens", type=_positive_int, default=128)
     p_train.add_argument("--eval-ratio", type=float, default=0.1)
     p_train.add_argument("--max-eval-samples", type=int, default=100)
     p_train.add_argument("--query-entropy-threshold", type=float, default=0.8)
@@ -367,8 +374,8 @@ def build_parser() -> argparse.ArgumentParser:
     _add_shared_args(p_eval)
     p_eval.add_argument("--checkpoint-dir", required=True)
     p_eval.add_argument("--log-dir", default="logs/co_retrieval_eval")
-    p_eval.add_argument("--batch-size", type=int, default=2)
-    p_eval.add_argument("--top-k", type=int, default=3)
+    p_eval.add_argument("--batch-size", type=_positive_int, default=2)
+    p_eval.add_argument("--top-k", type=_positive_int, default=3)
     p_eval.add_argument(
         "--completion-level", choices=["line", "block", "mixed"], default="mixed"
     )
@@ -384,8 +391,8 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
     )
     p_eval.add_argument("--gate-decision-threshold", type=float, default=None)
-    p_eval.add_argument("--batch-encode-size", type=int, default=32)
-    p_eval.add_argument("--max-new-tokens", type=int, default=128)
+    p_eval.add_argument("--batch-encode-size", type=_positive_int, default=32)
+    p_eval.add_argument("--max-new-tokens", type=_positive_int, default=128)
     p_eval.add_argument("--leave-one-out-analysis-samples", type=int, default=25)
     p_eval.add_argument("--no-analysis", action="store_true", default=False)
     p_eval.add_argument("--include-policy-variants", action="store_true", default=False)

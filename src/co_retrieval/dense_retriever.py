@@ -145,7 +145,7 @@ class DenseRetriever(nn.Module):
     def encode_chunks(
         self,
         chunks: Sequence[CodeChunk],
-        batch_size: int = 32,
+        batch_size: Optional[int] = None,
         encoder: Optional[nn.Module] = None,
     ) -> torch.Tensor:
         """Encode chunks → (N, hidden_size) matrix."""
@@ -155,10 +155,17 @@ class DenseRetriever(nn.Module):
     def encode_texts(
         self,
         texts: List[str],
-        batch_size: int = 32,
+        batch_size: Optional[int] = None,
         encoder: Optional[nn.Module] = None,
     ) -> torch.Tensor:
         """Encode text list → (N, hidden_size) matrix."""
+        batch_size = (
+            self._configured_encode_batch_size()
+            if batch_size is None
+            else int(batch_size)
+        )
+        if batch_size <= 0:
+            raise ValueError("batch_size must be positive")
         all_vecs: List[torch.Tensor] = []
         for start in range(0, len(texts), batch_size):
             batch = texts[start : start + batch_size]
@@ -168,7 +175,9 @@ class DenseRetriever(nn.Module):
             return torch.zeros(0, self.hidden_size, device=self._device)
         return torch.cat(all_vecs, dim=0)
 
-    def encode_texts_numpy(self, texts: List[str], batch_size: int = 32) -> np.ndarray:
+    def encode_texts_numpy(
+        self, texts: List[str], batch_size: Optional[int] = None
+    ) -> np.ndarray:
         """Encode texts → CPU NumPy array.  For ``EmbeddingCache.build_from_chunks``."""
         with torch.no_grad():
             return self.encode_texts(texts, batch_size).cpu().numpy()
@@ -180,7 +189,7 @@ class DenseRetriever(nn.Module):
         query: str,
         chunks: Sequence[CodeChunk],
         top_k: int = 3,
-        batch_size: int = 32,
+        batch_size: Optional[int] = None,
     ) -> List[Tuple[float, CodeChunk]]:
         """Score, rank, and return top-k chunks."""
         if not chunks:
@@ -202,7 +211,7 @@ class DenseRetriever(nn.Module):
         query: str,
         chunks: Sequence[CodeChunk],
         top_k: int = 3,
-        batch_size: int = 32,
+        batch_size: Optional[int] = None,
     ) -> List[CodeChunk]:
         """Return just the top-k CodeChunk objects."""
         return [c for _, c in self.retrieve(query, chunks, top_k, batch_size)]
@@ -213,16 +222,19 @@ class DenseRetriever(nn.Module):
         chunks: Sequence[CodeChunk],
         top_k: int = 3,
         encoder: Optional[nn.Module] = None,
-        batch_size: int = 32,
+        batch_size: Optional[int] = None,
     ) -> List[CodeChunk]:
         """Retrieve using a specific encoder (e.g. initial frozen copy)."""
         if not chunks:
+            return []
+        k = min(max(0, int(top_k)), len(chunks))
+        if k == 0:
             return []
         with torch.no_grad():
             q_vec = self._encode_batch([query], encoder=encoder)[0]
             c_vecs = self.encode_chunks(chunks, batch_size=batch_size, encoder=encoder)
             scores = (q_vec.unsqueeze(0) @ c_vecs.T).squeeze(0)
-            _, indices = scores.topk(min(top_k, len(chunks)))
+            _, indices = scores.topk(k)
         chunk_list = list(chunks)
         return [chunk_list[i] for i in indices.cpu().tolist()]
 
@@ -234,7 +246,7 @@ class DenseRetriever(nn.Module):
         chunks: Sequence[CodeChunk],
         top_k: int = 3,
         temperatures: Sequence[float] = (0.0, 0.7, 2.0),
-        batch_size: int = 32,
+        batch_size: Optional[int] = None,
     ) -> List[List[CodeChunk]]:
         """Sample diverse retrieval strategies for DPO pair creation.
 
@@ -242,6 +254,10 @@ class DenseRetriever(nn.Module):
         """
         if not chunks:
             return [[]]
+
+        k = min(max(0, int(top_k)), len(chunks))
+        if k == 0:
+            return [[] for _ in temperatures] + [[]]
 
         with torch.no_grad():
             q_vec = self.encode_query(query)
@@ -252,7 +268,6 @@ class DenseRetriever(nn.Module):
         strategies: List[List[CodeChunk]] = []
 
         for temp in temperatures:
-            k = min(top_k, len(chunk_list))
             if temp < 1e-6:
                 _, indices = scores.topk(k)
                 selected = [chunk_list[i] for i in indices.cpu().tolist()]

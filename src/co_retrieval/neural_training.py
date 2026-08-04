@@ -582,6 +582,12 @@ class NeuralCoTrainer:
         self._chunk_map: Dict[str, CodeChunk] = {}
 
     def _validate_config(self) -> None:
+        if self.config.top_k <= 0:
+            raise ValueError("top_k must be positive")
+        if self.config.preference_pool_top_k <= 0:
+            raise ValueError("preference_pool_top_k must be positive")
+        if self.config.batch_encode_size <= 0:
+            raise ValueError("batch_encode_size must be positive")
         if self.config.retriever_loss not in {"lipo", "dpo"}:
             raise ValueError("retriever_loss must be either 'lipo' or 'dpo'")
         if self.config.lipo_tau <= 0:
@@ -1589,6 +1595,11 @@ class NeuralCoTrainer:
         if not self._chunks:
             return
         if not getattr(self.config, "refresh_train_index", False):
+            # A global cache built before retriever updates is no longer valid.
+            # Keep sample-local retrieval on the live encoder instead of
+            # silently serving rankings from the pre-training weights.
+            if not self.embedding_cache.is_empty:
+                self.embedding_cache.clear()
             logger.info(
                 "Phase 4: skipped global index refresh; "
                 "sample-local retrieval will use current retriever weights"
@@ -2421,7 +2432,16 @@ class NeuralCoTrainer:
         logger.info("Checkpoint saved to %s", ckpt_dir)
 
     def load_checkpoint(self, ckpt_dir: str) -> None:
+        # ``DenseRetriever.load_pretrained`` replaces the encoder module.  The
+        # optimizer created in ``__init__`` would otherwise keep references to
+        # the old GPU parameters, temporarily retaining a second full encoder
+        # during evaluation/checkpoint reload.
+        self.retriever_opt = None
         self.retriever.load_pretrained(os.path.join(ckpt_dir, "retriever"))
+        self.retriever_opt = AdamW(
+            self.retriever.parameters(),
+            lr=getattr(self.config, "retriever_lr", 2e-5),
+        )
         gate_path = os.path.join(ckpt_dir, "gate.pt")
         if os.path.exists(gate_path):
             self.gate.load_state_dict(
