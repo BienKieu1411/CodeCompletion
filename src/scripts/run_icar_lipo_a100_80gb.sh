@@ -234,19 +234,23 @@ if [[ "${RUN_EVAL}" == "1" ]]; then
     mkdir -p "${out_dir}" "${LOG_DIR}/eval"
 
     if [[ "${EVAL_INDEX_MODE}" == "sharded" && "${BUILD_EVAL_INDEX}" == "1" ]]; then
-      mkdir -p "${eval_index_dir}"
-      echo "Building CPU mmap eval index for ${dataset_name}: ${eval_index_dir}"
-      "${PYTHON_BIN}" -m co_retrieval.cli.co_retrieval_cli build-eval-index \
-        --dataset-path "${dataset_path}" \
-        --checkpoint-dir "${CHECKPOINT_DIR}" \
-        --eval-index-dir "${eval_index_dir}" \
-        --max-samples "${EVAL_MAX_SAMPLES}" \
-        --batch-encode-size "${BATCH_ENCODE_SIZE}" \
-        --eval-index-shard-size "${EVAL_INDEX_SHARD_SIZE}" \
-        --max-chunk-lines 120 \
-        --fallback-lines 40 \
-        --device cuda \
-        2>&1 | tee "${LOG_DIR}/eval/${dataset_name}.index.log"
+      if [[ -f "${eval_index_dir}/manifest.json" ]]; then
+        echo "Reusing existing eval index for ${dataset_name}: ${eval_index_dir}"
+      else
+        mkdir -p "${eval_index_dir}"
+        echo "Building CPU mmap eval index for ${dataset_name}: ${eval_index_dir}"
+        "${PYTHON_BIN}" -m co_retrieval.cli.co_retrieval_cli build-eval-index \
+          --dataset-path "${dataset_path}" \
+          --checkpoint-dir "${CHECKPOINT_DIR}" \
+          --eval-index-dir "${eval_index_dir}" \
+          --max-samples "${EVAL_MAX_SAMPLES}" \
+          --batch-encode-size "${BATCH_ENCODE_SIZE}" \
+          --eval-index-shard-size "${EVAL_INDEX_SHARD_SIZE}" \
+          --max-chunk-lines 120 \
+          --fallback-lines 40 \
+          --device cuda \
+          2>&1 | tee "${LOG_DIR}/eval/${dataset_name}.index.log"
+      fi
     fi
 
     "${PYTHON_BIN}" -m co_retrieval.cli.co_retrieval_cli evaluate \
