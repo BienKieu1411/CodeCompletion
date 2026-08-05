@@ -124,6 +124,23 @@ def test_sample_conversion_prefixes_candidate_chunks_with_repo_id():
     assert chunker.paths == ["repo-a/src/utils.py"]
 
 
+def test_parse_crossfile_accepts_numpy_array_from_parquet():
+    numpy = pytest.importorskip("numpy")
+
+    raw = numpy.array(
+        [
+            {"path": "src/a.py", "text": "def a(): pass"},
+            {"path": "src/b.py", "text": "def b(): pass"},
+        ],
+        dtype=object,
+    )
+
+    assert DatasetLoader._parse_crossfile(raw) == {
+        "src/a.py": "def a(): pass",
+        "src/b.py": "def b(): pass",
+    }
+
+
 def test_repository_split_is_disjoint_and_deterministic():
     samples = [
         _sample("repo-a", "src/a.py"),

@@ -408,6 +408,35 @@ def _train_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
             random_seed=int(cfg.get("random_seed", 42)),
         )
 
+    sample_provider = None
+    if bool(cfg.get("resample_train_each_epoch", False)):
+        if cfg.get("experiment_mode", "intent_main") != "intent_main":
+            raise ValueError(
+                "resample_train_each_epoch requires experiment_mode='intent_main'"
+            )
+        base_seed = int(cfg.get("random_seed", 42))
+
+        def _resample_for_epoch(epoch: int) -> List[TrainingSample]:
+            # Keep model initialization deterministic while changing the data
+            # subset seed for every epoch.  Epoch 1 reuses the already-created
+            # initial sample set to avoid an unnecessary duplicate parquet pass.
+            if epoch == 1:
+                return train_samples
+            epoch_cfg = dict(cfg)
+            epoch_cfg["random_seed"] = base_seed + epoch - 1
+            epoch_samples = _collect_training_samples(epoch_cfg, chunker)
+            if not epoch_samples:
+                raise RuntimeError(
+                    f"No training samples generated for epoch {epoch}."
+                )
+            return epoch_samples
+
+        sample_provider = _resample_for_epoch
+        logger.info(
+            "Enabled per-epoch random resampling of %d training samples",
+            len(train_samples),
+        )
+
     neural_cfg = NeuralCoTrainingConfig(
         encoder_name=cfg.get("encoder_name", "microsoft/unixcoder-base"),
         generator_name=cfg.get(
@@ -458,6 +487,9 @@ def _train_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
         num_hard_negatives=int(cfg.get("num_hard_negatives", 10)),
         preference_pool_top_k=int(cfg.get("preference_pool_top_k", 20)),
         max_pairs_per_sample=int(cfg.get("max_pairs_per_sample", 4)),
+        utility_score_microbatch_size=int(
+            cfg.get("utility_score_microbatch_size", 2)
+        ),
         leave_one_out_analysis_samples=int(
             cfg.get("leave_one_out_analysis_samples", 25)
         ),
@@ -486,7 +518,11 @@ def _train_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
     )
 
     trainer = NeuralCoTrainer(neural_cfg)
-    result = trainer.train(train_samples, eval_samples=eval_samples)
+    result = trainer.train(
+        train_samples,
+        eval_samples=eval_samples,
+        sample_provider=sample_provider,
+    )
     result["num_collected_samples"] = len(samples)
 
     logger.info("Co-Retrieval neural training complete: %s", result.get("status"))

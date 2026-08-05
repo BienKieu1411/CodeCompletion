@@ -740,6 +740,39 @@ def test_epoch_budget_mode_uses_full_pass_steps_without_extra_refreshes():
     assert result[0]["gate_steps_budget"] == 10
 
 
+def test_co_training_resamples_samples_and_rebuilds_preferences_each_epoch():
+    trainer = _sequential_trainer()
+    trainer.config.epoch_budget_mode = True
+    trainer.config.train_epochs = 3
+    trainer._chunks = []
+    trainer._chunk_map = {}
+    seen_epochs = []
+
+    def phase1(samples, steps=None, context_mode="mixed"):
+        seen_epochs.append(samples[0].epoch)
+        return {"phase1_loss": 0.0}
+
+    def phase2(samples):
+        assert samples[0].epoch == seen_epochs[-1]
+        return _preference_data()
+
+    trainer.phase1_warmup_soft_prompt = phase1
+    trainer.phase2_build_preference_data = phase2
+
+    def provider(epoch):
+        return [SimpleNamespace(epoch=epoch, candidate_chunks=[])]
+
+    result = trainer.phase5_co_training(
+        samples=[SimpleNamespace(epoch=0, candidate_chunks=[])],
+        sample_provider=provider,
+    )
+
+    assert seen_epochs == [1, 2, 3]
+    assert len(result) == 3
+    assert all(item["resampled_train_each_epoch"] for item in result)
+    assert [item["num_train_samples"] for item in result] == [1, 1, 1]
+
+
 def test_train_registers_chunks_without_building_global_index_by_default():
     trainer = NeuralCoTrainer.__new__(NeuralCoTrainer)
     trainer.config = SimpleNamespace(

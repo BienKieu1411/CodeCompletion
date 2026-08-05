@@ -42,6 +42,7 @@ def test_train_cli_defaults_respect_max_samples_and_neural_learning_rates(monkey
     assert captured["retriever_loss"] == "lipo"
     assert captured["lipo_tau"] == 1.0
     assert captured["skip_train_eval"] is False
+    assert captured["resample_train_each_epoch"] is False
     assert captured["build_train_index"] is False
     assert captured["refresh_train_index"] is False
     assert captured["train_epochs"] == 1
@@ -82,6 +83,7 @@ def test_train_cli_accepts_reviewer_blocker_neural_options(monkeypatch):
             "--gate-retrieval-reduction-target",
             "0.3",
             "--skip-train-eval",
+            "--resample-train-each-epoch",
             "--num-epochs",
             "10",
             "--train-epochs",
@@ -108,6 +110,7 @@ def test_train_cli_accepts_reviewer_blocker_neural_options(monkeypatch):
     assert captured["gate_quality_tolerance"] == 0.02
     assert captured["gate_retrieval_reduction_target"] == 0.3
     assert captured["skip_train_eval"] is True
+    assert captured["resample_train_each_epoch"] is True
     assert captured["train_epochs"] == 10
     assert captured["epoch_budget_mode"] is True
     assert captured["gate_use_retrieval_features"] is False

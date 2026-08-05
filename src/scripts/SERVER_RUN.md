@@ -37,6 +37,24 @@ prediction.
 `NUM_EPOCHS` remains accepted as a backward-compatible alias, but prefer
 `TRAIN_EPOCHS` in new server runs.
 
+To reproduce a fixed-size random subset per epoch, use the alternating
+`intent_main` schedule with `RESAMPLE_TRAIN_EACH_EPOCH=1`. The first epoch uses
+the initially collected subset; every later epoch rebuilds a new fixed-size
+subset with a different seed, and rebuilds preference data from that subset.
+This is different from `sequential_retriever_first`, which builds preference
+data once and reuses it.
+
+Example for 4,000 freshly sampled training examples per epoch:
+
+```bash
+RESAMPLE_TRAIN_EACH_EPOCH=1 \
+EXPERIMENT_MODE=intent_main \
+MAX_TRAIN_SAMPLES=4000 \
+TRAIN_EPOCHS=10 \
+RUN_TRAIN=1 RUN_EVAL=0 \
+  bash src/scripts/run_icar_lipo_a100_80gb.sh
+```
+
 Evaluate existing checkpoint only:
 
 ```bash

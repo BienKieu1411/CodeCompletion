@@ -105,6 +105,7 @@ def _cmd_train(args: argparse.Namespace) -> dict:
                 "build_train_index": args.build_train_index,
                 "refresh_train_index": args.refresh_train_index,
                 "skip_train_eval": args.skip_train_eval,
+                "resample_train_each_epoch": args.resample_train_each_epoch,
                 "warmup_steps": args.warmup_steps,
                 "train_epochs": train_epochs,
                 "epoch_budget_mode": args.epoch_budget_mode,
@@ -119,6 +120,7 @@ def _cmd_train(args: argparse.Namespace) -> dict:
                 "num_hard_negatives": args.num_hard_negatives,
                 "preference_pool_top_k": args.preference_pool_top_k,
                 "max_pairs_per_sample": args.max_pairs_per_sample,
+                "utility_score_microbatch_size": args.utility_score_microbatch_size,
                 "leave_one_out_analysis_samples": args.leave_one_out_analysis_samples,
                 "gate_quality_tolerance": args.gate_quality_tolerance,
                 "gate_retrieval_reduction_target": args.gate_retrieval_reduction_target,
@@ -293,6 +295,15 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     p_train.add_argument("--skip-train-eval", action="store_true", default=False)
+    p_train.add_argument(
+        "--resample-train-each-epoch",
+        action="store_true",
+        default=False,
+        help=(
+            "For neural intent_main training, generate a fresh random fixed-size "
+            "training subset before each epoch and rebuild preference data from it."
+        ),
+    )
     p_train.add_argument("--warmup-steps", type=int, default=200)
     p_train.add_argument(
         "--train-epochs",
@@ -327,6 +338,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_train.add_argument("--num-hard-negatives", type=int, default=10)
     p_train.add_argument("--preference-pool-top-k", type=int, default=20)
     p_train.add_argument("--max-pairs-per-sample", type=int, default=4)
+    p_train.add_argument(
+        "--utility-score-microbatch-size",
+        type=_positive_int,
+        default=2,
+        help="Generator candidate microbatch used during Phase 2 NLL scoring.",
+    )
     p_train.add_argument("--leave-one-out-analysis-samples", type=int, default=25)
     p_train.add_argument("--gate-quality-tolerance", type=float, default=0.01)
     p_train.add_argument("--gate-retrieval-reduction-target", type=float, default=0.20)
