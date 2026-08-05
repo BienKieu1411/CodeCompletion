@@ -105,6 +105,7 @@ def _cmd_train(args: argparse.Namespace) -> dict:
                 "build_train_index": args.build_train_index,
                 "refresh_train_index": args.refresh_train_index,
                 "skip_train_eval": args.skip_train_eval,
+                "resample_train_each_epoch": args.resample_train_each_epoch,
                 "warmup_steps": args.warmup_steps,
                 "train_epochs": train_epochs,
                 "epoch_budget_mode": args.epoch_budget_mode,
@@ -119,6 +120,7 @@ def _cmd_train(args: argparse.Namespace) -> dict:
                 "num_hard_negatives": args.num_hard_negatives,
                 "preference_pool_top_k": args.preference_pool_top_k,
                 "max_pairs_per_sample": args.max_pairs_per_sample,
+                "utility_score_microbatch_size": args.utility_score_microbatch_size,
                 "leave_one_out_analysis_samples": args.leave_one_out_analysis_samples,
                 "gate_quality_tolerance": args.gate_quality_tolerance,
                 "gate_retrieval_reduction_target": args.gate_retrieval_reduction_target,
@@ -196,10 +198,39 @@ def _cmd_evaluate(args: argparse.Namespace) -> dict:
             "include_analysis": not args.no_analysis,
             "include_policy_variants": args.include_policy_variants,
             "device": args.device,
+            "eval_retriever_device": args.eval_retriever_device,
             "generator_dtype": args.generator_dtype,
+            "eval_index_mode": args.eval_index_mode,
+            "eval_index_dir": args.eval_index_dir,
+            "eval_index_shard_size": args.eval_index_shard_size,
         }
     )
     return evaluate(cfg)
+
+
+def _cmd_build_eval_index(args: argparse.Namespace) -> dict:
+    from co_retrieval.runner import build_eval_index
+
+    return build_eval_index(
+        {
+            "dataset_path": args.dataset_path,
+            "max_eval_samples": args.max_samples,
+            "max_train_samples": args.max_samples,
+            "output_dir": args.output_dir,
+            "checkpoint_dir": args.checkpoint_dir,
+            "eval_index_dir": args.eval_index_dir,
+            "eval_index_shard_size": args.eval_index_shard_size,
+            "batch_encode_size": args.batch_encode_size,
+            "encoder_max_length": args.encoder_max_length,
+            "max_chunk_lines": args.max_chunk_lines,
+            "fallback_lines": args.fallback_lines,
+            "min_file_lines": args.min_file_lines,
+            "min_file_chars": args.min_file_chars,
+            "min_left_context_lines": args.min_left_context_lines,
+            "random_seed": args.random_seed,
+            "device": args.device,
+        }
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -293,6 +324,15 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     p_train.add_argument("--skip-train-eval", action="store_true", default=False)
+    p_train.add_argument(
+        "--resample-train-each-epoch",
+        action="store_true",
+        default=False,
+        help=(
+            "For neural intent_main training, generate a fresh random fixed-size "
+            "training subset before each epoch and rebuild preference data from it."
+        ),
+    )
     p_train.add_argument("--warmup-steps", type=int, default=200)
     p_train.add_argument(
         "--train-epochs",
@@ -327,6 +367,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_train.add_argument("--num-hard-negatives", type=int, default=10)
     p_train.add_argument("--preference-pool-top-k", type=int, default=20)
     p_train.add_argument("--max-pairs-per-sample", type=int, default=4)
+    p_train.add_argument(
+        "--utility-score-microbatch-size",
+        type=_positive_int,
+        default=2,
+        help="Generator candidate microbatch used during Phase 2 NLL scoring.",
+    )
     p_train.add_argument("--leave-one-out-analysis-samples", type=int, default=25)
     p_train.add_argument("--gate-quality-tolerance", type=float, default=0.01)
     p_train.add_argument("--gate-retrieval-reduction-target", type=float, default=0.20)
@@ -393,6 +439,18 @@ def build_parser() -> argparse.ArgumentParser:
     p_eval.add_argument("--gate-decision-threshold", type=float, default=None)
     p_eval.add_argument("--batch-encode-size", type=_positive_int, default=32)
     p_eval.add_argument("--max-new-tokens", type=_positive_int, default=128)
+    p_eval.add_argument(
+        "--eval-index-mode",
+        choices=["global", "sample_local", "sharded"],
+        default="sharded",
+    )
+    p_eval.add_argument("--eval-index-dir", default=None)
+    p_eval.add_argument(
+        "--eval-index-shard-size", type=_positive_int, default=50_000
+    )
+    p_eval.add_argument(
+        "--eval-retriever-device", choices=["cpu", "cuda"], default="cpu"
+    )
     p_eval.add_argument("--leave-one-out-analysis-samples", type=int, default=25)
     p_eval.add_argument("--no-analysis", action="store_true", default=False)
     p_eval.add_argument("--include-policy-variants", action="store_true", default=False)
@@ -403,6 +461,30 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_eval.add_argument("--device", default="cuda")
     p_eval.set_defaults(func=_cmd_evaluate)
+
+    p_index = sub.add_parser(
+        "build-eval-index",
+        help=(
+            "Encode evaluation chunks into CPU mmap shards without loading "
+            "the generator"
+        ),
+    )
+    _add_shared_args(p_index)
+    p_index.add_argument("--checkpoint-dir", required=True)
+    p_index.add_argument("--eval-index-dir", required=True)
+    p_index.add_argument("--batch-encode-size", type=_positive_int, default=32)
+    p_index.add_argument(
+        "--eval-index-shard-size", type=_positive_int, default=50_000
+    )
+    p_index.add_argument("--encoder-max-length", type=_positive_int, default=512)
+    p_index.add_argument("--max-chunk-lines", type=int, default=120)
+    p_index.add_argument("--fallback-lines", type=int, default=40)
+    p_index.add_argument("--min-file-lines", type=int, default=200)
+    p_index.add_argument("--min-file-chars", type=int, default=2000)
+    p_index.add_argument("--min-left-context-lines", type=int, default=30)
+    p_index.add_argument("--random-seed", type=int, default=13)
+    p_index.add_argument("--device", default="cuda")
+    p_index.set_defaults(func=_cmd_build_eval_index)
 
     return parser
 

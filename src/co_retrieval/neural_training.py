@@ -18,7 +18,7 @@ import re
 from collections import Counter
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import torch
@@ -31,7 +31,7 @@ from co_retrieval.aligncoder_metrics import (
 )
 from co_retrieval.context_utility import ContextCandidate, ContextUtilityScorer
 from co_retrieval.dense_retriever import DenseRetriever
-from co_retrieval.embedding_cache import EmbeddingCache
+from co_retrieval.embedding_cache import EmbeddingCache, ShardedEmbeddingCache
 from co_retrieval.intent import (
     CostAwareQueryEnhancer,
     IntentSketcher,
@@ -91,6 +91,8 @@ class NeuralCoTrainingConfig:
 
     # Encoder
     encoder_max_length: int = 512
+    # Evaluation may keep retrieval on CPU while generation remains on GPU.
+    retriever_device: Optional[str] = None
 
     # Generator
     num_prompt_tokens: int = 50
@@ -129,6 +131,7 @@ class NeuralCoTrainingConfig:
     num_hard_negatives: int = 10
     preference_pool_top_k: int = 20
     max_pairs_per_sample: int = 4
+    utility_score_microbatch_size: int = 2
     leave_one_out_analysis_samples: int = 25
     gate_quality_tolerance: float = 0.01
     gate_retrieval_reduction_target: float = 0.20
@@ -176,6 +179,11 @@ class NeuralCoTrainingConfig:
     query_draft_max_tokens: int = 32
     query_draft_temperature: float = 0.8
     query_draft_top_p: float = 0.95
+    # Evaluation retrieval index. ``sharded`` is built separately and loaded
+    # as CPU mmap files during generation.
+    eval_index_mode: str = "global"
+    eval_index_dir: Optional[str] = None
+    eval_index_shard_size: int = 50_000
 
 
 # ── BM25-like simple scorer ──────────────────────────────────────────────────
@@ -507,12 +515,18 @@ class NeuralCoTrainer:
         }
         gen_dtype = dtype_map.get(config.generator_dtype, torch.float16)
 
-        # Components
-        logger.info("Init DenseRetriever (%s)…", config.encoder_name)
+        # Components.  Evaluation can move retrieval off the generation GPU;
+        # training keeps the historical single-device behavior by default.
+        retriever_device = config.retriever_device or config.device
+        logger.info(
+            "Init DenseRetriever (%s) on %s…",
+            config.encoder_name,
+            retriever_device,
+        )
         self.retriever = DenseRetriever(
             model_name=config.encoder_name,
             max_length=config.encoder_max_length,
-            device=config.device,
+            device=retriever_device,
             encode_batch_size=config.batch_encode_size,
         )
         self.retriever.save_initial_copy()  # frozen pretrained encoder baseline
@@ -527,7 +541,7 @@ class NeuralCoTrainer:
                 if config.gate_use_retrieval_features
                 else 0
             ),
-        ).to(config.device)
+        ).to(retriever_device)
 
         logger.info("Init SoftPromptLLM (%s)…", config.generator_name)
         self.generator = SoftPromptLLM(
@@ -559,7 +573,10 @@ class NeuralCoTrainer:
             "draft_count": 0.0,
             "changed_count": 0.0,
         }
-        self.utility_scorer = ContextUtilityScorer(self.generator)
+        self.utility_scorer = ContextUtilityScorer(
+            self.generator,
+            micro_batch_size=config.utility_score_microbatch_size,
+        )
 
         # FAISS cache
         self.embedding_cache = EmbeddingCache(dim=self.retriever.hidden_size)
@@ -588,6 +605,8 @@ class NeuralCoTrainer:
             raise ValueError("preference_pool_top_k must be positive")
         if self.config.batch_encode_size <= 0:
             raise ValueError("batch_encode_size must be positive")
+        if self.config.utility_score_microbatch_size <= 0:
+            raise ValueError("utility_score_microbatch_size must be positive")
         if self.config.retriever_loss not in {"lipo", "dpo"}:
             raise ValueError("retriever_loss must be either 'lipo' or 'dpo'")
         if self.config.lipo_tau <= 0:
@@ -687,6 +706,71 @@ class NeuralCoTrainer:
             "(sample-local retrieval during train)",
             len(chunks),
         )
+
+    def build_eval_sharded_index(
+        self,
+        chunks: Sequence[CodeChunk],
+        directory: str,
+    ) -> None:
+        """Build a disk-backed CPU index for evaluation or analysis."""
+        self._chunks = list(chunks)
+        self._chunk_map = {c.chunk_id: c for c in chunks}
+        cache = ShardedEmbeddingCache(
+            dim=self.retriever.hidden_size,
+            shard_size=self.config.eval_index_shard_size,
+        )
+        cache.build_from_chunks(
+            chunks,
+            encode_fn=self.retriever.encode_texts_numpy,
+            batch_size=self.config.batch_encode_size,
+            directory=directory,
+            show_progress=True,
+        )
+        self.embedding_cache = cache
+
+    def load_eval_sharded_index(self, directory: str) -> bool:
+        """Load a previously built CPU mmap evaluation index."""
+        cache = ShardedEmbeddingCache(
+            dim=self.retriever.hidden_size,
+            shard_size=self.config.eval_index_shard_size,
+        )
+        if not cache.load(directory):
+            return False
+        self.embedding_cache = cache
+        return True
+
+    def offload_retriever_for_eval(self) -> None:
+        """Move retrieval and gate to CPU, leaving GPU for generation only."""
+        self.retriever.to("cpu")
+        self.retriever._device = "cpu"
+        self.gate.to("cpu")
+        self.config.retriever_device = "cpu"
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        logger.info(
+            "Evaluation memory layout: retriever/gate on CPU; generator remains on %s",
+            self.config.device,
+        )
+
+    def _register_additional_chunks(
+        self, samples: Sequence[TrainingSample]
+    ) -> None:
+        """Add chunks from a newly sampled epoch without building an index."""
+        added = 0
+        for sample in samples:
+            for chunk in sample.candidate_chunks or []:
+                if chunk.chunk_id in self._chunk_map:
+                    continue
+                self._chunk_map[chunk.chunk_id] = chunk
+                self._chunks.append(chunk)
+                added += 1
+        if added:
+            logger.info(
+                "Registered %d additional chunks from resampled epoch "
+                "(total=%d)",
+                added,
+                len(self._chunks),
+            )
 
     # ── Query / strategy helpers ─────────────────────────────────────────
 
@@ -917,7 +1001,9 @@ class NeuralCoTrainer:
         return torch.tensor(
             values,
             dtype=torch.float32,
-            device=getattr(self.config, "device", "cpu"),
+            device=getattr(
+                self.retriever, "_device", getattr(self.config, "device", "cpu")
+            ),
         )
 
     def _prepare_retrieval_query(
@@ -1622,8 +1708,17 @@ class NeuralCoTrainer:
         self,
         samples: Sequence[TrainingSample],
         num_rounds: Optional[int] = None,
+        sample_provider: Optional[
+            Callable[[int], Sequence[TrainingSample]]
+        ] = None,
     ) -> List[Dict[str, Any]]:
-        """Alternating epochs/rounds: P1 → P2 → P3 → P4, repeated."""
+        """Alternating epochs/rounds: P1 → P2 → P3 → P4, repeated.
+
+        ``sample_provider`` optionally supplies a fresh training subset for
+        each epoch.  This is deliberately handled here, before Phase 1/2, so
+        preference data and all per-epoch budgets are computed from the same
+        sampled subset.
+        """
         rounds = self.config.num_rounds if num_rounds is None else num_rounds
         epoch_budget = getattr(self.config, "epoch_budget_mode", False)
         unit_label = "epoch" if epoch_budget else "round"
@@ -1633,15 +1728,32 @@ class NeuralCoTrainer:
 
         for r in range(1, rounds + 1):
             logger.info("═══ Co-training %s %d/%d ═══", unit_label, r, rounds)
-            prompt_steps = self._prompt_steps_per_round(samples)
+            epoch_samples = (
+                list(sample_provider(r))
+                if sample_provider is not None
+                else list(samples)
+            )
+            if not epoch_samples:
+                raise RuntimeError(
+                    f"No training samples were produced for epoch {r}."
+                )
+            if sample_provider is not None:
+                self._register_additional_chunks(epoch_samples)
+                logger.info(
+                    "Epoch %d: using freshly resampled %d training samples",
+                    r,
+                    len(epoch_samples),
+                )
+
+            prompt_steps = self._prompt_steps_per_round(epoch_samples)
 
             # P1: Train soft prompt
             p1 = self.phase1_warmup_soft_prompt(
-                samples, steps=prompt_steps
+                epoch_samples, steps=prompt_steps
             )
 
             # P2: Build preference data
-            preference_data = self.phase2_build_preference_data(samples)
+            preference_data = self.phase2_build_preference_data(epoch_samples)
 
             # P3: DPO train retriever; BCE train gate from utility labels
             retriever_steps, gate_steps = self._retriever_budget(preference_data)
@@ -1658,6 +1770,8 @@ class NeuralCoTrainer:
                 "round": r,
                 "epoch": r if epoch_budget else None,
                 "epoch_budget_mode": epoch_budget,
+                "resampled_train_each_epoch": sample_provider is not None,
+                "num_train_samples": len(epoch_samples),
                 "prompt_steps_budget": prompt_steps,
                 "retriever_steps_budget": retriever_steps,
                 "gate_steps_budget": gate_steps,
@@ -2289,6 +2403,9 @@ class NeuralCoTrainer:
         samples: Sequence[TrainingSample],
         chunks: Optional[Sequence[CodeChunk]] = None,
         eval_samples: Optional[Sequence[TrainingSample]] = None,
+        sample_provider: Optional[
+            Callable[[int], Sequence[TrainingSample]]
+        ] = None,
     ) -> Dict[str, Any]:
         """Run the complete 7-phase pipeline.
 
@@ -2324,13 +2441,23 @@ class NeuralCoTrainer:
         if self.config.experiment_mode == "sequential_adapter_first":
             round_history = self.phase5_sequential_adapter_first(samples)
         elif self.config.experiment_mode == "sequential_retriever_first":
+            if sample_provider is not None:
+                raise ValueError(
+                    "resample_train_each_epoch requires experiment_mode="
+                    "'intent_main' so preference data is rebuilt per epoch"
+                )
             round_history = self.phase5_sequential_retriever_first(samples)
         else:
             schedule = "alternating"
             # Phase 1 — Initial soft prompt warm-up
             p1 = self.phase1_warmup_soft_prompt(samples)
             # Phase 5 — Alternating co-training epochs/rounds (contains P1-P4)
-            round_history = self.phase5_co_training(samples)
+            if sample_provider is None:
+                round_history = self.phase5_co_training(samples)
+            else:
+                round_history = self.phase5_co_training(
+                    samples, sample_provider=sample_provider
+                )
 
         gate_calibration = (
             self.calibrate_gate_threshold(samples)
@@ -2364,6 +2491,7 @@ class NeuralCoTrainer:
             "schedule": schedule,
             "train_epochs": self.config.train_epochs,
             "epoch_budget_mode": self.config.epoch_budget_mode,
+            "resample_train_each_epoch": sample_provider is not None,
             "build_train_index": self.config.build_train_index,
             "refresh_train_index": self.config.refresh_train_index,
             "initial_warmup": p1,

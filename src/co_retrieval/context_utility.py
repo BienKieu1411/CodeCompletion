@@ -38,8 +38,11 @@ class ContextScore:
 class ContextUtilityScorer:
     """Rank retrieval strategies by NLL improvement over no-retrieval."""
 
-    def __init__(self, generator: Any) -> None:
+    def __init__(self, generator: Any, micro_batch_size: int = 2) -> None:
+        if micro_batch_size <= 0:
+            raise ValueError("micro_batch_size must be positive")
         self.generator = generator
+        self.micro_batch_size = micro_batch_size
 
     def score(
         self,
@@ -66,6 +69,7 @@ class ContextUtilityScorer:
                 target,
                 [None if candidate.is_stop else candidate.chunks for candidate in candidates],
                 use_soft_prompt=use_adapter,
+                micro_batch_size=self.micro_batch_size,
             )
             stop_indices = [
                 index for index, candidate in enumerate(candidates) if candidate.is_stop

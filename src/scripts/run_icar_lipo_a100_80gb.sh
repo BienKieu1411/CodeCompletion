@@ -29,6 +29,7 @@ STEPS_PER_ROUND_PROMPT="${STEPS_PER_ROUND_PROMPT:-100}"
 STEPS_PER_ROUND_RETRIEVER="${STEPS_PER_ROUND_RETRIEVER:-200}"
 PREFERENCE_POOL_TOP_K="${PREFERENCE_POOL_TOP_K:-5}"
 MAX_PAIRS_PER_SAMPLE="${MAX_PAIRS_PER_SAMPLE:-4}"
+UTILITY_SCORE_MICROBATCH_SIZE="${UTILITY_SCORE_MICROBATCH_SIZE:-2}"
 TRAIN_BATCH_SIZE="${TRAIN_BATCH_SIZE:-8}"
 BATCH_ENCODE_SIZE="${BATCH_ENCODE_SIZE:-64}"
 EVAL_BATCH_SIZE="${EVAL_BATCH_SIZE:-2}"
@@ -37,6 +38,11 @@ REFRESH_TRAIN_INDEX="${REFRESH_TRAIN_INDEX:-0}"
 EVAL_MAX_SAMPLES="${EVAL_MAX_SAMPLES:-0}"
 INCLUDE_ANALYSIS="${INCLUDE_ANALYSIS:-0}"
 LEAVE_ONE_OUT_ANALYSIS_SAMPLES="${LEAVE_ONE_OUT_ANALYSIS_SAMPLES:-0}"
+EVAL_INDEX_MODE="${EVAL_INDEX_MODE:-sharded}"
+EVAL_INDEX_ROOT="${EVAL_INDEX_ROOT:-${OUTPUT_ROOT}/eval_index}"
+EVAL_INDEX_SHARD_SIZE="${EVAL_INDEX_SHARD_SIZE:-50000}"
+BUILD_EVAL_INDEX="${BUILD_EVAL_INDEX:-1}"
+EVAL_RETRIEVER_DEVICE="${EVAL_RETRIEVER_DEVICE:-cpu}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 
 CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
@@ -44,6 +50,7 @@ RUN_DOWNLOAD="${RUN_DOWNLOAD:-0}"
 RUN_TRAIN="${RUN_TRAIN:-1}"
 RUN_EVAL="${RUN_EVAL:-1}"
 INCLUDE_POLICY_VARIANTS="${INCLUDE_POLICY_VARIANTS:-0}"
+RESAMPLE_TRAIN_EACH_EPOCH="${RESAMPLE_TRAIN_EACH_EPOCH:-0}"
 
 export CUDA_VISIBLE_DEVICES
 export PYTHONPATH="${SRC_DIR}:${PYTHONPATH:-}"
@@ -63,6 +70,10 @@ if [[ "${RUN_DOWNLOAD}" == "1" ]]; then
 fi
 
 if [[ "${RUN_TRAIN}" == "1" ]]; then
+  if [[ "${RESAMPLE_TRAIN_EACH_EPOCH}" == "1" && "${EXPERIMENT_MODE}" != "intent_main" ]]; then
+    echo "RESAMPLE_TRAIN_EACH_EPOCH=1 requires EXPERIMENT_MODE=intent_main." >&2
+    exit 1
+  fi
   if [[ "${EXPERIMENT_MODE}" == "intent_main" && "${EPOCH_BUDGET_MODE}" == "1" && "${TRAIN_EPOCHS}" -gt 1 ]]; then
     echo "WARNING: intent_main repeats generator-heavy Phase 2 ${TRAIN_EPOCHS} times."
     echo "Use EXPERIMENT_MODE=sequential_retriever_first ADAPTER_TYPE=none for the 24-32 hour run." >&2
@@ -76,6 +87,10 @@ if [[ "${RUN_TRAIN}" == "1" ]]; then
   fi
   if [[ "${REFRESH_TRAIN_INDEX}" == "1" ]]; then
     TRAIN_BUDGET_ARGS+=(--refresh-train-index)
+  fi
+  TRAIN_RESAMPLE_ARGS=()
+  if [[ "${RESAMPLE_TRAIN_EACH_EPOCH}" == "1" ]]; then
+    TRAIN_RESAMPLE_ARGS+=(--resample-train-each-epoch)
   fi
 
   IFS=',' read -r -a TRAIN_DATASET_LIST <<< "${TRAIN_DATASETS}"
@@ -100,8 +115,9 @@ if [[ "${RUN_TRAIN}" == "1" ]]; then
   echo "Generator backbone: frozen; adapter: ${ADAPTER_TYPE}"
   echo "Completion level: ${COMPLETION_LEVEL}"
   echo "Preference pool top-k: ${PREFERENCE_POOL_TOP_K}; max pairs/sample: ${MAX_PAIRS_PER_SAMPLE}"
-  echo "Batch sizes: data_loader=${TRAIN_BATCH_SIZE}, encoder_microbatch=${BATCH_ENCODE_SIZE}, eval_loader=${EVAL_BATCH_SIZE}"
+  echo "Batch sizes: data_loader=${TRAIN_BATCH_SIZE}, encoder_microbatch=${BATCH_ENCODE_SIZE}, utility_score_microbatch=${UTILITY_SCORE_MICROBATCH_SIZE}, eval_loader=${EVAL_BATCH_SIZE}"
   echo "Train global index: build=${BUILD_TRAIN_INDEX}, refresh=${REFRESH_TRAIN_INDEX}"
+  echo "Resample train each epoch: ${RESAMPLE_TRAIN_EACH_EPOCH}"
   echo "Train datasets: ${TRAIN_DATASETS}"
 
   "${PYTHON_BIN}" -m co_retrieval.cli.co_retrieval_cli train \
@@ -122,6 +138,7 @@ if [[ "${RUN_TRAIN}" == "1" ]]; then
     --num-epochs "${TRAIN_EPOCHS}" \
     --train-epochs "${TRAIN_EPOCHS}" \
     "${TRAIN_BUDGET_ARGS[@]}" \
+    "${TRAIN_RESAMPLE_ARGS[@]}" \
     --max-samples "${MAX_TRAIN_SAMPLES}" \
     --completion-level "${COMPLETION_LEVEL}" \
     --fixed-train-size "${MAX_TRAIN_SAMPLES}" \
@@ -134,6 +151,7 @@ if [[ "${RUN_TRAIN}" == "1" ]]; then
     --top-k 3 \
     --preference-pool-top-k "${PREFERENCE_POOL_TOP_K}" \
     --max-pairs-per-sample "${MAX_PAIRS_PER_SAMPLE}" \
+    --utility-score-microbatch-size "${UTILITY_SCORE_MICROBATCH_SIZE}" \
     --num-hard-negatives 10 \
     --utility-margin 0.05 \
     --preference-margin 0.1 \
@@ -205,7 +223,24 @@ if [[ "${RUN_EVAL}" == "1" ]]; then
     fi
 
     out_dir="${OUTPUT_ROOT}/eval/${dataset_name}"
+    eval_index_dir="${EVAL_INDEX_ROOT}/${dataset_name}"
     mkdir -p "${out_dir}" "${LOG_DIR}/eval"
+
+    if [[ "${EVAL_INDEX_MODE}" == "sharded" && "${BUILD_EVAL_INDEX}" == "1" ]]; then
+      mkdir -p "${eval_index_dir}"
+      echo "Building CPU mmap eval index for ${dataset_name}: ${eval_index_dir}"
+      "${PYTHON_BIN}" -m co_retrieval.cli.co_retrieval_cli build-eval-index \
+        --dataset-path "${dataset_path}" \
+        --checkpoint-dir "${CHECKPOINT_DIR}" \
+        --eval-index-dir "${eval_index_dir}" \
+        --max-samples "${EVAL_MAX_SAMPLES}" \
+        --batch-encode-size "${BATCH_ENCODE_SIZE}" \
+        --eval-index-shard-size "${EVAL_INDEX_SHARD_SIZE}" \
+        --max-chunk-lines 120 \
+        --fallback-lines 40 \
+        --device cuda \
+        2>&1 | tee "${LOG_DIR}/eval/${dataset_name}.index.log"
+    fi
 
     "${PYTHON_BIN}" -m co_retrieval.cli.co_retrieval_cli evaluate \
       --dataset-path "${dataset_path}" \
@@ -216,6 +251,10 @@ if [[ "${RUN_EVAL}" == "1" ]]; then
       --top-k 3 \
       --batch-size "${EVAL_BATCH_SIZE}" \
       --batch-encode-size "${BATCH_ENCODE_SIZE}" \
+      --eval-index-mode "${EVAL_INDEX_MODE}" \
+      --eval-index-dir "${eval_index_dir}" \
+      --eval-index-shard-size "${EVAL_INDEX_SHARD_SIZE}" \
+      --eval-retriever-device "${EVAL_RETRIEVER_DEVICE}" \
       --max-new-tokens 128 \
       --leave-one-out-analysis-samples "${LEAVE_ONE_OUT_ANALYSIS_SAMPLES}" \
       "${EVAL_EXTRA_ARGS[@]}" \

@@ -680,6 +680,12 @@ class DatasetLoader:
 
     @staticmethod
     def _parse_crossfile(raw) -> Dict[str, str]:
+        # pandas/pyarrow may materialize a list-valued parquet column as a
+        # numpy.ndarray.  Normalize array-like values before handling the
+        # supported JSON/list/dict representations; otherwise valid
+        # cross-file context is silently discarded.
+        if hasattr(raw, "tolist") and not isinstance(raw, (str, bytes, bytearray)):
+            raw = raw.tolist()
         if isinstance(raw, str):
             try: raw = json.loads(raw)
             except: return {}

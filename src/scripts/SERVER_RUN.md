@@ -45,9 +45,15 @@ RUN_TRAIN=0 RUN_EVAL=1 \
 ```
 
 Evaluation defaults to `INCLUDE_POLICY_VARIANTS=0` and `INCLUDE_ANALYSIS=0` for
-the 8-12 hour target. Set `INCLUDE_POLICY_VARIANTS=1` for the gate ablation and
-`INCLUDE_ANALYSIS=1` plus `LEAVE_ONE_OUT_ANALYSIS_SAMPLES=25` for the full
-reviewer analysis pass.
+the 8-12 hour target. Evaluation also defaults to `EVAL_INDEX_MODE=sharded`:
+the separate `build-eval-index` step encodes chunks without loading DeepSeek,
+writes bounded CPU NumPy-mmap shards, and the generation process keeps the
+retriever/gate on CPU so GPU memory is reserved for DeepSeek. Set
+`BUILD_EVAL_INDEX=0` only when a matching index already exists. Set
+`EVAL_INDEX_MODE=sample_local` for a low-memory, no-cache diagnostic run, or
+`EVAL_INDEX_MODE=global` only for legacy comparisons. Set
+`INCLUDE_POLICY_VARIANTS=1` for the gate ablation and `INCLUDE_ANALYSIS=1`
+plus `LEAVE_ONE_OUT_ANALYSIS_SAMPLES=25` for the full reviewer analysis pass.
 
 The default eval set labels follow AlignCoder's reporting groups:
 `cceval_python`, `cceval_java`, `repoeval_line`, and `repoeval_api`.
@@ -120,6 +126,15 @@ This schedule builds Phase 2 preference data once, so it is much more likely to
 finish under a hard wall-clock budget. For a cheap encoder smoke test, set
 `ENCODER_NAME=sentence-transformers/all-MiniLM-L6-v2`, but do not use MiniLM as
 the main paper run unless code-specific encoders are still too slow.
+
+The full evaluation launcher now builds one CPU mmap index per benchmark before
+starting generation. The index is stored under
+`OUTPUT_ROOT/eval_index/<dataset_label>`, so a later rerun can skip encoding:
+
+```bash
+BUILD_EVAL_INDEX=0 EVAL_INDEX_MODE=sharded RUN_TRAIN=0 RUN_EVAL=1 \
+  bash src/scripts/run_icar_lipo_a100_80gb.sh
+```
 
 Train on a single language for a quick ablation:
 

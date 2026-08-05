@@ -408,12 +408,42 @@ def _train_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
             random_seed=int(cfg.get("random_seed", 42)),
         )
 
+    sample_provider = None
+    if bool(cfg.get("resample_train_each_epoch", False)):
+        if cfg.get("experiment_mode", "intent_main") != "intent_main":
+            raise ValueError(
+                "resample_train_each_epoch requires experiment_mode='intent_main'"
+            )
+        base_seed = int(cfg.get("random_seed", 42))
+
+        def _resample_for_epoch(epoch: int) -> List[TrainingSample]:
+            # Keep model initialization deterministic while changing the data
+            # subset seed for every epoch.  Epoch 1 reuses the already-created
+            # initial sample set to avoid an unnecessary duplicate parquet pass.
+            if epoch == 1:
+                return train_samples
+            epoch_cfg = dict(cfg)
+            epoch_cfg["random_seed"] = base_seed + epoch - 1
+            epoch_samples = _collect_training_samples(epoch_cfg, chunker)
+            if not epoch_samples:
+                raise RuntimeError(
+                    f"No training samples generated for epoch {epoch}."
+                )
+            return epoch_samples
+
+        sample_provider = _resample_for_epoch
+        logger.info(
+            "Enabled per-epoch random resampling of %d training samples",
+            len(train_samples),
+        )
+
     neural_cfg = NeuralCoTrainingConfig(
         encoder_name=cfg.get("encoder_name", "microsoft/unixcoder-base"),
         generator_name=cfg.get(
             "generator_name", "deepseek-ai/deepseek-coder-6.7b-base"
         ),
         encoder_max_length=int(cfg.get("encoder_max_length", 512)),
+        retriever_device=cfg.get("retriever_device"),
         num_prompt_tokens=int(cfg.get("num_prompt_tokens", 50)),
         max_context_tokens=int(cfg.get("max_context_tokens", 4096)),
         gate_hidden_dim=int(cfg.get("gate_hidden_dim", 256)),
@@ -458,6 +488,9 @@ def _train_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
         num_hard_negatives=int(cfg.get("num_hard_negatives", 10)),
         preference_pool_top_k=int(cfg.get("preference_pool_top_k", 20)),
         max_pairs_per_sample=int(cfg.get("max_pairs_per_sample", 4)),
+        utility_score_microbatch_size=int(
+            cfg.get("utility_score_microbatch_size", 2)
+        ),
         leave_one_out_analysis_samples=int(
             cfg.get("leave_one_out_analysis_samples", 25)
         ),
@@ -486,7 +519,11 @@ def _train_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
     )
 
     trainer = NeuralCoTrainer(neural_cfg)
-    result = trainer.train(train_samples, eval_samples=eval_samples)
+    result = trainer.train(
+        train_samples,
+        eval_samples=eval_samples,
+        sample_provider=sample_provider,
+    )
     result["num_collected_samples"] = len(samples)
 
     logger.info("Co-Retrieval neural training complete: %s", result.get("status"))
@@ -515,6 +552,7 @@ def _evaluate_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
             "checkpoint_dir": checkpoint_dir,
             "log_dir": log_dir,
             "device": cfg.get("device", checkpoint_cfg.get("device", "cuda")),
+            "retriever_device": cfg.get("eval_retriever_device", "cpu"),
             "generator_dtype": cfg.get(
                 "generator_dtype", checkpoint_cfg.get("generator_dtype", "float16")
             ),
@@ -532,6 +570,16 @@ def _evaluate_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
                 cfg.get(
                     "leave_one_out_analysis_samples",
                     checkpoint_cfg.get("leave_one_out_analysis_samples", 25),
+                )
+            ),
+            "eval_index_mode": cfg.get(
+                "eval_index_mode", checkpoint_cfg.get("eval_index_mode", "sharded")
+            ),
+            "eval_index_dir": cfg.get("eval_index_dir"),
+            "eval_index_shard_size": int(
+                cfg.get(
+                    "eval_index_shard_size",
+                    checkpoint_cfg.get("eval_index_shard_size", 50_000),
                 )
             ),
         }
@@ -561,7 +609,37 @@ def _evaluate_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
 
     trainer = NeuralCoTrainer(neural_cfg)
     trainer.load_checkpoint(checkpoint_dir)
-    trainer.phase0_build_index(chunks)
+    eval_index_mode = neural_cfg.eval_index_mode
+    if eval_index_mode == "global":
+        trainer.phase0_build_index(chunks)
+    elif eval_index_mode == "sample_local":
+        trainer.phase0_register_chunks(chunks)
+        trainer.embedding_cache.clear()
+    elif eval_index_mode == "sharded":
+        index_dir = neural_cfg.eval_index_dir
+        if not index_dir:
+            raise RuntimeError(
+                "eval_index_dir is required for sharded evaluation. "
+                "Run the build-eval-index command first."
+            )
+        if not trainer.load_eval_sharded_index(index_dir):
+            raise RuntimeError(
+                f"Missing or invalid sharded eval index: {index_dir}. "
+                "Run the build-eval-index command first."
+            )
+        if not trainer.embedding_cache.is_valid_for(chunks):
+            raise RuntimeError(
+                f"Sharded eval index does not match dataset chunks: {index_dir}"
+            )
+        trainer._chunks = list(chunks)
+        trainer._chunk_map = {chunk.chunk_id: chunk for chunk in chunks}
+    else:
+        raise ValueError(
+            f"Unknown eval_index_mode={eval_index_mode!r}; "
+            "expected global, sample_local, or sharded"
+        )
+    if neural_cfg.retriever_device == "cpu":
+        trainer.offload_retriever_for_eval()
     metrics = trainer.evaluate_to_files(
         samples,
         output_dir,
@@ -585,12 +663,82 @@ def _evaluate_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
         "inference_safe_strategy_check": True,
         "generator_backbone_frozen": True,
         "adapter_type": neural_cfg.adapter_type,
+        "eval_index_mode": eval_index_mode,
+        "eval_index_dir": neural_cfg.eval_index_dir,
+        "eval_retriever_device": neural_cfg.retriever_device or neural_cfg.device,
     }
     result_path = os.path.join(output_dir, "result.json")
     with open(result_path, "w", encoding="utf-8") as f:
         json.dump(result, f, indent=2, ensure_ascii=False, default=str)
     result["result_path"] = result_path
     logger.info("Co-Retrieval neural evaluation complete: %s", result_path)
+    return result
+
+
+def build_eval_index(cfg: Dict[str, Any]) -> Dict[str, Any]:
+    """Build CPU mmap evaluation shards without loading the generator."""
+    from co_retrieval.dense_retriever import DenseRetriever
+    from co_retrieval.embedding_cache import ShardedEmbeddingCache
+
+    checkpoint_dir = cfg.get("checkpoint_dir", "checkpoints/co_retrieval_neural")
+    index_dir = cfg.get("eval_index_dir")
+    if not index_dir:
+        raise ValueError("eval_index_dir is required")
+
+    checkpoint_cfg: Dict[str, Any] = {}
+    meta_path = os.path.join(checkpoint_dir, "meta.json")
+    if os.path.exists(meta_path):
+        with open(meta_path, "r", encoding="utf-8") as handle:
+            checkpoint_cfg = json.load(handle).get("config", {})
+
+    chunker = RepositoryChunker(
+        max_chunk_lines=int(cfg.get("max_chunk_lines", 120)),
+        fallback_lines=int(cfg.get("fallback_lines", 40)),
+    )
+    samples = _collect_evaluation_samples(cfg, chunker)
+    if not samples:
+        raise RuntimeError("No evaluation samples found.")
+    chunks = _collect_global_chunks(samples)
+    if not chunks:
+        raise RuntimeError("No candidate chunks found for evaluation.")
+
+    encoder_name = cfg.get(
+        "encoder_name", checkpoint_cfg.get("encoder_name", "microsoft/unixcoder-base")
+    )
+    encoder = DenseRetriever(
+        model_name=encoder_name,
+        max_length=int(
+            cfg.get("encoder_max_length", checkpoint_cfg.get("encoder_max_length", 512))
+        ),
+        device=cfg.get("device", "cuda"),
+        encode_batch_size=int(cfg.get("batch_encode_size", 32)),
+    )
+    retriever_dir = os.path.join(checkpoint_dir, "retriever")
+    if not os.path.isdir(retriever_dir):
+        raise RuntimeError(f"Missing retriever checkpoint: {retriever_dir}")
+    encoder.load_pretrained(retriever_dir)
+
+    cache = ShardedEmbeddingCache(
+        dim=encoder.hidden_size,
+        shard_size=int(cfg.get("eval_index_shard_size", 50_000)),
+    )
+    cache.build_from_chunks(
+        chunks,
+        encode_fn=encoder.encode_texts_numpy,
+        batch_size=int(cfg.get("batch_encode_size", 32)),
+        directory=index_dir,
+        show_progress=True,
+    )
+    result = {
+        "status": "ok",
+        "index_dir": index_dir,
+        "num_samples": len(samples),
+        "num_chunks": len(chunks),
+        "encoder_name": encoder_name,
+        "device": cfg.get("device", "cuda"),
+        "shard_size": int(cfg.get("eval_index_shard_size", 50_000)),
+    }
+    logger.info("Evaluation index build complete: %s", result)
     return result
 
 

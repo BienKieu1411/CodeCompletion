@@ -41,6 +41,7 @@ class CoRetrievalCLIConfig:
     build_train_index: bool = False
     refresh_train_index: bool = False
     skip_train_eval: bool = False
+    resample_train_each_epoch: bool = False
 
     # ── Neural: training ──────────────────────────────────────────────────
     retriever_lr: float = 2e-5
@@ -61,6 +62,7 @@ class CoRetrievalCLIConfig:
     num_hard_negatives: int = 10
     preference_pool_top_k: int = 20
     max_pairs_per_sample: int = 4
+    utility_score_microbatch_size: int = 2
     leave_one_out_analysis_samples: int = 25
     gate_quality_tolerance: float = 0.01
     gate_retrieval_reduction_target: float = 0.20
@@ -80,7 +82,11 @@ class CoRetrievalCLIConfig:
 
     # ── Neural: device ────────────────────────────────────────────────────
     device: str = "cuda"
+    retriever_device: str | None = None
     generator_dtype: str = "float16"
+    eval_index_mode: str = "global"
+    eval_index_dir: str | None = None
+    eval_index_shard_size: int = 50_000
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
