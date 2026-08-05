@@ -169,6 +169,8 @@ class NeuralCoTrainingConfig:
     # Misc
     random_seed: int = 42
     max_new_tokens: int = 128
+    eval_skip_nll: bool = False
+    eval_batch_size: int = 1
     batch_encode_size: int = 32
     eval_ratio: float = 0.1
     max_eval_samples: int = 100
@@ -1912,6 +1914,35 @@ class NeuralCoTrainer:
     #  Phase 6 — Final Evaluation
     # ══════════════════════════════════════════════════════════════════════
 
+    def _reset_eval_memory_stats(self) -> None:
+        if torch.cuda.is_available() and str(self.config.device).startswith("cuda"):
+            torch.cuda.reset_peak_memory_stats()
+
+    def _log_eval_memory(self, sample_index: int) -> None:
+        if not (
+            torch.cuda.is_available()
+            and str(self.config.device).startswith("cuda")
+        ):
+            return
+        # Periodic cache release prevents allocator fragmentation after long
+        # prefill/NLL passes without synchronizing on every sample.
+        if sample_index % 8 == 0:
+            torch.cuda.empty_cache()
+        if sample_index % 25 == 0:
+            allocated = torch.cuda.memory_allocated() / (1024**3)
+            reserved = torch.cuda.memory_reserved() / (1024**3)
+            peak = torch.cuda.max_memory_allocated() / (1024**3)
+            logger.info(
+                "Eval memory sample=%d allocated=%.2fGiB reserved=%.2fGiB "
+                "peak=%.2fGiB context=%d attention=%s",
+                sample_index,
+                allocated,
+                reserved,
+                peak,
+                self.config.max_context_tokens,
+                getattr(self.generator, "attention_implementation", "unknown"),
+            )
+
     def phase6_evaluate(
         self,
         test_samples: Sequence[TrainingSample],
@@ -1921,6 +1952,7 @@ class NeuralCoTrainer:
         """Evaluate retrieval + generation + end-to-end."""
         self._assert_inference_safe_strategy(mode="eval")
         logger.info("Phase 6: Evaluating on %d samples…", len(test_samples))
+        self._reset_eval_memory_stats()
 
         total_em = 0.0
         total_edit_sim = 0.0
@@ -1990,7 +2022,7 @@ class NeuralCoTrainer:
             )
 
             # NLL comparison — consistent adapter treatment
-            with torch.no_grad():
+            with torch.inference_mode():
                 nll_with = self.generator.teacher_forcing_nll(
                     sample.left_context, sample.target,
                     retrieved_chunks=ctx if ctx else None,
@@ -2008,6 +2040,7 @@ class NeuralCoTrainer:
                 gate_labels.append(label)
                 gate_probs.append(self._gate_probability(sample, candidates))
             n += 1
+            self._log_eval_memory(idx + 1)
 
         denom = max(1, n)
         nll_output_correlation = {
@@ -2089,7 +2122,19 @@ class NeuralCoTrainer:
         import json
 
         self._assert_inference_safe_strategy(mode="evaluate_to_files")
+        skip_eval_nll = bool(getattr(self.config, "eval_skip_nll", False))
+        if skip_eval_nll and include_analysis:
+            raise ValueError(
+                "eval_skip_nll is incompatible with include_analysis because "
+                "utility/gate analysis requires teacher-forcing NLL."
+            )
+        if skip_eval_nll:
+            logger.info(
+                "Fast eval enabled: skipping per-sample teacher-forcing NLL "
+                "passes; output metrics remain enabled."
+            )
         os.makedirs(output_dir, exist_ok=True)
+        self._reset_eval_memory_stats()
         pred_path = os.path.join(output_dir, "prediction.jsonl")
         cand_path = os.path.join(output_dir, "prediction_with_candidates.jsonl")
 
@@ -2106,114 +2151,136 @@ class NeuralCoTrainer:
         gate_probs: List[float] = []
         aligncoder_records: List[Dict[str, Any]] = []
         n = 0
+        eval_batch_size = max(1, int(getattr(self.config, "eval_batch_size", 1)))
 
         with open(pred_path, "w", encoding="utf-8") as f_pred, open(
             cand_path, "w", encoding="utf-8"
         ) as f_cand:
-            for idx, sample in enumerate(test_samples):
-                candidates = list(sample.candidate_chunks or self._chunks)
-                ctx: List[CodeChunk] = []
-                should_retrieve = self._should_retrieve(sample, candidates)
-                if should_retrieve and candidates:
-                    ctx = self._retrieve_for_generation(
-                        sample, candidates, mode="evaluate_to_files"
-                    )
-                    total_retrieve_count += 1
-                    pred = self.generator.generate(
-                        sample.left_context,
+            for batch_start in range(0, len(test_samples), eval_batch_size):
+                batch_samples = list(
+                    test_samples[batch_start : batch_start + eval_batch_size]
+                )
+                prepared: List[
+                    Tuple[TrainingSample, List[CodeChunk], List[CodeChunk]]
+                ] = []
+                for sample in batch_samples:
+                    candidates = list(sample.candidate_chunks or self._chunks)
+                    ctx: List[CodeChunk] = []
+                    should_retrieve = self._should_retrieve(sample, candidates)
+                    if should_retrieve and candidates:
+                        ctx = self._retrieve_for_generation(
+                            sample, candidates, mode="evaluate_to_files"
+                        )
+                        total_retrieve_count += 1
+                    prepared.append((sample, candidates, ctx))
+
+                if eval_batch_size > 1 and hasattr(self.generator, "generate_batch"):
+                    preds = self.generator.generate_batch(
+                        [sample.left_context for sample, _, _ in prepared],
                         max_new_tokens=self.config.max_new_tokens,
-                        retrieved_chunks=ctx,
+                        retrieved_chunks_list=[ctx or None for _, _, ctx in prepared],
                         use_soft_prompt=self.use_adapter,
                     )
                 else:
-                    pred = self.generator.generate(
-                        sample.left_context,
-                        max_new_tokens=self.config.max_new_tokens,
-                        use_soft_prompt=self.use_adapter,
-                    )
+                    preds = [
+                        self.generator.generate(
+                            sample.left_context,
+                            max_new_tokens=self.config.max_new_tokens,
+                            retrieved_chunks=ctx or None,
+                            use_soft_prompt=self.use_adapter,
+                        )
+                        for sample, _, ctx in prepared
+                    ]
 
-                raw_task_id = getattr(sample, "task_id", "")
-                task_id = str(raw_task_id) if raw_task_id not in ("", None) else str(
-                    getattr(sample, "repo_id", "")
-                )
-                file_path = str(getattr(sample, "file_path", "current_file.py"))
-                if not task_id:
-                    task_id = f"{file_path}:{idx}"
-                f_pred.write(
-                    json.dumps({"task_id": task_id, "pred": pred}, ensure_ascii=False)
-                    + "\n"
-                )
-                aligncoder_records.append(
-                    {
-                        "task_id": task_id,
-                        "prompt": sample.left_context,
-                        "target": sample.target,
-                        "pred": pred,
-                        "file_path": file_path,
-                    }
-                )
-                f_cand.write(
-                    json.dumps(
+                for batch_offset, ((sample, candidates, ctx), pred) in enumerate(
+                    zip(prepared, preds)
+                ):
+                    idx = batch_start + batch_offset
+
+                    raw_task_id = getattr(sample, "task_id", "")
+                    task_id = str(raw_task_id) if raw_task_id not in ("", None) else str(
+                        getattr(sample, "repo_id", "")
+                    )
+                    file_path = str(getattr(sample, "file_path", "current_file.py"))
+                    if not task_id:
+                        task_id = f"{file_path}:{idx}"
+                    f_pred.write(
+                        json.dumps({"task_id": task_id, "pred": pred}, ensure_ascii=False)
+                        + "\n"
+                    )
+                    aligncoder_records.append(
                         {
                             "task_id": task_id,
-                            "input": sample.left_context[-512:],
+                            "prompt": sample.left_context,
                             "target": sample.target,
                             "pred": pred,
-                            "retrieval_used": bool(ctx),
-                            "gate_probability": self._gate_probability(
-                                sample, candidates
-                            ),
-                            "gate_decision_threshold": getattr(
-                                self.config, "gate_decision_threshold", 0.5
-                            ),
-                            "candidates": [
-                                {
-                                    "chunk_id": chunk.chunk_id,
-                                    "file_path": chunk.file_path,
-                                    "start_line": chunk.start_line,
-                                    "end_line": chunk.end_line,
-                                    "chunk_type": chunk.chunk_type,
-                                    "defined_symbols": chunk.defined_symbols,
-                                    "text": chunk.text,
-                                }
-                                for chunk in ctx
-                            ],
-                        },
-                        ensure_ascii=False,
+                            "file_path": file_path,
+                        }
                     )
-                    + "\n"
-                )
+                    f_cand.write(
+                        json.dumps(
+                            {
+                                "task_id": task_id,
+                                "input": sample.left_context[-512:],
+                                "target": sample.target,
+                                "pred": pred,
+                                "retrieval_used": bool(ctx),
+                                "gate_probability": self._gate_probability(
+                                    sample, candidates
+                                ),
+                                "gate_decision_threshold": getattr(
+                                    self.config, "gate_decision_threshold", 0.5
+                                ),
+                                "candidates": [
+                                    {
+                                        "chunk_id": chunk.chunk_id,
+                                        "file_path": chunk.file_path,
+                                        "start_line": chunk.start_line,
+                                        "end_line": chunk.end_line,
+                                        "chunk_type": chunk.chunk_type,
+                                        "defined_symbols": chunk.defined_symbols,
+                                        "text": chunk.text,
+                                    }
+                                    for chunk in ctx
+                                ],
+                            },
+                            ensure_ascii=False,
+                        )
+                        + "\n"
+                    )
 
-                em = exact_match(pred, sample.target)
-                edit = edit_similarity(pred, sample.target)
-                id_f1 = identifier_f1(pred, sample.target)
-                total_em += em
-                total_edit_sim += edit
-                total_id_f1 += id_f1
-                edit_values.append(edit)
-                id_f1_values.append(id_f1)
+                    em = exact_match(pred, sample.target)
+                    edit = edit_similarity(pred, sample.target)
+                    id_f1 = identifier_f1(pred, sample.target)
+                    total_em += em
+                    total_edit_sim += edit
+                    total_id_f1 += id_f1
+                    edit_values.append(edit)
+                    id_f1_values.append(id_f1)
 
-                with torch.no_grad():
-                    nll_with = self.generator.teacher_forcing_nll(
-                        sample.left_context,
-                        sample.target,
-                        retrieved_chunks=ctx if ctx else None,
-                        use_soft_prompt=self.use_adapter,
-                    ).item()
-                    nll_without = self.generator.teacher_forcing_nll(
-                        sample.left_context,
-                        sample.target,
-                        retrieved_chunks=None,
-                        use_soft_prompt=self.use_adapter,
-                    ).item()
-                total_nll_with += nll_with
-                total_nll_without += nll_without
-                nll_improvements.append(nll_without - nll_with)
-                if include_analysis:
-                    label, _ = self._utility_gate_label(sample, candidates)
-                    gate_labels.append(label)
-                    gate_probs.append(self._gate_probability(sample, candidates))
-                n += 1
+                    if not skip_eval_nll:
+                        with torch.inference_mode():
+                            nll_with = self.generator.teacher_forcing_nll(
+                                sample.left_context,
+                                sample.target,
+                                retrieved_chunks=ctx if ctx else None,
+                                use_soft_prompt=self.use_adapter,
+                            ).item()
+                            nll_without = self.generator.teacher_forcing_nll(
+                                sample.left_context,
+                                sample.target,
+                                retrieved_chunks=None,
+                                use_soft_prompt=self.use_adapter,
+                            ).item()
+                        total_nll_with += nll_with
+                        total_nll_without += nll_without
+                        nll_improvements.append(nll_without - nll_with)
+                    if include_analysis:
+                        label, _ = self._utility_gate_label(sample, candidates)
+                        gate_labels.append(label)
+                        gate_probs.append(self._gate_probability(sample, candidates))
+                    n += 1
+                    self._log_eval_memory(idx + 1)
 
         aligncoder_metrics = write_aligncoder_metric_files(
             output_dir, aligncoder_records
@@ -2230,16 +2297,28 @@ class NeuralCoTrainer:
             "gate_decision_threshold": getattr(
                 self.config, "gate_decision_threshold", 0.5
             ),
-            "avg_nll_with_retrieval": total_nll_with / denom,
-            "avg_nll_without_retrieval": total_nll_without / denom,
-            "nll_improvement": (total_nll_without - total_nll_with) / denom,
+            "avg_nll_with_retrieval": (
+                None if skip_eval_nll else total_nll_with / denom
+            ),
+            "avg_nll_without_retrieval": (
+                None if skip_eval_nll else total_nll_without / denom
+            ),
+            "nll_improvement": (
+                None
+                if skip_eval_nll
+                else (total_nll_without - total_nll_with) / denom
+            ),
             "num_samples": n,
-            "nll_output_correlation": {
-                "nll_vs_edit_corr": _safe_corr(nll_improvements, edit_values),
-                "nll_vs_identifier_f1_corr": _safe_corr(
-                    nll_improvements, id_f1_values
-                ),
-            },
+            "nll_output_correlation": (
+                {"status": "skipped"}
+                if skip_eval_nll
+                else {
+                    "nll_vs_edit_corr": _safe_corr(nll_improvements, edit_values),
+                    "nll_vs_identifier_f1_corr": _safe_corr(
+                        nll_improvements, id_f1_values
+                    ),
+                }
+            ),
             "gate_label_metrics": _gate_label_metrics(gate_labels, gate_probs)
             if include_analysis
             else {},
@@ -2283,7 +2362,7 @@ class NeuralCoTrainer:
             )
             if len(ctx) <= 1:
                 continue
-            with torch.no_grad():
+            with torch.inference_mode():
                 full_nll = self.generator.teacher_forcing_nll(
                     sample.left_context,
                     sample.target,

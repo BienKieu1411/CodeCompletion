@@ -556,10 +556,20 @@ def _evaluate_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
             "generator_dtype": cfg.get(
                 "generator_dtype", checkpoint_cfg.get("generator_dtype", "float16")
             ),
+            # Evaluation is deliberately capped below the training context
+            # by default. This prevents long-prefill attention from consuming
+            # the entire A100; callers can raise it after a memory smoke test.
+            "max_context_tokens": int(
+                cfg.get(
+                    "max_context_tokens",
+                    min(int(checkpoint_cfg.get("max_context_tokens", 4096)), 3072),
+                )
+            ),
             "top_k": int(cfg.get("top_k", checkpoint_cfg.get("top_k", 3))),
             "max_new_tokens": int(
                 cfg.get("max_new_tokens", checkpoint_cfg.get("max_new_tokens", 128))
             ),
+            "eval_skip_nll": bool(cfg.get("eval_skip_nll", False)),
             "batch_encode_size": int(
                 cfg.get(
                     "batch_encode_size",
@@ -666,6 +676,10 @@ def _evaluate_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
         "eval_index_mode": eval_index_mode,
         "eval_index_dir": neural_cfg.eval_index_dir,
         "eval_retriever_device": neural_cfg.retriever_device or neural_cfg.device,
+        "eval_max_context_tokens": neural_cfg.max_context_tokens,
+        "generator_attention_implementation": getattr(
+            trainer.generator, "attention_implementation", "unknown"
+        ),
     }
     result_path = os.path.join(output_dir, "result.json")
     with open(result_path, "w", encoding="utf-8") as f:

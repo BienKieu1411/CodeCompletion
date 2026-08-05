@@ -43,6 +43,8 @@ EVAL_INDEX_ROOT="${EVAL_INDEX_ROOT:-${OUTPUT_ROOT}/eval_index}"
 EVAL_INDEX_SHARD_SIZE="${EVAL_INDEX_SHARD_SIZE:-50000}"
 BUILD_EVAL_INDEX="${BUILD_EVAL_INDEX:-1}"
 EVAL_RETRIEVER_DEVICE="${EVAL_RETRIEVER_DEVICE:-cpu}"
+EVAL_MAX_CONTEXT_TOKENS="${EVAL_MAX_CONTEXT_TOKENS:-3072}"
+EVAL_SKIP_NLL="${EVAL_SKIP_NLL:-0}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 
 CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
@@ -57,6 +59,11 @@ export PYTHONPATH="${SRC_DIR}:${PYTHONPATH:-}"
 export TOKENIZERS_PARALLELISM="${TOKENIZERS_PARALLELISM:-false}"
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True,max_split_size_mb:256}"
 export HF_HUB_ENABLE_HF_TRANSFER="${HF_HUB_ENABLE_HF_TRANSFER:-0}"
+
+EVAL_NLL_ARGS=()
+if [[ "${EVAL_SKIP_NLL}" == "1" ]]; then
+  EVAL_NLL_ARGS+=(--skip-eval-nll)
+fi
 
 if ! command -v "${PYTHON_BIN}" >/dev/null 2>&1; then
   echo "Python executable not found: ${PYTHON_BIN}" >&2
@@ -255,8 +262,10 @@ if [[ "${RUN_EVAL}" == "1" ]]; then
       --eval-index-dir "${eval_index_dir}" \
       --eval-index-shard-size "${EVAL_INDEX_SHARD_SIZE}" \
       --eval-retriever-device "${EVAL_RETRIEVER_DEVICE}" \
+      --max-context-tokens "${EVAL_MAX_CONTEXT_TOKENS}" \
       --max-new-tokens 128 \
       --leave-one-out-analysis-samples "${LEAVE_ONE_OUT_ANALYSIS_SAMPLES}" \
+      "${EVAL_NLL_ARGS[@]}" \
       "${EVAL_EXTRA_ARGS[@]}" \
       --generator-dtype bfloat16 \
       --device cuda \

@@ -52,6 +52,8 @@ retriever/gate on CPU so GPU memory is reserved for DeepSeek. Set
 `BUILD_EVAL_INDEX=0` only when a matching index already exists. Set
 `EVAL_INDEX_MODE=sample_local` for a low-memory, no-cache diagnostic run, or
 `EVAL_INDEX_MODE=global` only for legacy comparisons. Set
+`EVAL_MAX_CONTEXT_TOKENS=4096` only after a smoke test; the default `3072`
+avoids long-prefill attention OOM on the A100.
 `INCLUDE_POLICY_VARIANTS=1` for the gate ablation and `INCLUDE_ANALYSIS=1`
 plus `LEAVE_ONE_OUT_ANALYSIS_SAMPLES=25` for the full reviewer analysis pass.
 

@@ -20,6 +20,7 @@ Key capabilities
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass
 from typing import List, Optional, Sequence, Tuple
 
@@ -176,9 +177,44 @@ class SoftPromptLLM(nn.Module):
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        # Frozen LLM
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name, torch_dtype=dtype, trust_remote_code=True
+        # Use memory-efficient scaled-dot-product attention when available.
+        # Eager attention materializes an O(sequence_length^2) matrix during
+        # long-context prefill and can exhaust an A100 before the first token.
+        load_kwargs = {"torch_dtype": dtype, "trust_remote_code": True}
+        requested_attention = os.environ.get(
+            "ICAR_ATTENTION_IMPLEMENTATION", "sdpa"
+        )
+        self.attention_implementation = "eager"
+        if str(device).startswith("cuda") and requested_attention != "eager":
+            load_kwargs["attn_implementation"] = requested_attention
+        try:
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_name, **load_kwargs
+            )
+            self.attention_implementation = getattr(
+                self.model.config, "_attn_implementation", requested_attention
+            )
+        except (TypeError, ValueError, ImportError) as exc:
+            # Older Transformers/model implementations may reject the
+            # attention kwarg. Keep compatibility, but make the fallback
+            # visible because eager attention is unsafe for long eval inputs.
+            if "attn_implementation" not in load_kwargs:
+                raise
+            logger.warning(
+                "Attention backend %r unavailable (%s); falling back to eager",
+                requested_attention,
+                exc,
+            )
+            load_kwargs.pop("attn_implementation", None)
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_name, **load_kwargs
+            )
+            self.attention_implementation = getattr(
+                self.model.config, "_attn_implementation", "eager"
+            )
+        logger.info(
+            "SoftPromptLLM: attention implementation=%s",
+            self.attention_implementation,
         )
         self.model.eval()
         self.model.requires_grad_(False)
@@ -560,7 +596,7 @@ class SoftPromptLLM(nn.Module):
 
     # ── Generate (inference / evaluation only) ────────────────────────────
 
-    @torch.no_grad()
+    @torch.inference_mode()
     def _greedy_with_cache(
         self,
         inputs_embeds: torch.Tensor,
@@ -582,6 +618,10 @@ class SoftPromptLLM(nn.Module):
 
         generated_ids: List[int] = []
         next_id = outputs.logits[0, -1, :].argmax()
+        # The prefill logits have shape [1, prompt_length, vocab_size]. They
+        # are not needed after selecting the first token and can be hundreds
+        # of MiB for a 4k-token prompt.
+        del outputs, inputs_embeds
         for _ in range(max_new_tokens):
             if next_id.item() == self.tokenizer.eos_token_id:
                 break
@@ -608,7 +648,7 @@ class SoftPromptLLM(nn.Module):
             next_id = outputs.logits[0, -1, :].argmax()
         return generated_ids
 
-    @torch.no_grad()
+    @torch.inference_mode()
     def generate(
         self,
         left_context: str,
@@ -680,6 +720,148 @@ class SoftPromptLLM(nn.Module):
             )
 
         return self.tokenizer.decode(generated_ids, skip_special_tokens=True)
+
+    @torch.inference_mode()
+    def _greedy_with_cache_batch(
+        self,
+        inputs_embeds: torch.Tensor,
+        attention_mask: torch.Tensor,
+        max_new_tokens: int,
+    ) -> Optional[List[List[int]]]:
+        """Greedy decode a padded batch while sharing model forwards."""
+        try:
+            outputs = self.model(
+                inputs_embeds=inputs_embeds,
+                attention_mask=attention_mask,
+                use_cache=True,
+            )
+        except TypeError:
+            return None
+        past_key_values = getattr(outputs, "past_key_values", None)
+        if past_key_values is None:
+            return None
+
+        batch_size = inputs_embeds.shape[0]
+        last_positions = attention_mask.sum(dim=1).clamp_min(1).long() - 1
+        row_ids = torch.arange(batch_size, device=self._device)
+        next_ids = outputs.logits[row_ids, last_positions].argmax(dim=-1)
+        generated_ids: List[List[int]] = [[] for _ in range(batch_size)]
+        eos_id = self.tokenizer.eos_token_id
+        finished = (
+            next_ids.eq(eos_id)
+            if eos_id is not None
+            else torch.zeros_like(next_ids, dtype=torch.bool)
+        )
+        del outputs, inputs_embeds
+
+        for _ in range(max_new_tokens):
+            active = ~finished
+            if not bool(active.any()):
+                break
+            for row in torch.where(active)[0].tolist():
+                generated_ids[row].append(int(next_ids[row].item()))
+
+            feed_ids = next_ids.clone()
+            if eos_id is not None:
+                feed_ids[finished] = int(eos_id)
+            next_embed = self.model.get_input_embeddings()(feed_ids.unsqueeze(1))
+            attention_mask = torch.cat(
+                [
+                    attention_mask,
+                    torch.ones(
+                        batch_size, 1, dtype=torch.long, device=self._device
+                    ),
+                ],
+                dim=1,
+            )
+            outputs = self.model(
+                inputs_embeds=next_embed,
+                attention_mask=attention_mask,
+                past_key_values=past_key_values,
+                use_cache=True,
+            )
+            past_key_values = getattr(outputs, "past_key_values", None)
+            if past_key_values is None:
+                return None
+            next_ids = outputs.logits[:, -1, :].argmax(dim=-1)
+            if eos_id is not None:
+                finished |= next_ids.eq(eos_id)
+            del outputs, next_embed
+        return generated_ids
+
+    @torch.inference_mode()
+    def generate_batch(
+        self,
+        left_contexts: Sequence[str],
+        max_new_tokens: int = 128,
+        retrieved_chunks_list: Optional[
+            Sequence[Optional[Sequence[CodeChunk]]]
+        ] = None,
+        use_soft_prompt: bool = True,
+    ) -> List[str]:
+        """Generate several completions in one padded autoregressive batch."""
+        texts = list(left_contexts)
+        if not texts:
+            return []
+        if retrieved_chunks_list is None:
+            retrieved_chunks_list = [None] * len(texts)
+        if len(retrieved_chunks_list) != len(texts):
+            raise ValueError("retrieved_chunks_list must match left_contexts")
+
+        context_texts = []
+        for left_context, chunks in zip(texts, retrieved_chunks_list):
+            if chunks:
+                context_texts.append(
+                    self.budget_manager.pack(chunks, left_context, self.tokenizer)
+                )
+            else:
+                context_texts.append(left_context)
+
+        text_budget = self.budget_manager.max_tokens - max_new_tokens
+        if use_soft_prompt:
+            text_budget -= self.num_prompt_tokens
+        text_budget = max(1, text_budget)
+        tokens = self.tokenizer(
+            context_texts,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=text_budget,
+        ).to(self._device)
+        with torch.no_grad():
+            text_embeds = self.model.get_input_embeddings()(tokens.input_ids)
+
+        if use_soft_prompt:
+            prompt_embeds = self.prompt_embeddings.unsqueeze(0).to(
+                dtype=text_embeds.dtype, device=self._device
+            ).expand(len(texts), -1, -1)
+            inputs_embeds = torch.cat([prompt_embeds, text_embeds], dim=1)
+            prompt_mask = torch.ones(
+                len(texts), self.num_prompt_tokens,
+                dtype=torch.long, device=self._device
+            )
+            attention_mask = torch.cat([prompt_mask, tokens.attention_mask], dim=1)
+        else:
+            inputs_embeds = text_embeds
+            attention_mask = tokens.attention_mask
+
+        generated = self._greedy_with_cache_batch(
+            inputs_embeds, attention_mask, max_new_tokens
+        )
+        if generated is None:
+            return [
+                self.generate(
+                    text,
+                    max_new_tokens=max_new_tokens,
+                    retrieved_chunks=chunks,
+                    use_soft_prompt=use_soft_prompt,
+                )
+                for text, chunks in zip(texts, retrieved_chunks_list)
+            ]
+        return [
+            self.tokenizer.decode(ids, skip_special_tokens=True)
+            for ids in generated
+        ]
 
     @torch.no_grad()
     def generate_drafts(
