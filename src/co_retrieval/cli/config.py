@@ -82,7 +82,11 @@ class CoRetrievalCLIConfig:
 
     # ── Neural: device ────────────────────────────────────────────────────
     device: str = "cuda"
+    retriever_device: str | None = None
     generator_dtype: str = "float16"
+    eval_index_mode: str = "global"
+    eval_index_dir: str | None = None
+    eval_index_shard_size: int = 50_000
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)

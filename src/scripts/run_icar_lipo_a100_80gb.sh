@@ -38,6 +38,11 @@ REFRESH_TRAIN_INDEX="${REFRESH_TRAIN_INDEX:-0}"
 EVAL_MAX_SAMPLES="${EVAL_MAX_SAMPLES:-0}"
 INCLUDE_ANALYSIS="${INCLUDE_ANALYSIS:-0}"
 LEAVE_ONE_OUT_ANALYSIS_SAMPLES="${LEAVE_ONE_OUT_ANALYSIS_SAMPLES:-0}"
+EVAL_INDEX_MODE="${EVAL_INDEX_MODE:-sharded}"
+EVAL_INDEX_ROOT="${EVAL_INDEX_ROOT:-${OUTPUT_ROOT}/eval_index}"
+EVAL_INDEX_SHARD_SIZE="${EVAL_INDEX_SHARD_SIZE:-50000}"
+BUILD_EVAL_INDEX="${BUILD_EVAL_INDEX:-1}"
+EVAL_RETRIEVER_DEVICE="${EVAL_RETRIEVER_DEVICE:-cpu}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 
 CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
@@ -218,7 +223,24 @@ if [[ "${RUN_EVAL}" == "1" ]]; then
     fi
 
     out_dir="${OUTPUT_ROOT}/eval/${dataset_name}"
+    eval_index_dir="${EVAL_INDEX_ROOT}/${dataset_name}"
     mkdir -p "${out_dir}" "${LOG_DIR}/eval"
+
+    if [[ "${EVAL_INDEX_MODE}" == "sharded" && "${BUILD_EVAL_INDEX}" == "1" ]]; then
+      mkdir -p "${eval_index_dir}"
+      echo "Building CPU mmap eval index for ${dataset_name}: ${eval_index_dir}"
+      "${PYTHON_BIN}" -m co_retrieval.cli.co_retrieval_cli build-eval-index \
+        --dataset-path "${dataset_path}" \
+        --checkpoint-dir "${CHECKPOINT_DIR}" \
+        --eval-index-dir "${eval_index_dir}" \
+        --max-samples "${EVAL_MAX_SAMPLES}" \
+        --batch-encode-size "${BATCH_ENCODE_SIZE}" \
+        --eval-index-shard-size "${EVAL_INDEX_SHARD_SIZE}" \
+        --max-chunk-lines 120 \
+        --fallback-lines 40 \
+        --device cuda \
+        2>&1 | tee "${LOG_DIR}/eval/${dataset_name}.index.log"
+    fi
 
     "${PYTHON_BIN}" -m co_retrieval.cli.co_retrieval_cli evaluate \
       --dataset-path "${dataset_path}" \
@@ -229,6 +251,10 @@ if [[ "${RUN_EVAL}" == "1" ]]; then
       --top-k 3 \
       --batch-size "${EVAL_BATCH_SIZE}" \
       --batch-encode-size "${BATCH_ENCODE_SIZE}" \
+      --eval-index-mode "${EVAL_INDEX_MODE}" \
+      --eval-index-dir "${eval_index_dir}" \
+      --eval-index-shard-size "${EVAL_INDEX_SHARD_SIZE}" \
+      --eval-retriever-device "${EVAL_RETRIEVER_DEVICE}" \
       --max-new-tokens 128 \
       --leave-one-out-analysis-samples "${LEAVE_ONE_OUT_ANALYSIS_SAMPLES}" \
       "${EVAL_EXTRA_ARGS[@]}" \

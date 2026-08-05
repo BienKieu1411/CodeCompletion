@@ -31,7 +31,7 @@ from co_retrieval.aligncoder_metrics import (
 )
 from co_retrieval.context_utility import ContextCandidate, ContextUtilityScorer
 from co_retrieval.dense_retriever import DenseRetriever
-from co_retrieval.embedding_cache import EmbeddingCache
+from co_retrieval.embedding_cache import EmbeddingCache, ShardedEmbeddingCache
 from co_retrieval.intent import (
     CostAwareQueryEnhancer,
     IntentSketcher,
@@ -91,6 +91,8 @@ class NeuralCoTrainingConfig:
 
     # Encoder
     encoder_max_length: int = 512
+    # Evaluation may keep retrieval on CPU while generation remains on GPU.
+    retriever_device: Optional[str] = None
 
     # Generator
     num_prompt_tokens: int = 50
@@ -177,6 +179,11 @@ class NeuralCoTrainingConfig:
     query_draft_max_tokens: int = 32
     query_draft_temperature: float = 0.8
     query_draft_top_p: float = 0.95
+    # Evaluation retrieval index. ``sharded`` is built separately and loaded
+    # as CPU mmap files during generation.
+    eval_index_mode: str = "global"
+    eval_index_dir: Optional[str] = None
+    eval_index_shard_size: int = 50_000
 
 
 # ── BM25-like simple scorer ──────────────────────────────────────────────────
@@ -508,12 +515,18 @@ class NeuralCoTrainer:
         }
         gen_dtype = dtype_map.get(config.generator_dtype, torch.float16)
 
-        # Components
-        logger.info("Init DenseRetriever (%s)…", config.encoder_name)
+        # Components.  Evaluation can move retrieval off the generation GPU;
+        # training keeps the historical single-device behavior by default.
+        retriever_device = config.retriever_device or config.device
+        logger.info(
+            "Init DenseRetriever (%s) on %s…",
+            config.encoder_name,
+            retriever_device,
+        )
         self.retriever = DenseRetriever(
             model_name=config.encoder_name,
             max_length=config.encoder_max_length,
-            device=config.device,
+            device=retriever_device,
             encode_batch_size=config.batch_encode_size,
         )
         self.retriever.save_initial_copy()  # frozen pretrained encoder baseline
@@ -528,7 +541,7 @@ class NeuralCoTrainer:
                 if config.gate_use_retrieval_features
                 else 0
             ),
-        ).to(config.device)
+        ).to(retriever_device)
 
         logger.info("Init SoftPromptLLM (%s)…", config.generator_name)
         self.generator = SoftPromptLLM(
@@ -694,6 +707,50 @@ class NeuralCoTrainer:
             len(chunks),
         )
 
+    def build_eval_sharded_index(
+        self,
+        chunks: Sequence[CodeChunk],
+        directory: str,
+    ) -> None:
+        """Build a disk-backed CPU index for evaluation or analysis."""
+        self._chunks = list(chunks)
+        self._chunk_map = {c.chunk_id: c for c in chunks}
+        cache = ShardedEmbeddingCache(
+            dim=self.retriever.hidden_size,
+            shard_size=self.config.eval_index_shard_size,
+        )
+        cache.build_from_chunks(
+            chunks,
+            encode_fn=self.retriever.encode_texts_numpy,
+            batch_size=self.config.batch_encode_size,
+            directory=directory,
+            show_progress=True,
+        )
+        self.embedding_cache = cache
+
+    def load_eval_sharded_index(self, directory: str) -> bool:
+        """Load a previously built CPU mmap evaluation index."""
+        cache = ShardedEmbeddingCache(
+            dim=self.retriever.hidden_size,
+            shard_size=self.config.eval_index_shard_size,
+        )
+        if not cache.load(directory):
+            return False
+        self.embedding_cache = cache
+        return True
+
+    def offload_retriever_for_eval(self) -> None:
+        """Move retrieval and gate to CPU, leaving GPU for generation only."""
+        self.retriever.to("cpu")
+        self.retriever._device = "cpu"
+        self.gate.to("cpu")
+        self.config.retriever_device = "cpu"
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        logger.info(
+            "Evaluation memory layout: retriever/gate on CPU; generator remains on %s",
+            self.config.device,
+        )
     def _register_additional_chunks(
         self, samples: Sequence[TrainingSample]
     ) -> None:
@@ -943,7 +1000,9 @@ class NeuralCoTrainer:
         return torch.tensor(
             values,
             dtype=torch.float32,
-            device=getattr(self.config, "device", "cpu"),
+            device=getattr(
+                self.retriever, "_device", getattr(self.config, "device", "cpu")
+            ),
         )
 
     def _prepare_retrieval_query(
