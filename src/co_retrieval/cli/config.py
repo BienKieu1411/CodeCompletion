@@ -77,6 +77,8 @@ class CoRetrievalCLIConfig:
     gate_entropy_weight: float = 0.01
     batch_encode_size: int = 32
     max_new_tokens: int = 128
+    eval_skip_nll: bool = False
+    eval_batch_size: int = 1
     eval_ratio: float = 0.1
     max_eval_samples: int = 100
 

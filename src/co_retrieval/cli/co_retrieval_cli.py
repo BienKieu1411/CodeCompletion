@@ -194,12 +194,15 @@ def _cmd_evaluate(args: argparse.Namespace) -> dict:
             "gate_decision_threshold": args.gate_decision_threshold,
             "batch_encode_size": args.batch_encode_size,
             "max_new_tokens": args.max_new_tokens,
+            "eval_skip_nll": args.skip_eval_nll,
+            "eval_batch_size": args.batch_size,
             "leave_one_out_analysis_samples": args.leave_one_out_analysis_samples,
             "include_analysis": not args.no_analysis,
             "include_policy_variants": args.include_policy_variants,
             "device": args.device,
             "eval_retriever_device": args.eval_retriever_device,
             "generator_dtype": args.generator_dtype,
+            "max_context_tokens": args.max_context_tokens,
             "eval_index_mode": args.eval_index_mode,
             "eval_index_dir": args.eval_index_dir,
             "eval_index_shard_size": args.eval_index_shard_size,
@@ -439,6 +442,24 @@ def build_parser() -> argparse.ArgumentParser:
     p_eval.add_argument("--gate-decision-threshold", type=float, default=None)
     p_eval.add_argument("--batch-encode-size", type=_positive_int, default=32)
     p_eval.add_argument("--max-new-tokens", type=_positive_int, default=128)
+    p_eval.add_argument(
+        "--skip-eval-nll",
+        action="store_true",
+        default=False,
+        help=(
+            "Skip the two teacher-forcing NLL passes per sample. This keeps "
+            "prediction/output metrics but omits NLL analysis."
+        ),
+    )
+    p_eval.add_argument(
+        "--max-context-tokens",
+        type=_positive_int,
+        default=3072,
+        help=(
+            "Maximum generator context during evaluation. Lower values avoid "
+            "long-prefill GPU OOM on long-context samples."
+        ),
+    )
     p_eval.add_argument(
         "--eval-index-mode",
         choices=["global", "sample_local", "sharded"],
