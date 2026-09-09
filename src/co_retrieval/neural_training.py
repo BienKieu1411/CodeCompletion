@@ -669,7 +669,11 @@ class NeuralCoTrainer:
         if mode == "raw_query_main":
             self.config.intent_mode = "raw"
         elif mode == "retriever_only":
+            # Retriever benchmark protocol: the generator backbone and the
+            # optional adapter are frozen/disabled, and every sample retrieves
+            # context.  A learned gate would confound the retriever result.
             self.config.adapter_type = "none"
+            self.config.gate_mode = "always_retrieve"
         elif mode == "always_retrieve":
             self.config.gate_mode = "always_retrieve"
         elif mode == "always_skip":
@@ -1541,6 +1545,9 @@ class NeuralCoTrainer:
             gate_step_budget = len(gate_examples) if steps is None else max(0, steps)
         else:
             gate_step_budget = max(0, gate_steps)
+        if self.config.gate_mode in {"always_retrieve", "always_skip"}:
+            # Fixed-policy baselines must not spend updates on an unused gate.
+            gate_step_budget = 0
         if use_lipo and not lipo_groups:
             retriever_steps = 0
         if not use_lipo and not pairs:
@@ -1895,6 +1902,77 @@ class NeuralCoTrainer:
                 "index_refreshes": 1,
                 **p1,
                 "num_dpo_pairs": len(preference_data.pairs),
+                "num_gate_examples": len(preference_data.gate_examples),
+                "gate_positive_count": preference_data.gate_positive_count,
+                "gate_positive_ratio": preference_data.gate_positive_count
+                / max(1, len(preference_data.gate_examples)),
+                "mean_max_utility": preference_data.mean_max_utility,
+                "mean_gate_adjusted_utility": (
+                    preference_data.mean_gate_adjusted_utility
+                ),
+                "mean_gate_context_cost": preference_data.mean_gate_context_cost,
+                "pair_type_counts": preference_data.pair_type_counts,
+                "strategy_counts": preference_data.strategy_counts,
+                **p3,
+            }
+        ]
+
+    def phase5_retriever_only(
+        self,
+        samples: Sequence[TrainingSample],
+    ) -> List[Dict[str, Any]]:
+        """Train only the retriever for the generator-fixed benchmark.
+
+        This is the primary retriever comparison protocol.  Preference data
+        is built once with the frozen generator and no adapter, then the
+        retriever is trained for the configured total budget.  The gate and
+        soft prompt are deliberately excluded so downstream quality measures
+        isolate retrieval quality.
+        """
+        epochs = (
+            self.config.train_epochs
+            if getattr(self.config, "epoch_budget_mode", False)
+            else self.config.num_rounds
+        )
+        if self.use_adapter or self.config.gate_mode != "always_retrieve":
+            raise RuntimeError(
+                "retriever_only requires adapter_type='none' and "
+                "gate_mode='always_retrieve'"
+            )
+
+        preference_data = self.phase2_build_preference_data(samples)
+        if getattr(self.config, "epoch_budget_mode", False):
+            retriever_steps = epochs * len(preference_data.lipo_groups)
+            if self.config.retriever_loss != "lipo":
+                retriever_steps = epochs * len(preference_data.pairs)
+        else:
+            retriever_steps = epochs * self._retriever_steps_per_round()
+
+        p3 = self.phase3_retriever_training(
+            preference_data,
+            steps=retriever_steps,
+            gate_steps=0,
+        )
+        self.phase4_refresh_index()
+        return [
+            {
+                "round": 1,
+                "schedule": "retriever_only",
+                "epoch_budget_mode": getattr(
+                    self.config, "epoch_budget_mode", False
+                ),
+                "train_epochs": epochs,
+                "adapter_type": "none",
+                "gate_mode": "always_retrieve",
+                "prompt_steps_budget": 0,
+                "retriever_steps_budget": retriever_steps,
+                "gate_steps_budget": 0,
+                "preference_data_builds": 1,
+                "index_refreshes": 1,
+                "soft_prompt_updated": False,
+                "gate_updated": False,
+                "num_dpo_pairs": len(preference_data.pairs),
+                "num_lipo_groups": len(preference_data.lipo_groups),
                 "num_gate_examples": len(preference_data.gate_examples),
                 "gate_positive_count": preference_data.gate_positive_count,
                 "gate_positive_ratio": preference_data.gate_positive_count
@@ -2517,7 +2595,9 @@ class NeuralCoTrainer:
 
         schedule = self.config.experiment_mode
         p1: Dict[str, float] = {}
-        if self.config.experiment_mode == "sequential_adapter_first":
+        if self.config.experiment_mode == "retriever_only":
+            round_history = self.phase5_retriever_only(samples)
+        elif self.config.experiment_mode == "sequential_adapter_first":
             round_history = self.phase5_sequential_adapter_first(samples)
         elif self.config.experiment_mode == "sequential_retriever_first":
             if sample_provider is not None:
@@ -2538,21 +2618,34 @@ class NeuralCoTrainer:
                     samples, sample_provider=sample_provider
                 )
 
-        gate_calibration = (
-            self.calibrate_gate_threshold(samples)
-            if self.config.gate_calibrate_threshold
-            else {
-                "status": "disabled",
+        if self.config.experiment_mode == "retriever_only":
+            gate_calibration = {
+                "status": "not_applicable",
+                "reason": "retriever_only",
                 "threshold": self.config.gate_decision_threshold,
             }
-        )
+        else:
+            gate_calibration = (
+                self.calibrate_gate_threshold(samples)
+                if self.config.gate_calibrate_threshold
+                else {
+                    "status": "disabled",
+                    "threshold": self.config.gate_decision_threshold,
+                }
+            )
 
         # Phase 6 — Final held-out evaluation when provided.
         eval_metrics = self.phase6_evaluate(eval_samples) if eval_samples else {}
         eval_policy_variants = (
-            self.evaluate_policy_variants(eval_samples) if eval_samples else {}
+            self.evaluate_policy_variants(eval_samples)
+            if eval_samples and self.config.experiment_mode != "retriever_only"
+            else {}
         )
-        gate_status = self.gate_defense_status(eval_policy_variants)
+        gate_status = (
+            {"status": "not_applicable", "reason": "retriever_only"}
+            if self.config.experiment_mode == "retriever_only"
+            else self.gate_defense_status(eval_policy_variants)
+        )
 
         # Save final checkpoint
         self._save_checkpoint(
@@ -2590,6 +2683,9 @@ class NeuralCoTrainer:
             "inference_safe_strategy_check": True,
             "generator_backbone_frozen": True,
             "adapter_type": getattr(self.config, "adapter_type", "soft_prompt"),
+            "retriever_only_protocol": self.config.experiment_mode
+            == "retriever_only",
+            "gate_trained": self.config.experiment_mode != "retriever_only",
             "num_samples": len(samples),
             "num_eval_samples": len(eval_samples or []),
             "num_chunks": len(all_chunks),
@@ -2625,8 +2721,12 @@ class NeuralCoTrainer:
         os.makedirs(ckpt_dir, exist_ok=True)
 
         self.retriever.save_pretrained(os.path.join(ckpt_dir, "retriever"))
-        torch.save(self.gate.state_dict(), os.path.join(ckpt_dir, "gate.pt"))
-        self.generator.save_prompt(os.path.join(ckpt_dir, "soft_prompt.pt"))
+        if self.config.experiment_mode != "retriever_only":
+            torch.save(self.gate.state_dict(), os.path.join(ckpt_dir, "gate.pt"))
+        # A retriever-only checkpoint must not advertise or depend on a
+        # generator-side adapter artifact.
+        if self.use_adapter:
+            self.generator.save_prompt(os.path.join(ckpt_dir, "soft_prompt.pt"))
 
         meta = {
             "created_at": datetime.now().isoformat(),

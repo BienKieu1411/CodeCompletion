@@ -22,7 +22,7 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass
-from typing import List, Optional, Sequence, Tuple
+from typing import Any, List, Optional, Sequence, Tuple
 
 import torch
 import torch.nn as nn
@@ -57,6 +57,34 @@ def _backend_token_ids(tokenizer: AutoTokenizer, text: str) -> List[int]:
     return list(tokenizer.encode(text, add_special_tokens=False))
 
 
+def _tokenize_keep_tail(
+    tokenizer: AutoTokenizer,
+    text: Any,
+    *,
+    max_length: int,
+    **kwargs: Any,
+) -> Any:
+    """Tokenize while retaining the tokens closest to the completion cursor.
+
+    Hugging Face tokenizers default to right truncation. That is unsafe for a
+    left-context completion task: on long inputs it removes the cursor tail
+    and leaves the model looking at an unrelated file prefix. Keep the
+    tokenizer setting local so target/prompt tokenization elsewhere keeps its
+    original semantics.
+    """
+    previous_side = getattr(tokenizer, "truncation_side", "right")
+    tokenizer.truncation_side = "left"
+    try:
+        return tokenizer(
+            text,
+            truncation=True,
+            max_length=max_length,
+            **kwargs,
+        )
+    finally:
+        tokenizer.truncation_side = previous_side
+
+
 # ── Token budget ──────────────────────────────────────────────────────────────
 
 
@@ -64,17 +92,21 @@ def _backend_token_ids(tokenizer: AutoTokenizer, text: str) -> List[int]:
 class TokenBudgetManager:
     """Allocate context window across prompt / retrieval / left-context.
 
-    Priority (descending):
-    1. Generation headroom (reserved for target / output).
-    2. Soft prompt tokens (fixed).
-    3. Left context tail (most important real input — closest to cursor).
-    4. Retrieved chunks (fill remaining budget, trim lowest-rank first).
+    Generation headroom and soft-prompt tokens are fixed first. The remaining
+    window is shared by complete retrieved chunks and the tail of the local
+    file. A bounded left-context reserve prevents a long file from consuming
+    the entire retrieval budget while still keeping the cursor neighbourhood.
     """
 
     max_tokens: int = 4096
     num_prompt_tokens: int = 50
     generation_headroom: int = 256
-    left_context_max_tokens: int = 1500
+    # ``None`` means that the available window is allocated dynamically. The
+    # old fixed 1500-token cap caused needless tail loss on shorter inputs.
+    left_context_max_tokens: Optional[int] = None
+    # Keep this many tail tokens available while selecting complete snippets.
+    # The actual tail can be longer when selected snippets are short.
+    left_context_reserve_tokens: int = 1024
 
     @property
     def retrieval_budget(self) -> int:
@@ -82,7 +114,6 @@ class TokenBudgetManager:
             0,
             self.max_tokens
             - self.num_prompt_tokens
-            - self.left_context_max_tokens
             - self.generation_headroom,
         )
 
@@ -96,42 +127,78 @@ class TokenBudgetManager:
 
         Layout: ``[chunk_1]\\n[chunk_2]\\n...\\n[left_context_tail]``
         """
-        # Left context: keep tail (closest to cursor)
-        lc_ids = _backend_token_ids(tokenizer, left_context)
-        if len(lc_ids) > self.left_context_max_tokens:
-            lc_ids = lc_ids[-self.left_context_max_tokens :]
-        left_text = tokenizer.decode(lc_ids, skip_special_tokens=True)
-        left_token_count = len(lc_ids)
+        available_tokens = self.retrieval_budget
+        if available_tokens <= 0:
+            return ""
 
-        budget_for_chunks = max(
-            0,
-            self.max_tokens
-            - self.num_prompt_tokens
-            - left_token_count
-            - self.generation_headroom,
+        # Only apply an explicit cap to the local context. Otherwise retain
+        # the full tail as a source pool and decide its final length after
+        # complete snippets have been selected.
+        lc_ids = _backend_token_ids(tokenizer, left_context)
+        if self.left_context_max_tokens is not None:
+            if self.left_context_max_tokens <= 0:
+                lc_ids = []
+            else:
+                lc_ids = lc_ids[-self.left_context_max_tokens :]
+
+        # Reserve a cursor tail while ranking chunks. A short left context is
+        # kept in full; a long one is clipped from the beginning only.
+        reserve = min(
+            len(lc_ids),
+            available_tokens,
+            max(0, int(self.left_context_reserve_tokens)),
+        )
+        reserved_left = tokenizer.decode(
+            lc_ids[-reserve:] if reserve else [], skip_special_tokens=True
         )
 
-        # Pack chunks (highest rank first)
+        # Pack complete chunks greedily. A partial chunk often ends in the
+        # middle of a statement and is less useful than the next complete
+        # ranked chunk. If a high-ranked chunk is too large, continue looking
+        # for a smaller complete snippet instead of truncating it.
         chunk_parts: List[str] = []
-        used = 0
         for chunk in retrieved_chunks:
             text = chunk.retrieval_text()
-            text_ids = _backend_token_ids(tokenizer, text)
-            n = len(text_ids)
-            if used + n > budget_for_chunks:
-                remaining = budget_for_chunks - used
-                if remaining > 20:
-                    trunc_ids = text_ids[:remaining]
-                    chunk_parts.append(
-                        tokenizer.decode(trunc_ids, skip_special_tokens=True)
-                    )
-                break
-            chunk_parts.append(text)
-            used += n
+            candidate_parts = chunk_parts + [text]
+            candidate = "\n".join(candidate_parts) + "\n" + reserved_left
+            if len(_backend_token_ids(tokenizer, candidate)) <= available_tokens:
+                chunk_parts.append(text)
 
-        if chunk_parts:
-            return "\n".join(chunk_parts) + "\n" + left_text
-        return left_text
+        # Give selected snippets exactly the space they need, then retain the
+        # longest possible tail of the local file. Since every selected chunk
+        # is added as a whole string, no snippet is cut at the window boundary.
+        prefix = "\n".join(chunk_parts)
+        prefix_text = prefix + "\n" if prefix else ""
+        prefix_tokens = len(_backend_token_ids(tokenizer, prefix_text))
+        left_budget = max(0, available_tokens - prefix_tokens)
+        left_ids = lc_ids[-left_budget:] if left_budget else []
+        left_text = tokenizer.decode(left_ids, skip_special_tokens=True)
+        packed = prefix_text + left_text
+
+        # Tokenizer boundary effects can make the separately measured prefix
+        # and tail differ by a few tokens. Trim only the left tail until the
+        # final serialized prompt is guaranteed to fit.
+        while left_ids and len(_backend_token_ids(tokenizer, packed)) > available_tokens:
+            overflow = len(_backend_token_ids(tokenizer, packed)) - available_tokens
+            left_ids = left_ids[max(1, overflow) :]
+            left_text = tokenizer.decode(left_ids, skip_special_tokens=True)
+            packed = prefix_text + left_text
+        if len(_backend_token_ids(tokenizer, packed)) > available_tokens:
+            # This should only be reachable for an unusual tokenizer whose
+            # separator expands after decoding. Drop the last selected chunk
+            # rather than ever returning a partial snippet.
+            while chunk_parts:
+                chunk_parts.pop()
+                prefix = "\n".join(chunk_parts)
+                prefix_text = prefix + "\n" if prefix else ""
+                prefix_tokens = len(_backend_token_ids(tokenizer, prefix_text))
+                left_budget = max(0, available_tokens - prefix_tokens)
+                left_ids = lc_ids[-left_budget:] if left_budget else []
+                left_text = tokenizer.decode(left_ids, skip_special_tokens=True)
+                packed = prefix_text + left_text
+                if len(_backend_token_ids(tokenizer, packed)) <= available_tokens:
+                    break
+        return packed
 
 
 # ── SoftPromptLLM ─────────────────────────────────────────────────────────────
@@ -299,10 +366,10 @@ class SoftPromptLLM(nn.Module):
             else self.budget_manager.max_tokens - self.num_prompt_tokens
         )
         token_budget = max(1, token_budget)
-        tokens = self.tokenizer(
+        tokens = _tokenize_keep_tail(
+            self.tokenizer,
             text,
             return_tensors="pt",
-            truncation=True,
             max_length=token_budget,
         ).to(self._device)
 
@@ -674,10 +741,10 @@ class SoftPromptLLM(nn.Module):
                 ),
             )
         else:
-            tokens = self.tokenizer(
+            tokens = _tokenize_keep_tail(
+                self.tokenizer,
                 context_text,
                 return_tensors="pt",
-                truncation=True,
                 max_length=self.budget_manager.max_tokens - max_new_tokens,
             ).to(self._device)
             inputs_embeds = self.model.get_input_embeddings()(tokens.input_ids)
@@ -821,11 +888,11 @@ class SoftPromptLLM(nn.Module):
         if use_soft_prompt:
             text_budget -= self.num_prompt_tokens
         text_budget = max(1, text_budget)
-        tokens = self.tokenizer(
+        tokens = _tokenize_keep_tail(
+            self.tokenizer,
             context_texts,
             return_tensors="pt",
             padding=True,
-            truncation=True,
             max_length=text_budget,
         ).to(self._device)
         with torch.no_grad():
@@ -893,10 +960,10 @@ class SoftPromptLLM(nn.Module):
                     ),
                 )
             else:
-                tokens = self.tokenizer(
+                tokens = _tokenize_keep_tail(
+                    self.tokenizer,
                     left_context,
                     return_tensors="pt",
-                    truncation=True,
                     max_length=self.budget_manager.max_tokens - max_new_tokens,
                 ).to(self._device)
                 inputs_embeds = self.model.get_input_embeddings()(tokens.input_ids)

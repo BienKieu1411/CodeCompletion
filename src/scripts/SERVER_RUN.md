@@ -25,7 +25,7 @@ RUN_TRAIN=1 RUN_EVAL=0 \
   bash src/scripts/run_icar_lipo_a100_80gb.sh
 ```
 
-By default this uses DeepSeek-Coder 6.7B base (`GENERATOR_NAME=deepseek-ai/deepseek-coder-6.7b-base`) frozen as the generator/teacher, UniXcoder-base as the trainable retriever encoder (`ENCODER_NAME=microsoft/unixcoder-base`), full Python+Java AlignCoder train data (`TRAIN_DATASETS=data/github_repos/python/train.parquet,data/github_repos/java/train.parquet`, `MAX_TRAIN_SAMPLES=0`), mixed completion sampling (`COMPLETION_LEVEL=mixed`), and 10 neural full-pass training epochs (`TRAIN_EPOCHS=10`, `EPOCH_BUDGET_MODE=1`). The launcher defaults to `sequential_retriever_first` with `ADAPTER_TYPE=none`, so it skips the optional soft-prompt warm-up and builds the expensive generator preference pool once. DeepSeekCoder remains frozen; the generator is used for utility supervision. Set `ADAPTER_TYPE=soft_prompt` to include the optional adapter phase, or set `EXPERIMENT_MODE=intent_main` explicitly for alternating co-training; that mode rebuilds Phase 2 once per epoch and is substantially slower. In epoch-budget mode, each full pass uses `len(train samples)` prompt steps, one pass over LiPO preference groups for retriever training, and one pass over gate labels. The training command intentionally passes `--skip-train-eval`, so evaluation is only run by the separate evaluate phase.
+By default this uses DeepSeek-Coder 6.7B base (`GENERATOR_NAME=deepseek-ai/deepseek-coder-6.7b-base`) frozen as the generator/teacher, UniXcoder-base as the trainable retriever encoder (`ENCODER_NAME=microsoft/unixcoder-base`), full Python+Java AlignCoder train data (`TRAIN_DATASETS=data/github_repos/python/train.parquet,data/github_repos/java/train.parquet`, `MAX_TRAIN_SAMPLES=0`), mixed completion sampling (`COMPLETION_LEVEL=mixed`), and 10 neural full-pass training epochs (`TRAIN_EPOCHS=10`, `EPOCH_BUDGET_MODE=1`). The launcher defaults to `retriever_only`: no soft-prompt updates, no gate updates, and `always_retrieve`, so the first result isolates whether the trained UniXcoder retriever improves the fixed generator. It builds the expensive generator preference pool once. After this baseline, set `EXPERIMENT_MODE=sequential_retriever_first ADAPTER_TYPE=soft_prompt` for the optional generator-adaptation ablation. `EXPERIMENT_MODE=intent_main` is the full alternating paper run and rebuilds Phase 2 once per epoch, so it is substantially slower. In epoch-budget mode, the retriever-only schedule uses one preference-group pass per epoch and no prompt/gate pass. The training command intentionally passes `--skip-train-eval`, so evaluation is only run by the separate evaluate phase.
 
 Training does not pre-encode a full global dense index by default
 (`BUILD_TRAIN_INDEX=0`, `REFRESH_TRAIN_INDEX=0`). This avoids repeatedly
@@ -45,15 +45,20 @@ RUN_TRAIN=0 RUN_EVAL=1 \
 ```
 
 Evaluation defaults to `INCLUDE_POLICY_VARIANTS=0` and `INCLUDE_ANALYSIS=0` for
-the 8-12 hour target. Evaluation also defaults to `EVAL_INDEX_MODE=sharded`:
+the 8-12 hour target. It uses the validated 4096-token context, a safe
+autoregressive batch size of 1, and 64 generated tokens (matching AlignCoder),
+and keeps the retriever on the A100 unless overridden. Evaluation also
+defaults to `EVAL_INDEX_MODE=sharded`:
 the separate `build-eval-index` step encodes chunks without loading DeepSeek,
 writes bounded CPU NumPy-mmap shards, and the generation process keeps the
-retriever/gate on CPU so GPU memory is reserved for DeepSeek. Set
+retriever/gate on GPU for speed. Set
+`EVAL_RETRIEVER_DEVICE=cpu` only when memory pressure requires it. Set
 `BUILD_EVAL_INDEX=0` only when a matching index already exists. Set
 `EVAL_INDEX_MODE=sample_local` for a low-memory, no-cache diagnostic run, or
 `EVAL_INDEX_MODE=global` only for legacy comparisons. Set
-`EVAL_MAX_CONTEXT_TOKENS=4096` only after a smoke test; the default `3072`
-avoids long-prefill attention OOM on the A100.
+`EVAL_MAX_CONTEXT_TOKENS=4096` is the default; the packer clips only the
+left-context tail and never cuts a retrieved snippet.
+`EVAL_MAX_NEW_TOKENS=64` is the default for fair AlignCoder-style evaluation.
 `INCLUDE_POLICY_VARIANTS=1` for the gate ablation and `INCLUDE_ANALYSIS=1`
 plus `LEAVE_ONE_OUT_ANALYSIS_SAMPLES=25` for the full reviewer analysis pass.
 
@@ -68,15 +73,18 @@ Train then evaluate:
 bash src/scripts/run_icar_lipo_a100_80gb.sh
 ```
 
-Run reviewer-blocker schedule ablations with the same train/eval config:
+Run the retriever-first ablation with the same train/eval config:
 
 ```bash
 bash src/scripts/run_icar_reviewer_ablations_a100_80gb.sh
 ```
 
-This trains/evaluates `intent_main`, `sequential_adapter_first`, and
-`sequential_retriever_first` into separate checkpoint/result directories. Use
-`ABLATION_MODES="intent_main sequential_adapter_first"` to run a subset.
+This trains/evaluates `retriever_only` first, then
+`sequential_retriever_first` with `ADAPTER_TYPE=soft_prompt`. The first result
+is the fixed-generator retriever claim; the second measures the incremental
+generator-side adapter benefit with the gate fixed to `always_retrieve`. Use `ABLATION_MODES="retriever_only"` for only
+the primary baseline, or set `ABLATION_MODES="intent_main"` for the separate
+alternating co-training experiment.
 
 Useful overrides:
 
@@ -107,7 +115,7 @@ Recommended 72-hour run:
 
 ```bash
 ENCODER_NAME=microsoft/unixcoder-base \
-EXPERIMENT_MODE=sequential_retriever_first \
+EXPERIMENT_MODE=retriever_only \
 ADAPTER_TYPE=none \
 COMPLETION_LEVEL=mixed \
 PREFERENCE_POOL_TOP_K=5 \
@@ -124,8 +132,9 @@ CUDA_VISIBLE_DEVICES=0 \
   bash src/scripts/run_icar_lipo_a100_80gb.sh
 ```
 
-This schedule builds Phase 2 preference data once, so it is much more likely to
-finish under a hard wall-clock budget. For a cheap encoder smoke test, set
+This schedule builds Phase 2 preference data once and isolates the retriever,
+so it is much more likely to finish under a hard wall-clock budget. For a cheap
+encoder smoke test, set
 `ENCODER_NAME=sentence-transformers/all-MiniLM-L6-v2`, but do not use MiniLM as
 the main paper run unless code-specific encoders are still too slow.
 
@@ -149,9 +158,11 @@ Run one schedule manually:
 
 ```bash
 EXPERIMENT_MODE=sequential_retriever_first \
-CHECKPOINT_DIR=checkpoints/icar_seq_adapter_first \
-OUTPUT_ROOT=results/icar_seq_adapter_first \
-LOG_DIR=logs/icar_seq_adapter_first \
+ADAPTER_TYPE=soft_prompt \
+GATE_MODE=always_retrieve \
+CHECKPOINT_DIR=checkpoints/icar_soft_prompt_ablation \
+OUTPUT_ROOT=results/icar_soft_prompt_ablation \
+LOG_DIR=logs/icar_soft_prompt_ablation \
   bash src/scripts/run_icar_lipo_a100_80gb.sh
 ```
 

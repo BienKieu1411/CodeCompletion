@@ -52,17 +52,21 @@ export RUN_DOWNLOAD=0
 export RUN_TRAIN=0
 export RUN_EVAL=1
 export DATA_DIR="${DATA_DIR:-${REPO_DIR}/data/data}"
+export EVAL_DATASETS="${EVAL_DATASETS:-cceval_python=${DATA_DIR}/cceval/python/test.parquet cceval_java=${DATA_DIR}/cceval/java/test.parquet}"
 export CHECKPOINT_DIR="${CHECKPOINT_DIR:-${REPO_DIR}/checkpoints/icar_lipo_deepseek_6p7b_a100_80gb}"
 export OUTPUT_ROOT="${OUTPUT_ROOT:-${REPO_DIR}/results/icar_lipo_deepseek_6p7b_a100_80gb}"
 export LOG_DIR="${LOG_DIR:-${REPO_DIR}/logs/icar_lipo_deepseek_6p7b_a100_80gb}"
 export EVAL_INDEX_MODE="${EVAL_INDEX_MODE:-sharded}"
 export BUILD_EVAL_INDEX="${BUILD_EVAL_INDEX:-1}"
-export EVAL_RETRIEVER_DEVICE="${EVAL_RETRIEVER_DEVICE:-cpu}"
+export EVAL_RETRIEVER_DEVICE="${EVAL_RETRIEVER_DEVICE:-cuda}"
 export EVAL_INDEX_SHARD_SIZE="${EVAL_INDEX_SHARD_SIZE:-50000}"
-export EVAL_MAX_CONTEXT_TOKENS="${EVAL_MAX_CONTEXT_TOKENS:-3072}"
+# Keep the validated 4K window. The packer preserves the cursor tail and
+# admits only complete retrieved snippets, so no snippet is cut at the edge.
+export EVAL_MAX_CONTEXT_TOKENS="${EVAL_MAX_CONTEXT_TOKENS:-4096}"
 export EVAL_SKIP_NLL="${EVAL_SKIP_NLL:-1}"
 export EVAL_MAX_SAMPLES="${EVAL_MAX_SAMPLES:-0}"
 export EVAL_BATCH_SIZE="${EVAL_BATCH_SIZE:-1}"
+export EVAL_MAX_NEW_TOKENS="${EVAL_MAX_NEW_TOKENS:-64}"
 export BATCH_ENCODE_SIZE="${BATCH_ENCODE_SIZE:-32}"
 export INCLUDE_ANALYSIS="${INCLUDE_ANALYSIS:-0}"
 export INCLUDE_POLICY_VARIANTS="${INCLUDE_POLICY_VARIANTS:-0}"

@@ -356,7 +356,10 @@ retrieve_is_better = (
 )
 ```
 
-Preference pairs (LiPO groups) vẫn dùng toàn bộ pool bao gồm oracle — chỉ gate label bị giới hạn để tránh oracle leak.
+Preference pairs (LiPO groups) hiện vẫn có thể chứa oracle cho mục đích teacher
+supervision; oracle không được dùng trong inference. Với benchmark
+`retriever_only`, generator vẫn frozen và adapter bị tắt hoàn toàn, nên utility
+được tính trong đúng điều kiện generator sẽ được dùng khi báo cáo retriever.
 
 Gate input thêm các feature inference-safe về độ chắc chắn và chi phí retrieval: top-1 score, top-1 margin, entropy/std của top-k scores, candidate pool ratio, query identifier ratio, context token ratio và identifier overlap. Threshold triển khai là `gate_decision_threshold`; threshold này có thể calibrate trước eval bằng utility-derived train labels, nhưng inference không tính `U(C)`.
 
@@ -437,10 +440,17 @@ Sequential baselines đã được định nghĩa để kiểm tra co-training:
 - `sequential_adapter_first`: train adapter đủ tổng prompt steps, freeze adapter, build preference data đúng một lần, train retriever/gate đủ tổng LiPO steps, refresh index một lần.
 - `sequential_retriever_first`: build preference data với adapter disabled đúng một lần, train retriever/gate đủ tổng LiPO steps, freeze retriever/gate, train adapter đủ tổng prompt steps bằng contexts từ retriever đã train, refresh index một lần.
 
-Fast production path sets `adapter_type=none`, so Phase 1 becomes a no-op and
-the effective train path is Phase 0 registration → one Phase 2 preference build
-→ Phase 3 LiPO/gate training. The DeepSeek-Coder backbone remains frozen in all
-paths; only the optional soft-prompt tensor can receive gradients.
+The primary retriever benchmark uses
+`experiment_mode=retriever_only`, which forcibly sets
+`adapter_type=none` and `gate_mode=always_retrieve`. Its effective path is
+Phase 0 registration → one Phase 2 preference build → Phase 3 retriever-only
+LiPO/DPO training → one index refresh. There are zero prompt-update steps and
+zero gate-update steps. The DeepSeek-Coder backbone remains frozen.
+
+Only after this fixed-generator result is reported do we run
+`sequential_retriever_first` with `adapter_type=soft_prompt` as an ablation.
+That second run measures the incremental benefit of generator-side adaptation;
+it must not be used to claim that the retriever itself improved.
 
 Hai sequential baselines không được refresh preference data nhiều vòng; nếu refresh nhiều vòng thì baseline biến thành alternating trá hình. Paper phải ghi rõ cùng data, cùng model, cùng tổng prompt-gradient steps và cùng tổng LiPO steps.
 
@@ -454,7 +464,7 @@ Không được chỉ chạy một mode rồi nói outperform. Cần ít nhất 
 |---|---|
 | `intent_main` | full method (LiPO default) |
 | `raw_query_main` | chứng minh intent sketch có ích |
-| `retriever_only` | chứng minh adapter có ích |
+| `retriever_only` | primary fixed-generator retriever benchmark; no adapter/gate |
 | `always_retrieve` | chứng minh learned gate có ích |
 | `always_skip` | no-retrieval lower bound |
 | `bm25` | lexical retrieval baseline |
@@ -516,7 +526,9 @@ Chỉ nên claim outperform nếu thỏa ít nhất:
 1. `intent_main` thắng `raw_query_main` trên cùng data/model/budget.
 2. `intent_main` thắng `bm25`, `dense_frozen`, `always_retrieve`, `always_skip`.
 3. Learned gate đạt quality-improvement hoặc compute-without-quality-loss threshold so với `always_retrieve`.
-4. Adapter mode thắng `retriever_only` hoặc ít nhất cải thiện NLL/output metrics.
+4. Chỉ sau khi `retriever_only` được so sánh với AlignCoder/frozen-retriever
+   dưới cùng generator mới báo cáo soft-prompt ablation; adapter phải cải thiện
+   NLL/output metrics để được giữ trong claim chính.
 5. Co-training thắng `sequential_adapter_first` và `sequential_retriever_first`.
 6. So sánh với RLCoder/AlignCoder được chạy trên cùng benchmark, hoặc claim phải hạ xuống thành "competitive with prior retrieval-based methods".
 
