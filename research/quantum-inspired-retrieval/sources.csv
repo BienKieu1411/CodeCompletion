@@ -1,0 +1,11 @@
+id,title,type,year,url_or_local_path,credibility_1_to_5,recency_1_to_5,bias_risk_1_to_5,role
+S01,rlcoder_learned_phase_kaggle.ipynb,local implementation,2026,src/rlcoder_learned_phase_kaggle.ipynb,5,5,3,Notebook design and static execution audit
+S02,Quantum-inspired Embeddings Projection and Similarity Metrics for Representation Learning,arXiv preprint,2025,https://arxiv.org/abs/2501.04591,3,4,3,Learned quantum-inspired projection/fidelity evidence and ablations
+S03,Q-Interference: Memory-Efficient Phase-Aware Quantum-Inspired Attention,arXiv v1 preprint,2026,https://arxiv.org/abs/2608.17288,2,5,3,Phase-interaction mechanism and exact factorization; not retrieval evidence
+S04,A Quantum Interference Inspired Neural Matching Model for Ad-hoc Retrieval,SIGIR 2020 paper,2020,https://doi.org/10.1145/3397271.3401070,5,2,3,IR precedent for interaction/interference; domain-transfer caveat
+S05,Quantum-Inspired Complex Word Embedding,ACL conference paper,2018,https://aclanthology.org/W18-3006/,4,1,3,Phase as compositional interaction precedent; not code retrieval
+S06,On the Representational Limits of Quantum-Inspired 1024-D Document Embeddings,arXiv single-author preprint,2026,https://arxiv.org/abs/2604.09430,2,5,5,Adversarial warning about standalone QI retrieval; small/custom eval
+S07,Repoformer: Selective Retrieval for Repository-Level Code Completion,ICML 2024 paper/project page,2024,https://repoformer.github.io/,5,3,2,Repository-completion control: retrieval/no-retrieval decision matters
+S08,CodeRAG: Finding Relevant and Necessary Knowledge for Retrieval-Augmented Repository-Level Code Completion,EMNLP 2025 paper,2025,https://aclanthology.org/2025.emnlp-main.1187/,5,4,2,Current repository-completion evidence on multi-path/necessary context
+S09,AlignCoder local deepread extraction,local paper extraction,2026,doc/papers/ALIGNCODER_DEEPREAD.md,4,3,2,Project baseline and known bottlenecks
+S10,RLCoder local deepread extraction,local paper extraction,2026,doc/papers/RLCODER_DEEPREAD.md,4,3,2,Project provenance for hard target-PPL winner supervision
