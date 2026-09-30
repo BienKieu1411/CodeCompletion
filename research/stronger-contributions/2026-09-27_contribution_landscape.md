@@ -1,5 +1,7 @@
 # Hướng contribution mạnh hơn cho retrieval trong repository-level code completion
 
+> **Đã supersede (2026-09-28):** bản slate-RL dùng target-likelihood và PAISR/support-label đều không còn là hướng được khuyến nghị. Hướng hiện tại là online outcome-RL, xem [report](2026-09-28_online_ast_gr_outcome_rl.md) và [research plan](online_ast_gr_rl_plan.md). File này chỉ giữ lịch sử khảo sát prior art.
+
 **Ngày research:** 2026-09-27  
 **Câu hỏi:** Có contribution nào thuyết phục hơn việc chỉ thêm quantum-inspired scoring, nhưng vẫn nhắm trực tiếp đến việc vượt AlignCoder?  
 **Ràng buộc đã giữ:** Không knowledge distillation; không tạo positive/rejected pair; không pairwise/listwise ranking loss; không sửa notebook hoặc implementation.

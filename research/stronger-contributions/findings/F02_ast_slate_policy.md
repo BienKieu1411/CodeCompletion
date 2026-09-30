@@ -1,5 +1,7 @@
 # F02 — Recommended candidate: AST-GR-constrained slate policy
 
+> **Superseded 2026-09-28:** Do not implement this earlier target-likelihood slate-RL recipe as written. The current candidate uses online free-running completion outcome reward and a fully updated UniXcoder AST-GR policy; see [current report](../2026-09-28_online_ast_gr_outcome_rl.md) and [plan](../online_ast_gr_rl_plan.md). This file is retained only as historical analysis.
+
 ## Research question
 
 At a fixed candidate pool and context budget, does choosing a complete AST-related evidence slate by its effect on the downstream completion model outperform independent chunk ranking and AlignCoder?

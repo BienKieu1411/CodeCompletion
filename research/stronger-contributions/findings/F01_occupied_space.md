@@ -16,6 +16,6 @@ Do not claim AST chunking, generic hybrid retrieval, target-PPL supervision, con
 
 ## Consequence for the claim
 
-The potential gap is not “context utility,” “RL,” or “AST” separately. The narrow claim to test is whether an **AST-GR-constrained action space for selecting an ordered, complete context slate**, directly optimized by the final prompt's scalar completion reward, improves code completion under the exact same candidate coverage and token budget—without pairwise data or distilled KEEP/DROP labels.
+The AST-GR slate policy and subsequent PAISR/support-label candidate have both been superseded. The current research question is whether a fully updated UniXcoder AST-GR policy can improve actual free-running completion outcomes via online actor–critic RL, without constructing support/pairwise labels. See [F06](F06_online_outcome_rl_prior_art.md) and the [current method report](../2026-09-28_online_ast_gr_outcome_rl.md).
 
-This targeted search has not proven global novelty. The distinction could still be judged incremental unless the AST-relation ablation is decisive.
+Prior-art conclusions above still apply: target-likelihood retriever training, AST chunks, generic uncertainty, and set utility are not new on their own. No global novelty claim is established.
