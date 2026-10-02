@@ -35,7 +35,10 @@ There are two different labels:
 
 Gold can determine whether a supervised training task has dependency evidence, but it never enters the query or BM25 candidate mining. No matching definition is injected into the pool. `evidence_in_pool` is only a source-span-overlap diagnostic, not oracle recall or measured usefulness. The current file, including its hidden suffix, is excluded from all related-source chunks.
 
-Existing repo train/valid membership is mapped back to the pinned raw source and verified against old prefix+gold bytes. Exact shared substantive files are grouped to avoid crossing splits; conflicting old split anchors cause exclusion rather than silent reassignment. Benchmark-file hashes exclude exact nontrivial overlaps. This does not detect every fork/near-duplicate.
+All quality-filtered repositories are retained as training-eligible rows; there
+is no repository-level validation split. Benchmark-file hashes exclude exact
+nontrivial overlaps before pool construction. This does not detect every
+fork/near-duplicate.
 
 Source: `AlignCoder/Data4AlignCoder`, revision `ce72fe3ef4987e15a9219fea4174bb80700e742c`. Both language source-file SHA256s and tokenizer revisions are checked/saved. Old train source is downloaded separately from `BienKieu/CodeCompletion` and used to preserve split anchors, not to reuse its old targets.
 

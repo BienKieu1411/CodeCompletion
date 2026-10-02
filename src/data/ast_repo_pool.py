@@ -1,8 +1,8 @@
 """Repository-level AST pool and per-epoch stochastic task sampling.
 
 The expensive operations (parsing, AST chunking, dependency evidence) happen
-once while building the pool.  A training epoch then samples 2,000 distinct
-repositories, chooses an eligible target file/span per repository, and mines a
+once while building the pool.  A training epoch then samples 2,000 repository
+instances, chooses an eligible target file/span per instance, and mines a
 fresh BM25 candidate slate from the visible prefix.  No right context or gold
 snippet is used in retrieval input.
 """
@@ -200,8 +200,12 @@ def sample_repo_task(payload, generator, retriever, rng, config=DataConfig()):
 
 
 def sample_repo_epoch(repo_payloads, generator, retriever, epoch, config=DataConfig(), seed=123):
-    """Select up to 2,000 unique repositories and one stochastic task/repo."""
-    train = [payload for payload in repo_payloads if payload["split"] == "train"]
+    """Sample one stochastic task from each selected repository instance.
+
+    The caller performs epoch sampling. No repository-level train/validation
+    split is applied here; benchmark test data is held out outside this pool.
+    """
+    train = list(repo_payloads)
     rng = random.Random(seed + epoch * 1_000_003)
     selected = train if len(train) <= config.repos_per_epoch else rng.sample(train, config.repos_per_epoch)
     rows = []

@@ -10,13 +10,14 @@ independent of the removed PPO/RRPO code.
 - all parseable Python/Java source files;
 - AST chunks measured with the DeepSeek-Coder tokenizer;
 - eligible target spans and dependency evidence;
-- quality statistics and a deterministic train/valid split.
+- quality statistics. All retained repositories are training-eligible; the
+  benchmark validation artifact is prepared separately.
 
 The pool does not store a fixed five examples per repository. The epoch sampler
-chooses at most 2,000 unique training repositories, samples a target file first,
-then samples a target kind/span from that file, and mines the cross-file BM25
-pool from the visible left context. There is no right context and no gold chunk
-in the retrieval query.
+chooses 2,000 repository instances per epoch—800 Python and 1,200 Java—samples
+a target file first, then samples a target kind/span from that file, and mines
+the cross-file BM25 pool from the visible left context. There is no right
+context and no gold chunk in the retrieval query.
 
 ## Quality contract
 
@@ -80,10 +81,12 @@ pool.
 ## Benchmark input preparation
 
 The same AST chunker, input-only cleanup, prefix-only AST hints and BM25
-proposal pool are used for the four frozen test outputs. Labels are copied
-unchanged; no `groundtruth` or `right_context` is read while building the
-`ast_payload` input view. RepoEval `test_0` and `test_1` are merged in source
-order per benchmark.
+proposal pool are used for the four frozen benchmark outputs. A fixed random
+sample of 100 rows is prepared from each benchmark; the four files are also
+merged into `valid.parquet` (400 rows total). Labels are copied unchanged; no
+`groundtruth` or `right_context` is read while building the `ast_payload`
+input view. RepoEval `test_0` and `test_1` are merged before sampling per
+benchmark.
 
 ```bash
 $PY -m src.data.prepare_test_data \

@@ -12,6 +12,7 @@ from collections import Counter
 import hashlib
 import json
 from pathlib import Path
+import random
 import sqlite3
 import time
 import zlib
@@ -28,6 +29,7 @@ from src.data.cross_file_budget import select_cross_file_context
 from src.data.left_context import pack_left_context
 
 SCHEMA = "ast_completion_test_inputs_v1"
+VALID_SCHEMA = "ast_completion_validation_v1"
 
 
 def pack(value):
@@ -37,6 +39,17 @@ def pack(value):
 
 def unpack(blob):
     return json.loads(zlib.decompress(blob))
+
+
+def sampled_positions(root, source_paths, sample_size, seed):
+    """Select deterministic random positions from merged benchmark shards."""
+    if sample_size < 1:
+        raise ValueError("sample_size must be positive")
+    total = sum(pq.ParquetFile(Path(root) / source_path).metadata.num_rows
+                for source_path in source_paths)
+    if sample_size > total:
+        raise ValueError(f"Cannot sample {sample_size} rows from {total}")
+    return set(random.Random(seed).sample(range(total), sample_size)), total
 
 
 class ChunkCache:
@@ -152,7 +165,8 @@ def prepare_row(row, language, benchmark, cache, generator, retriever, config):
 
 
 def prepare_benchmark(root, output, benchmark, language, source_paths,
-                      cache, generator, retriever, config, limit=None):
+                      cache, generator, retriever, config, sample_size=100,
+                      seed=123):
     output = Path(output)
     if output.exists():
         raise ValueError(f"Refusing to overwrite existing output: {output}")
@@ -165,12 +179,17 @@ def prepare_benchmark(root, output, benchmark, language, source_paths,
         b"language": language.encode(),
         b"config": json.dumps(config.__dict__, sort_keys=True).encode(),
         b"source_files": json.dumps(source_paths).encode(),
+        b"validation_sample_size": str(sample_size).encode(),
+        b"validation_sample_seed": str(seed).encode(),
     })
     output_schema = source_schema.append(pa.field("ast_payload", pa.binary()))
     output_schema = output_schema.with_metadata(output_metadata)
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = output.with_suffix(".parquet.incomplete")
+    selected_positions, source_rows = sampled_positions(
+        root, source_paths, sample_size, seed)
     count = 0
+    position = 0
     started = time.monotonic()
     with pq.ParquetWriter(temporary, output_schema, compression="zstd") as writer:
         for source_path in source_paths:
@@ -179,26 +198,71 @@ def prepare_benchmark(root, output, benchmark, language, source_paths,
                 rows = batch.to_pylist()
                 output_rows = []
                 for row in rows:
-                    if limit is not None and count >= limit:
-                        break
+                    if position not in selected_positions:
+                        position += 1
+                        continue
                     original, payload = prepare_row(
                         row, language, benchmark, cache, generator, retriever, config)
                     original["ast_payload"] = pack(payload)
                     output_rows.append(original)
                     count += 1
+                    position += 1
                     if count % 25 == 0:
                         print(f"{benchmark}: prepared {count} rows", flush=True)
                 if output_rows:
                     writer.write_table(pa.Table.from_pylist(output_rows,
                                                            schema=output_schema))
-                if limit is not None and count >= limit:
-                    break
-            if limit is not None and count >= limit:
-                break
+    if count != sample_size:
+        raise RuntimeError(f"Prepared {count} rows, expected {sample_size}")
     temporary.replace(output)
     report = {"schema": SCHEMA, "benchmark": benchmark, "rows": count,
               "source_files": source_paths, "output": str(output),
+              "source_rows": source_rows, "sample_size": sample_size,
+              "sample_seed": seed,
               "seconds": time.monotonic() - started}
+    output.with_suffix(".report.json").write_text(
+        json.dumps(report, indent=2, ensure_ascii=False) + "\n")
+    print(json.dumps(report, indent=2), flush=True)
+    return report
+
+
+def merge_validation_files(output_dir, reports, sample_size, seed):
+    """Merge the four prepared benchmark files into one validation Parquet."""
+    output = Path(output_dir) / "valid.parquet"
+    if output.exists():
+        raise ValueError(f"Refusing to overwrite existing output: {output}")
+    first = Path(reports[0]["output"])
+    base_schema = pq.ParquetFile(first).schema_arrow
+    metadata = dict(base_schema.metadata or {})
+    metadata.update({
+        b"artifact_schema": VALID_SCHEMA.encode(),
+        b"sample_size_per_benchmark": str(sample_size).encode(),
+        b"sample_seed": str(seed).encode(),
+        b"source_benchmarks": json.dumps([report["benchmark"] for report in reports]).encode(),
+    })
+    output_schema = base_schema.append(pa.field("benchmark", pa.string()))
+    output_schema = output_schema.append(pa.field("language", pa.string()))
+    output_schema = output_schema.with_metadata(metadata)
+    temporary = output.with_suffix(".parquet.incomplete")
+    count = 0
+    with pq.ParquetWriter(temporary, output_schema, compression="zstd") as writer:
+        for report in reports:
+            benchmark = report["benchmark"]
+            language = "java" if benchmark == "cceval_java" else "python"
+            for batch in pq.ParquetFile(report["output"]).iter_batches(batch_size=32):
+                rows = batch.to_pylist()
+                for row in rows:
+                    row["benchmark"] = benchmark
+                    row["language"] = language
+                writer.write_table(pa.Table.from_pylist(rows, schema=output_schema))
+                count += len(rows)
+    expected = sample_size * len(reports)
+    if count != expected:
+        raise RuntimeError(f"Merged {count} validation rows, expected {expected}")
+    temporary.replace(output)
+    report = {"schema": VALID_SCHEMA, "output": str(output), "rows": count,
+              "sample_size_per_benchmark": sample_size, "seed": seed,
+              "benchmarks": [item["benchmark"] for item in reports]}
     output.with_suffix(".report.json").write_text(
         json.dumps(report, indent=2, ensure_ascii=False) + "\n")
     print(json.dumps(report, indent=2), flush=True)
@@ -211,11 +275,14 @@ def main():
                         help="datasets/data4aligncoder")
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--cache", type=Path, required=True)
-    parser.add_argument("--limit", type=int,
-                        help="Optional per-benchmark smoke-test row limit")
+    parser.add_argument("--samples-per-benchmark", type=int, default=100,
+                        help="Fixed random validation rows per benchmark (default: 100)")
+    parser.add_argument("--seed", type=int, default=123)
+    parser.add_argument("--limit", type=int, help=argparse.SUPPRESS)
     args = parser.parse_args()
-    if args.limit is not None and args.limit < 1:
-        raise ValueError("--limit must be positive")
+    sample_size = args.limit if args.limit is not None else args.samples_per_benchmark
+    if sample_size < 1:
+        raise ValueError("samples-per-benchmark must be positive")
 
     config = DataConfig()
     from transformers import AutoTokenizer
@@ -227,12 +294,23 @@ def main():
     generator.model_max_length = retriever.model_max_length = 10**9
     chunk_cache = ChunkCache(args.cache, generator, retriever, config)
     try:
-        for benchmark, source_paths in BENCHMARKS.items():
+        reports = {}
+        for benchmark_index, (benchmark, source_paths) in enumerate(BENCHMARKS.items()):
             language = "java" if benchmark == "cceval_java" else "python"
-            prepare_benchmark(
+            reports[benchmark] = prepare_benchmark(
                 args.root, args.output_dir / f"{benchmark}.parquet", benchmark,
                 language, source_paths, chunk_cache, generator, retriever,
-                config, args.limit)
+                config, sample_size, args.seed + benchmark_index * 1_000_003)
+        benchmark_reports = list(reports.values())
+        reports["valid"] = merge_validation_files(
+            args.output_dir, benchmark_reports, sample_size, args.seed)
+        manifest = {"schema": SCHEMA, "validation_schema": VALID_SCHEMA,
+                    "sample_size_per_benchmark": sample_size,
+                    "total_validation_rows": sample_size * len(BENCHMARKS),
+                    "seed": args.seed, "benchmarks": reports}
+        args.output_dir.mkdir(parents=True, exist_ok=True)
+        (args.output_dir / "manifest.json").write_text(
+            json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
     finally:
         chunk_cache.close()
 

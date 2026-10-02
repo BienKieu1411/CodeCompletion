@@ -66,8 +66,9 @@ def _assign_splits(repos):
     conflicts = 0
     for members in components.values():
         component_id = min(repos[index]["uid"] for index in members)
-        # Stable 15% validation split at repository-component level.
-        split = "valid" if int(component_id[:8], 16) / 2**32 < 0.15 else "train"
+        # There is no repository-level validation split. Benchmark test files
+        # are the held-out data; keep the component id only as audit metadata.
+        split = "train"
         for index in members:
             repos[index]["split"] = split
             repos[index]["split_group"] = component_id
@@ -113,7 +114,7 @@ def index_repositories(root, excluded, config):
                 continue
             # Include every substantive file in component assignment. Hashing
             # only files >=200 characters allowed small shared files to cross
-            # the train/validation boundary.
+            # the shared-component audit boundary.
             split_hashes = sorted({source_hash(code) for code in files.values()
                                    if substantive(code, config)})
             uid = hashlib.sha256(

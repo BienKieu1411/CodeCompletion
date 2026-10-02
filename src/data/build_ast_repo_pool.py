@@ -1,8 +1,9 @@
 """Build the canonical mixed Python/Java AST repository pool.
 
 This replaces the old fixed-five-tasks-per-repository artifact.  It stores one
-row per quality-filtered repository; the epoch sampler chooses 2,000 repos and
-one random eligible target per repo later.
+row per quality-filtered repository; the epoch sampler chooses 2,000 repository
+instances and one random eligible target per instance later.  There is no
+repository-level validation split; benchmark test data is held out separately.
 """
 
 import argparse

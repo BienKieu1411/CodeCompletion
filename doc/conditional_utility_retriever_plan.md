@@ -2,7 +2,14 @@
 
 Ngày: 2026-10-01. Trạng thái: **thiết kế để triển khai/kiểm chứng, chưa có kết quả thực nghiệm**.
 
-Đây là plan hiện hành sau khi người dùng chấp nhận chấm nhiều context/sample. Nó thay giới hạn 10 scored contexts của [thiết kế trước](research/retriever_training_alternatives_2026_10_01/2026-10-01_architecture_loss_decision.md), không thay code, dữ liệu hay checkpoint hiện tại. Không triển khai hay thuê GPU trong bước lập plan này.
+Update triển khai: bản Stage-1 global-embedding CUR đã có trong `src/train/`;
+xem [hướng dẫn chạy và giới hạn hiện tại](CUR_TRAINING.md). Bản này dùng
+scale=1, chưa có AST-role branch. `train_online_utility.py` đã nối proposal theo
+weights hiện tại, generator scoring và full encoder update trong từng batch,
+không prepare/cache toàn bộ nhãn offline. Phần dưới giữ
+nguyên thiết kế nghiên cứu, không đồng nghĩa mọi hạng mục đã được triển khai.
+
+Update chi phí: code hiện hành dùng **tối đa 20 scored contexts/sample**, thay recipe 8 và 123 trước đó. [Thiết kế CUR-20 và chứng minh](research/cur20/design.md) là quyết định hiện hành về annotation/loss. Giữ kiến trúc/loss, lấy mẫu ba mức cardinality; không giả định coverage hay chất lượng tương đương. Không triển khai hay thuê GPU.
 
 ## 1. Chốt một hướng, bốn yêu cầu
 
@@ -33,7 +40,7 @@ RepoShapley đã có signed effects, coalition verification và context filterin
 
 - Retriever: `microsoft/unixcoder-base`, khởi tạo từ pretrained, fine-tune toàn bộ; head mới train cùng encoder. Không dùng checkpoint PPO thất bại làm default.
 - Generator: `deepseek-ai/deepseek-coder-1.3b-base`, frozen, pin revision/tokenizer; greedy decoding với cấu hình cố định, output cap và stop rules được lưu manifest.
-- **Update theo yêu cầu tạo lại data 2026-10-01:** dùng pipeline [AST data v2](AST_TRAINING_DATA_V2.md), tạo lại target Python+Java và giữ repo-level split cũ khi ánh xạ được; loại conflict, không chia ngẫu nhiên lại các repo cũ. Không cắt validation về 128. Số dòng mới phải lấy từ artifact/report hoàn thành; 3.335 train rows dưới đây chỉ là số từ log cũ. `target_code` là nhãn completion; nhãn utility chưa được tạo ở bước prepare.
+- **Update theo yêu cầu tạo lại data 2026-10-01:** dùng pipeline [AST data v2](AST_TRAINING_DATA_V2.md), tạo lại target Python+Java, loại conflict và không tạo repository-level validation split. Mỗi epoch lấy 2.000 instances theo quota 800 Python + 1.200 Java. Validation monitor là 100 mẫu mỗi benchmark từ CCEval Python/Java và RepoEval line/API; `target_code` là nhãn completion, còn nhãn utility chưa được tạo ở bước prepare.
 - Giữ AST chunks; thêm role spans/token masks vào sidecar nếu cần. Query chỉ đọc code trước con trỏ. Gold target chỉ dùng tính oracle score, không dùng chọn pool, tạo query, chọn prefix hay làm feature.
 - **Update 2026-10-01 — chunking implementation:** đã có optional [AST + LC²-inspired context layer](papers/LATE_CODE_CHUNKING_DEEPREAD.md#10-đọc-lại-và-triển-khai-ast--late-context-2026-10-01). Retrieval cores giữ nguyên; generator nhận fixed preceding/signature enrichment nếu mode được chọn. Chưa đổi default production. Nếu dùng mode này, oracle utility và inference bắt buộc gọi cùng `render_selection`; cost tính sau overlap dedup, labels cũ không reuse. Parquet mới có separate `late_context_payload`, original targets/splits không đổi; legacy retrieval IDs không đại diện formatter mới và cần tokenize lại khi tích hợp CUR.
 - Pool khởi đầu 64 chunks, K≤10, cross-file cap 2.344 tokens, generator prompt cap 3.072 tokens; output tokens nằm ngoài prompt cap và trong server context window. Đây là cấu hình thử phù hợp nhánh PPO terminal, không phải cấu hình tối ưu đã chứng minh.
@@ -85,7 +92,16 @@ Các nhãn sau được tạo tự động từ gold target đã có, không ph�
 
 Member contribution `D(c|S)=U(S)−U(S\{c})`: D<0 nghĩa là bỏ c giúp hơn. Joint addition `U(S+a+b)−U(S)` và hai bước trung gian cho biết complementarity. Swap `U(S−a+b)−U(S)` cho biết thay a bằng b có tốt hơn không, đặc biệt khi budget đầy.
 
-### Recipe khởi đầu: tối đa 123 scored contexts/query/refresh
+### Recipe hiện hành: tối đa 20 scored contexts/query/refresh
+
+Một baseline empty, ba base S có cardinality mục tiêu 1–2/4–5/7–8; mỗi base
+chấm tối đa sáu node `S, S+a, S+b, S+a+b, S-i, S-i+a`; thêm một singleton.
+Trần `1+3*6+1=20`. Lexical/random/path-cluster được hoán đổi giữa các strata.
+Reuse node cho add/member/joint/swap gains; feasibility/dedup chỉ giảm số prompt.
+K vẫn là 10, không giảm candidate pool hay cắt chunk. Đây là attribution cục bộ,
+không phải Shapley hay giám sát đầy đủ tất cả candidate. Xem derivation mới ở trên.
+
+### Recipe cũ 123 contexts — đã thay, chỉ giữ làm tham chiếu nghiên cứu
 
 | Phép đo | Phân bổ ban đầu | Số context tối đa trước dedup |
 |---|---|---:|
@@ -155,7 +171,7 @@ Xét các thay đổi khả thi:
 3. Add hai candidates trong shortlist 8 có cả predicted-useful và complementary/diverse proposals: tối đa 28 cặp.
 4. Swap một member với một candidate trong shortlist: tối đa 80 thay thế khi K=10.
 
-Chọn thay đổi có ΔJ lớn nhất nếu ΔJ>δ; nếu không thì STOP. Giá trị khởi đầu λ=0.01, δ=0 ở thang ES[0,1]; calibrate trên validation với một grid nhỏ khai báo trước, không trên test. Cost penalty xử lý context dư thừa; **độ hại về completion phải đến từ U thực đo**, không giả định dài là sai. λ=0 là ablation bắt buộc.
+Chọn thay đổi có ΔJ lớn nhất nếu ΔJ>δ; nếu không thì STOP. Giá trị khởi đầu λ=0.01, δ=0 ở thang ES[0,1] và phải khóa trước khi chạy; không calibrate trên test. Cost penalty xử lý context dư thừa; **độ hại về completion phải đến từ U thực đo**, không giả định dài là sai. λ=0 là ablation bắt buộc.
 
 Strict improvement, visited-set guard và max 30 moves tránh loop; nếu hit move cap phải log `search_censored`, không gọi đó là learned STOP. Tất cả render/token constraints dùng chung scorer; không reclaim prefix budget sau khi STOP ở bản đầu.
 
@@ -165,14 +181,22 @@ Ví dụ giả lập: U(empty)=0.40, U(a)=0.65, U(a+b)=0.65, U(a+n)=0.50. Model 
 
 ## 8. Training schedule và tối ưu chi phí
 
-Tách hai phase có thể resume:
+**Cập nhật theo yêu cầu online:** dùng `train_online_utility.py`; hai model cùng
+resident trên A100 80GB. Mỗi batch 8 tasks: model-conditional proposals + lexical/
+random exploration → generator score (≤20 contexts/task) → một optimizer step.
+Batch tiếp theo dùng weights mới; không persistent label cache. 2.000 tasks/epoch,
+250 updates/epoch; mặc định 2 epoch. LR encoder 5e-5, head 2e-4, warmup5%.
+Xem [cấu hình hiện hành](CUR_TRAINING.md). Chưa đo throughput hay chất lượng GPU.
+
+**Phương án offline cũ dưới đây được giữ để tham chiếu, không phải lịch chạy
+hiện hành:** tách hai phase có thể resume:
 
 1. Frozen generator tạo/làm mới oracle bundles, cache completions/scores.
 2. UniXcoder fit các bundles nhiều supervised passes; không gọi lại generator mỗi optimizer step.
 
-Trial full run: **2 refresh rounds × tối đa 3 supervised passes/round**, early stop theo full validation và lưu best/last. Sau round 1, checkpoint hiện tại tạo thêm on-policy-like states để giảm distribution shift; đây là supervised dataset aggregation, không policy-gradient RL. Các ablation chính phải dùng cùng oracle bundles để so loss công bằng; adaptive-refresh experiment là bước riêng.
+Trial full run: **2 refresh rounds × tối đa 3 supervised passes/round**, lưu latest sau mỗi pass. Không early-stop hoặc chọn checkpoint theo test; nếu cần chọn model thì chốt số pass trước. Sau round 1, checkpoint hiện tại tạo thêm on-policy-like states để giảm distribution shift; đây là supervised dataset aggregation, không policy-gradient RL. Các ablation chính phải dùng cùng oracle bundles để so loss công bằng; adaptive-refresh experiment là bước riêng.
 
-Với 3.335 train rows và ceiling 123: **410.205 scored contexts/round**, tối đa 820.410 cho hai rounds trước cache/invalid reductions; chưa gồm validation, diagnostics, reruns. Không còn hứa chi phí gần RLCoder: mặc định RLCoder khoảng 10 scored singleton contexts/query, batched teacher-forced scoring, không 10 sequential calls. Decode dài và set context lớn có thể làm plan này đắt hơn đáng kể. [Batching audit](research/retriever_training_alternatives_2026_10_01/diffs/2026-10-01_rlcoder_batching_correction.md).
+Với 2.000 tasks/data epoch và ceiling 20: **40.000 completion contexts/epoch**, chưa gồm diagnostics/reruns. Không hứa chi phí gần RLCoder: mặc định RLCoder khoảng 10 scored singleton contexts/query, batched teacher-forced scoring, không 10 sequential calls. CUR vẫn decode completion cho ES. [Batching audit](research/retriever_training_alternatives_2026_10_01/diffs/2026-10-01_rlcoder_batching_correction.md).
 
 Oracle annotations được reuse qua nhiều epochs, seeds và ablations ở checkpoint-independent bundles. Model-dependent refresh vẫn sinh context mới. Chỉ gọi lại những prompt chưa có trong cache; frozen generator không đồng nghĩa cache embeddings UniXcoder train được giữ mãi.
 
@@ -198,7 +222,7 @@ Oracle annotations được reuse qua nhiều epochs, seeds và ablations ở ch
 
 ### Stage 1 — chứng minh supervision, chưa đòi kiến trúc mới thắng
 
-Subset train cố định 256 query, stratified language/target-kind; dùng validation split hiện có, không lấy test để chọn threshold. Đây là thí nghiệm bác bỏ rẻ trước full run, không thay production train split.
+Subset train cố định 256 query, stratified language/target-kind; không dùng benchmark test để chọn threshold. Đây là thí nghiệm bác bỏ rẻ trước full run, không thay production train pool.
 
 Trên cùng pool/prompt/oracle bundles, so:
 
@@ -213,14 +237,14 @@ CE/singleton chỉ dùng singleton measurements phù hợp; log các oracle meas
 
 ### Stage 2 — full data và ablations tối thiểu
 
-- Full existing train split, full existing valid, 3 seeds cho kết luận chính.
+- Full prepared pool, benchmark test chỉ chạy sau khi khóa thiết kế, 3 seeds cho kết luận chính.
 - Baselines: no retrieval; BM25 AST budget; frozen UniXcoder; reproduced RLCoder; reproduced AlignCoder (bao gồm các thành phần của official configuration); closest-prior RepoShapley nếu artifact/protocol tái lập được. Không thay một baseline bằng bản đã bỏ query enhancement rồi claim thắng paper gốc.
 - Core ablations trên cùng contexts: singleton vs conditional; global vs roles (parameter-matched head); gain+anchor vs gain-only vs set-only.
 - Kiến trúc interaction: additive-only potential versus nonlinear set potential, giữ conditional labels, encoder và search giống nhau. Representation role pooling và interaction head là hai yếu tố khác nhau, không gộp thành một lời giải thích.
 - Selection ablations cùng trained scorer: fixed K versus learned stop, single-add greedy versus add/remove/joint/swap; λ=0 versus calibrated token cost. Không gộp lợi ích search với lợi ích learned representation.
-- Shortcut control: count/token-only utility head và fixed-K được tune cùng validation budget. Trên held-out content swaps giữ cardinality và token cost gần bằng nhau, model phải phân biệt nội dung hữu ích/gây hại tốt hơn đối chứng này mới claim học chọn snippet.
+- Shortcut control: count/token-only utility head và fixed-K được khóa cùng protocol. Trên held-out content swaps giữ cardinality và token cost gần bằng nhau, model phải phân biệt nội dung hữu ích/gây hại tốt hơn đối chứng này mới claim học chọn snippet.
 - Label coverage ablation: bỏ joint/removal/swap supervision từng nhóm, nhưng giữ nguyên available measured nodes khi có thể; nói rõ phần thông tin còn suy ra được từ set targets. Không claim xóa edge loss đồng nghĩa xóa mọi thông tin về intervention đó.
-- Kiểm tra learning curve theo số unique contexts/query (ví dụ 32/64/123 từ bundles có node coverage phù hợp), held-out probes và unseen joint additions. 123 là allocation thử, không bằng chứng coverage đã đủ; query/repo validation phải tách train, không chỉ hold out edges trong cùng query rồi gọi là generalization giữa repos.
+- Kiểm tra learning curve theo số unique contexts/query (ví dụ 8/14/20 với node coverage được báo cáo), held-out probes và unseen joint additions. 20 là allocation tiết kiệm, không bằng chứng coverage đã đủ; kiểm chứng generalization cần repo-held-out development data, không được dùng benchmark validation/test để tune tùy tiện. Validation monitor hiện dùng artifact cố định 100 mẫu mỗi benchmark; không tự chia lại repository pool trong bước này.
 
 ### Stage 3 — test một lần sau khi khóa thiết kế
 
@@ -231,8 +255,8 @@ Gate đề xuất, **phải khóa trước full confirmatory run**:
 - So strongest matched baseline: macro ES tăng ít nhất 1 percentage point, paired repo-cluster bootstrap 95% CI của delta >0.
 - EM guardrail: lower bound của CI delta EM >−0.5 percentage point; nếu thiếu power thì kết luận chưa rõ, không tự gọi non-inferior.
 - Report quality–token frontier, không chỉ một λ. Đo noise acceptance, redundant picks, number selected, actual tokens, local missed-benefit khi STOP, oracle GPU-hours và train/inference time.
-- Independent validation audit: score all feasible single additions và pair shortlist tại các STOP states đã chọn trước; nếu >10% states còn một measured ES gain >0.01 thì chưa được claim learned sufficient context. Với token-cost objective report thêm missed positive net-gain. Đây là local coverage gate, không chứng minh global sufficiency.
-- Audit pool coverage bằng expanded pool 128 trên subset validation riêng; nếu lỗi chính là first-stage miss thì ưu tiên mining thay vì thêm loss. Report unresolved candidate coverage thay vì chỉ báo 100% samples có candidates.
+- Independent held-out audit: sau khi khóa thiết kế, score all feasible single additions và pair shortlist tại các STOP states đã chọn trước; nếu >10% states còn một measured ES gain >0.01 thì chưa được claim learned sufficient context. Với token-cost objective report thêm missed positive net-gain. Đây là local coverage gate, không chứng minh global sufficiency.
+- Audit pool coverage bằng expanded pool 128 trên một subset test cố định chỉ để báo cáo; không dùng subset này để tune. Nếu lỗi chính là first-stage miss thì ưu tiên mining thay vì thêm loss. Report unresolved candidate coverage thay vì chỉ báo 100% samples có candidates.
 
 Thresholds trên là trial acceptance criteria, không paper facts. Các số đo actions trong cùng query/repo không độc lập; bootstrap ở repo, không ở từng intervention. Report per-language và line/block slices để macro không che regression lớn.
 
@@ -251,7 +275,7 @@ Các tên file này là **deliverables dự kiến**, chưa phải file đã đ�
 
 - ES labels phần lớn hòa hoặc quá bất ổn: kiểm tra task/metric, sau đó mới thử expected ES nhiều decodes hoặc likelihood ablation; không thêm loss phụ tùy ý.
 - Potential không generalize tốt hơn independent conditional head/set regression: bỏ ràng buộc kiến trúc, giữ bài học về data coverage; coherent không đồng nghĩa expressive hơn.
-- Head bị search khai thác ở OOD sets: bổ sung measured deployment states và validation calibration; chưa claim đủ context chỉ vì predicted gains âm.
+- Head bị search khai thác ở OOD sets: bổ sung measured deployment states trong audit đã khóa; chưa claim đủ context chỉ vì predicted gains âm.
 - Chỉ giảm K mà EM/ES giảm: cost penalty đang ép sparse, chưa học chọn tốt.
 - Pool/query/prompt fixes giải thích improvement hoặc closest prior đã có cơ chế tương đương: thu hẹp contribution, không đổi tên để che overlap.
 
