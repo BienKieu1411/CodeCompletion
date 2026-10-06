@@ -1,0 +1,42 @@
+{
+  "cceval_python": {
+    "total_samples": 2665,
+    "exact_match_rate": 0.0375,
+    "exact_match_prefix_rate": 31.1445,
+    "avg_edit_similarity": 0.257815,
+    "num_correct": 1,
+    "num_incorrect": 2664
+  },
+  "repoeval_line": {
+    "total_samples": 1600,
+    "exact_match_rate": 0.0,
+    "exact_match_prefix_rate": 50.0625,
+    "avg_edit_similarity": 0.303152,
+    "num_correct": 0,
+    "num_incorrect": 1600
+  },
+  "cceval_java": {
+    "total_samples": 2139,
+    "exact_match_rate": 0.0,
+    "exact_match_prefix_rate": 27.4895,
+    "avg_edit_similarity": 0.288648,
+    "num_correct": 0,
+    "num_incorrect": 2139
+  },
+  "github_eval": {
+    "total_samples": 1000,
+    "exact_match_rate": 0.4,
+    "exact_match_prefix_rate": 14.2,
+    "avg_edit_similarity": 0.487352,
+    "num_correct": 4,
+    "num_incorrect": 996
+  },
+  "repoeval_api": {
+    "total_samples": 1600,
+    "exact_match_rate": 0.25,
+    "exact_match_prefix_rate": 43.5625,
+    "avg_edit_similarity": 0.428763,
+    "num_correct": 4,
+    "num_incorrect": 1596
+  }
+}

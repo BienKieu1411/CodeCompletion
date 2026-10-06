@@ -25,7 +25,6 @@ retriever/
 # Training outputs
 checkpoints/
 logs/
-results/
 runs/
 wandb/
 
