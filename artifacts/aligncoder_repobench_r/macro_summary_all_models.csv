@@ -1,0 +1,7 @@
+model,protocol,split,Recall@1,Recall@3,Recall@5,MRR,mean_rank
+UniXcoder_base,one_pass_dense_reranker,test_easy,0.19957510471367843,0.5335959380470118,0.8269264738059515,0.43244305667810806,3.516032101775444
+UniXcoder_base,one_pass_dense_reranker,test_hard,0.1325625,0.3241875,0.4735,0.30189526660891536,7.3983125
+RLRetriever,one_pass_dense_reranker,test_easy,0.2688618795323831,0.6116330020005001,0.8576789353588398,0.4912669874685934,3.1795060952738186
+RLRetriever,one_pass_dense_reranker,test_hard,0.2161875,0.430375,0.57196875,0.385762798,6.2394375
+AlignCoder_enhanced_adapted,generator_enhanced_query_plus_dense_reranker,test_easy,0.2841125672043011,0.6308526428482121,0.8689607323705926,0.5057426655771085,3.07956371124031
+AlignCoder_enhanced_adapted,generator_enhanced_query_plus_dense_reranker,test_hard,0.2090625,0.424,0.5725625,0.3798208521970361,6.3093125
