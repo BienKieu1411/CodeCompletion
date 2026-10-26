@@ -1,0 +1,107 @@
+{
+  "run_id": "aligncoder-rq1-deepseek13b-20261013-225803",
+  "status": "failed_or_timed_out",
+  "started_at_utc": "2026-10-14T07:08:05.239745+00:00",
+  "source": {
+    "workspace_git_commit": "ab0808594febfa3903e6242833bb3c207b7956b4",
+    "snapshot_path": "/root/aligncoder",
+    "source_file_sha256": {
+      "main.py": "bd0d9f999fb68a6dfe8be813bad466a22971f6d0f069903c54dd24d45ecabbde",
+      "retriever.py": "4a8fe57a40974f19210886bf74c947c3a90b3be54941c58192af884cd8b26ddb",
+      "bm25.py": "eae1f38c8338b37dc9222ea26f9c7db013208058d99171c701d820041272fa71",
+      "datasets.py": "d4f074e186b6469c1aaeaebcc1b746c71becc18cf5788c87929c27dce47a6cbc",
+      "generator.py": "9be41a41d13f2a4c3c05b482aef69389686d36cb496f5bff21d7a9735d8b0e0b",
+      "api.py": "cc6ba10f4438a5d6f2ccc608ee86b40e6da10a0e132e33b558b2579dbfb21939",
+      "utils/eval_metric.py": "d3e4d97b63ea705c756a17110ed7304512f7eff8ba91e57517d2ce9f7db83705",
+      "utils/eval_utils.py": "8dcb92a1ca549ee0eaf7a0edce51403f7b0ac58c6862bc7102ce490282ccc68f",
+      "utils/eval_repoeval.py": "6a42aeb0d5b934437e874d45fdf1553105598447b8037bd800fb4d23863332f7",
+      "utils/build/python-lang-parser.so": "93d1eaa54b9133e22effec0c104e2af6c2073ec8d543190aa2e73277287a7abc",
+      "utils/build/java-lang-parser.so": "e98bfda5740dc0568000a9cb513476bc933f0fd0afcfe70240044309c2027648"
+    },
+    "note": "AlignCoder source files were not edited; observer wraps calls and vLLM backend only."
+  },
+  "huggingface": {
+    "alignretriever_repo": "AlignCoder/AlignRetriever",
+    "alignretriever_revision": "a179c0fdbc5a56d83ae142064ef1ea773a841753",
+    "dataset_repo": "AlignCoder/Data4AlignCoder",
+    "dataset_revision": "ce72fe3ef4987e15a9219fea4174bb80700e742c",
+    "generator_repo": "deepseek-ai/deepseek-coder-1.3b-base",
+    "generator_revision": "c919139c3a9b4070729c8b2cca4847ab29ca8d94"
+  },
+  "protocol": {
+    "paper_section": "AlignCoder README RQ1",
+    "datasets": [
+      "cceval_python",
+      "cceval_java",
+      "repoeval_line",
+      "repoeval_api"
+    ],
+    "generation_rounds": 1,
+    "enhancement_samples": 8,
+    "bm25_seed_topk": 100,
+    "bm25_enhanced_topk": 100,
+    "retriever_topk": 10,
+    "chunking": "AlignCoder default: blank-line mini-blocks, split/merge to <=15 nonempty lines; fixed-block flag OFF",
+    "crossfile_token_budget": 1536,
+    "generator_context_length": 2048,
+    "generator_max_new_tokens": 64,
+    "candidate_token_length": 512,
+    "query_token_length": 256,
+    "api_blocks": true,
+    "stop_block": true,
+    "generator_backend": "vLLM offline using AlignCoder's vLLM_offline_Generator logic",
+    "generator_precision": "float16",
+    "vllm_gpu_memory_utilization": 0.5,
+    "vllm_max_model_len": 2112,
+    "vllm_max_num_seqs": 256,
+    "outputs": [
+      "official AlignCoder prediction and metrics files",
+      "all returned seed and enhanced BM25 candidates with BM25 score/rank",
+      "every candidate in the final UniXcoder rerank pool with exact cosine score/rank and top-10 flag",
+      "query-enhancement and final prompts plus raw/postprocessed generations",
+      "per-task official EM/ES/identifier metrics"
+    ]
+  },
+  "runtime_cap": {
+    "gpu": "A100-80GB x1",
+    "cpu_physical_cores": 2,
+    "cpu_vcpus_equivalent": 4,
+    "max_cpu_process_workers": 2,
+    "cpu_limit_physical_cores": 2,
+    "memory_mib_request_and_limit": 49152,
+    "timeout_seconds": 30600,
+    "budget_usd": 30.0,
+    "estimated_compute_usd_per_hour": 2.9785999999999997,
+    "estimated_max_compute_usd": 25.318099999999998,
+    "estimate_excludes": [
+      "network transfer outside included allowances"
+    ],
+    "max_containers": 1,
+    "retries": 0,
+    "modal_volume": "aligncoder-eval-observability"
+  },
+  "resolved_paths": {
+    "test_data": "/tmp/aligncoder-hf-data",
+    "alignretriever": "/tmp/aligncoder-models/alignretriever",
+    "generator": "/tmp/aligncoder-models/deepseek-coder-1.3b-base"
+  },
+  "error": "KeyboardInterrupt()",
+  "traceback": "Traceback (most recent call last):\n  File \"/root/modal_aligncoder_eval.py\", line 928, in evaluate_aligncoder_rq1\n    aligncoder_main.run(args)\n  File \"/root/aligncoder/main.py\", line 221, in run\n    _, retrieved_codeblocks = retrieve_codeblocks(args, temp_examples, bm25, retriever, name)\n                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/root/modal_aligncoder_eval.py\", line 347, in traced_retrieve_codeblocks\n    return original_retrieve_codeblocks(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/root/aligncoder/main.py\", line 77, in retrieve_codeblocks\n    bm25[dataset_name] = TaskSpecificBM25(examples, args)\n                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/root/aligncoder/bm25.py\", line 135, in __init__\n    self._build_indices(examples, args)\n  File \"/root/aligncoder/bm25.py\", line 157, in _build_indices\n    api_contents = pool.map_async(func, examples).get(timeout=1800)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/multiprocessing/pool.py\", line 768, in get\n    self.wait(timeout)\n  File \"/usr/local/lib/python3.12/multiprocessing/pool.py\", line 765, in wait\n    self._event.wait(timeout)\n  File \"/usr/local/lib/python3.12/threading.py\", line 655, in wait\n    signaled = self._cond.wait(timeout)\n               ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/threading.py\", line 359, in wait\n    gotit = waiter.acquire(True, timeout)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nKeyboardInterrupt\n",
+  "dataset_counts": {
+    "cceval_python": 2665,
+    "cceval_java": 2139,
+    "repoeval_line": 1600,
+    "repoeval_api": 1600
+  },
+  "metrics_so_far": {
+    "cceval_python": {
+      "em": "28.743(28.74)",
+      "es": "71.9872(64.43)",
+      "id_em": 38.9869,
+      "id_f1": 65.5709,
+      "total": 2665
+    }
+  },
+  "finished_at_utc": "2026-10-14T08:10:27.442592+00:00",
+  "trace_records_written": 26124
+}

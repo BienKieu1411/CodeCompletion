@@ -1,0 +1,652 @@
+Installing vLLM with the CUDA/PyTorch backend matched to Colab...
+Using Python 3.13.16 environment at: /usr
+Resolved 197 packages in 2.78s
+Downloading xgrammar (1.3MiB)
+Downloading apache-tvm-ffi (2.6MiB)
+Downloading z3-solver (27.9MiB)
+Downloading outlines-core (2.2MiB)
+Downloading anthropic (2.1MiB)
+Downloading torchcodec (9.7MiB)
+Downloading pycountry (7.7MiB)
+Downloading pillow (6.8MiB)
+Downloading oss-harmony (3.4MiB)
+Downloading nvidia-cusparselt-cu13 (162.3MiB)
+Downloading nccl-extensions (21.5MiB)
+Downloading nvidia-cusparse (143.9MiB)
+Downloading nvidia-cutlass-dsl-libs-core (1.6MiB)
+Downloading llguidance (2.9MiB)
+Downloading nvidia-cufile (1.3MiB)
+Downloading nccl4py (3.5MiB)
+Downloading mistral-common (6.3MiB)
+Downloading llvmlite (53.7MiB)
+Downloading numba (3.6MiB)
+Downloading cuda-core (6.3MiB)
+Downloading nvidia-nvjitlink (40.5MiB)
+Downloading pynvvideocodec (41.2MiB)
+Downloading nvidia-cudnn-frontend (9.7MiB)
+Downloading nvidia-cutlass-dsl-libs-base (2.9MiB)
+Downloading fastsafetensors (2.6MiB)
+Downloading nvidia-cuda-nvrtc (44.8MiB)
+Downloading transformers (12.0MiB)
+Downloading nvidia-cuda-cupti (11.4MiB)
+Downloading nvidia-cuda-runtime (2.2MiB)
+Downloading nvidia-cublas (386.1MiB)
+Downloading flashinfer-python (32.1MiB)
+Downloading instanttensor (6.2MiB)
+Downloading nvidia-cufft (208.1MiB)
+Downloading nvidia-cusolver (216.9MiB)
+Downloading vllm (311.4MiB)
+Downloading tilelang (48.2MiB)
+Downloading nvidia-cutlass-dsl-libs-cu13 (87.7MiB)
+Downloading nvidia-nccl-cu13 (196.4MiB)
+Downloading nvidia-cutlass-dsl-libs-cu12 (87.5MiB)
+Downloading nvidia-cudnn-cu13 (349.2MiB)
+Downloading triton (188.0MiB)
+Downloading tokenspeed-triton (89.0MiB)
+Downloading torchvision (7.5MiB)
+Downloading torch (505.8MiB)
+Downloading nvidia-curand (57.1MiB)
+ Downloaded xgrammar
+ Downloaded nvidia-cufile
+ Downloaded nvidia-cutlass-dsl-libs-core
+ Downloaded anthropic
+ Downloaded outlines-core
+ Downloaded apache-tvm-ffi
+ Downloaded nvidia-cuda-runtime
+ Downloaded torchcodec
+ Downloaded nvidia-cutlass-dsl-libs-base
+ Downloaded llguidance
+ Downloaded torchvision
+ Downloaded fastsafetensors
+ Downloaded oss-harmony
+ Downloaded nccl4py
+ Downloaded numba
+ Downloaded cuda-core
+ Downloaded mistral-common
+ Downloaded instanttensor
+ Downloaded pillow
+ Downloaded pycountry
+ Downloaded nvidia-cudnn-frontend
+ Downloaded nvidia-cuda-cupti
+ Downloaded transformers
+ Downloaded nccl-extensions
+ Downloaded z3-solver
+ Downloaded flashinfer-python
+ Downloaded pynvvideocodec
+ Downloaded nvidia-nvjitlink
+ Downloaded nvidia-cuda-nvrtc
+ Downloaded tilelang
+ Downloaded triton
+ Downloaded llvmlite
+ Downloaded nvidia-curand
+ Downloaded nvidia-cutlass-dsl-libs-cu12
+ Downloaded nvidia-cutlass-dsl-libs-cu13
+ Downloaded tokenspeed-triton
+ Downloaded nvidia-cusparse
+ Downloaded nvidia-cusparselt-cu13
+ Downloaded torch
+ Downloaded nvidia-nccl-cu13
+ Downloaded nvidia-cufft
+ Downloaded nvidia-cusolver
+ Downloaded vllm
+ Downloaded nvidia-cudnn-cu13
+ Downloaded nvidia-cublas
+Prepared 95 packages in 26.16s
+Uninstalled 28 packages in 1.14s
+Installed 95 packages in 273ms
+ + agent-detector==2.0.0
+ + anthropic==2.3.0
+ + apache-tvm-ffi==0.1.11
+ + astor==0.8.1
+ + blake3==1.0.11
+ + cbor2==6.1.5
+ + compressed-tensors==0.17.0
+ - cuda-core==0.7.0
+ + cuda-core==1.2.2
+ + cuda-tile==1.7.0
+ - cuda-toolkit==13.0.2
+ + cuda-toolkit==13.2.1
+ + depyf==0.20.0
+ + detect-installer==0.2.1
+ + dnspython==2.9.0
+ + email-validator==2.3.0
+ - fastapi==0.141.1
+ + fastapi==0.136.3
+ + fastapi-cli==0.0.32
+ + fastapi-cloud-cli==0.26.0
+ + fastar==0.12.0
+ + fastsafetensors==0.5.0
+ + flashinfer-python==0.7.0.post1
+ + humming-kernels==0.1.17
+ + ijson==3.6.0
+ + instanttensor==0.2.2
+ + interegular==0.3.3
+ + jmespath==1.1.0
+ - lark==1.3.1
+ + lark==1.2.2
+ + llguidance==1.7.6
+ - llvmlite==0.44.0
+ + llvmlite==0.47.0
+ + lm-format-enforcer==0.11.3
+ + loguru==0.7.3
+ + mcp==2.3.0
+ + mcp-types==2.3.0
+ + mistral-common==1.12.0
+ + model-hosting-container-standards==0.1.16
+ + msgspec==0.22.0
+ + nccl-extensions==0.1.0
+ + nccl4py==0.6.0
+ + ninja==1.13.2
+ - numba==0.61.2
+ + numba==0.65.0
+ - nvidia-cublas==13.1.0.3
+ + nvidia-cublas==13.4.0.1
+ - nvidia-cuda-cupti==13.0.85
+ + nvidia-cuda-cupti==13.2.75
+ - nvidia-cuda-nvrtc==13.0.88
+ + nvidia-cuda-nvrtc==13.2.78
+ - nvidia-cuda-runtime==13.0.96
+ + nvidia-cuda-runtime==13.2.75
+ - nvidia-cudnn-cu13==9.19.0.56
+ + nvidia-cudnn-cu13==9.20.0.48
+ + nvidia-cudnn-frontend==1.31.0
+ - nvidia-cufft==12.0.0.61
+ + nvidia-cufft==12.2.0.46
+ - nvidia-cufile==1.15.1.6
+ + nvidia-cufile==1.17.1.22
+ - nvidia-curand==10.4.0.35
+ + nvidia-curand==10.4.2.55
+ - nvidia-cusolver==12.0.4.66
+ + nvidia-cusolver==12.2.0.1
+ - nvidia-cusparse==12.6.3.3
+ + nvidia-cusparse==12.7.10.1
+ - nvidia-cusparselt-cu13==0.8.0
+ + nvidia-cusparselt-cu13==0.8.1
+ + nvidia-cutlass-dsl==4.8.0
+ + nvidia-cutlass-dsl-libs-base==4.8.0
+ + nvidia-cutlass-dsl-libs-core==4.8.0
+ + nvidia-cutlass-dsl-libs-cu12==4.8.0
+ + nvidia-cutlass-dsl-libs-cu13==4.8.0
+ - nvidia-nccl-cu13==2.28.9
+ + nvidia-nccl-cu13==2.29.7
+ - nvidia-nvjitlink==13.0.88
+ + nvidia-nvjitlink==13.4.92
+ - nvidia-nvtx==13.0.85
+ + nvidia-nvtx==13.2.75
+ - nvtx==0.2.16
+ + nvtx==0.2.15
+ + opentelemetry-exporter-otlp==1.42.1
+ + opentelemetry-exporter-otlp-proto-common==1.42.1
+ + opentelemetry-exporter-otlp-proto-grpc==1.42.1
+ + opentelemetry-exporter-otlp-proto-http==1.42.1
+ + opentelemetry-proto==1.42.1
+ + opentelemetry-semantic-conventions-ai==0.5.1
+ + oss-harmony==0.0.11
+ + outlines-core==0.2.14
+ + partial-json-parser==0.2.1.1.post7
+ - pillow==11.3.0
+ + pillow==13.0.0
+ + prometheus-fastapi-instrumentator==8.1.0
+ + pybase64==1.5.1
+ + pycountry==26.2.16
+ + pydantic-extra-types==2.11.1
+ + pydantic-settings==2.16.1
+ + pynvvideocodec==2.0.4
+ + quack-kernels==0.6.5
+ - requests==2.32.4
+ + requests==2.34.2
+ + rich-toolkit==0.20.6
+ + rignore==0.8.1
+ + setproctitle==1.3.8
+ + sse-starlette==3.5.1
+ + supervisor==4.3.0
+ + tilelang==0.1.12
+ + tokenspeed-mla==0.2.15
+ + tokenspeed-triton==3.9.10.post20261008
+ - torch==2.11.0+cu130
+ + torch==2.13.0+cu132
+ + torch-c-dlpack-ext==0.1.5
+ - torchcodec==0.11.0+cu130
+ + torchcodec==0.17.0+cu132
+ - torchvision==0.26.0+cu130
+ + torchvision==0.28.0+cu132
+ - transformers==5.20.2
+ + transformers==5.19.0
+ - triton==3.6.0
+ + triton==3.7.1
+ + vllm==0.32.0
+ + xgrammar==0.2.8
+ + z3-solver==4.15.4.0
+Collecting rank_bm25
+  Downloading rank_bm25-0.2.2-py3-none-any.whl.metadata (3.2 kB)
+Collecting fuzzywuzzy
+  Downloading fuzzywuzzy-0.18.0-py2.py3-none-any.whl.metadata (4.9 kB)
+Collecting tree-sitter==0.20.4
+  Downloading tree_sitter-0.20.4.tar.gz (140 kB)
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Requirement already satisfied: setuptools>=60.0.0 in /usr/local/lib/python3.13/dist-packages (from tree-sitter==0.20.4) (80.10.2)
+Requirement already satisfied: numpy in /usr/local/lib/python3.13/dist-packages (from rank_bm25) (2.1.3)
+Downloading rank_bm25-0.2.2-py3-none-any.whl (8.6 kB)
+Downloading fuzzywuzzy-0.18.0-py2.py3-none-any.whl (18 kB)
+Building wheels for collected packages: tree-sitter
+  Building wheel for tree-sitter (pyproject.toml): started
+  Building wheel for tree-sitter (pyproject.toml): finished with status 'done'
+  Created wheel for tree-sitter: filename=tree_sitter-0.20.4-cp313-cp313-linux_x86_64.whl size=477610 sha256=0e372ee5dd4fab7dfc04cb9e02b0c3753b9799792cbe5efee2745a8b08f03e9e
+  Stored in directory: /root/.cache/pip/wheels/5b/5d/44/ea7cc27eb557bfcc7447895dc48e3706dd04663a5587627158
+Successfully built tree-sitter
+Installing collected packages: fuzzywuzzy, tree-sitter, rank_bm25
+
+Successfully installed fuzzywuzzy-0.18.0 rank_bm25-0.2.2 tree-sitter-0.20.4
+Colab GPU: NVIDIA A100-SXM4-40GB, 39.5 GiB; CUDA=13.2; torch=2.13.0+cu132
+Loaded 256 selected tasks; 192 unique repository pools
+Chunked 192 pools into 426,267 pool references / 19,186 unique AlignCoder mini-blocks
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (17126 > 16384). Running this sequence through the model will result in indexing errors
+Built 256 fixed query-enhancement prompts
+Traceback (most recent call last):
+  File "/content/colab_runner.py", line 780, in <module>
+    main()
+    ~~~~^^
+  File "/content/colab_runner.py", line 620, in main
+    generator = load_generator()
+  File "/content/colab_runner.py", line 357, in load_generator
+    from vllm import LLM
+  File "<frozen importlib._bootstrap>", line 1429, in _handle_fromlist
+  File "/usr/local/lib/python3.13/dist-packages/vllm/__init__.py", line 70, in __getattr__
+    module = import_module(module_name, __package__)
+  File "/usr/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/dist-packages/vllm/entrypoints/llm.py", line 13, in <module>
+    from vllm.config import (
+    ...<6 lines>...
+    )
+  File "/usr/local/lib/python3.13/dist-packages/vllm/config/__init__.py", line 26, in <module>
+    from vllm.config.model import (
+    ...<4 lines>...
+    )
+  File "/usr/local/lib/python3.13/dist-packages/vllm/config/model.py", line 31, in <module>
+    from vllm.transformers_utils.config import (
+    ...<14 lines>...
+    )
+  File "/usr/local/lib/python3.13/dist-packages/vllm/transformers_utils/config.py", line 20, in <module>
+    from transformers.models.auto.image_processing_auto import get_image_processor_config
+  File "/usr/local/lib/python3.13/dist-packages/transformers/models/auto/image_processing_auto.py", line 24, in <module>
+    from ...image_processing_utils import ImageProcessingMixin
+  File "/usr/local/lib/python3.13/dist-packages/transformers/image_processing_utils.py", line 34, in <module>
+    from .processing_utils import ImagesKwargs, Unpack
+  File "/usr/local/lib/python3.13/dist-packages/transformers/processing_utils.py", line 38, in <module>
+    from .audio_utils import AudioInput, load_audio, make_list_of_audio
+  File "/usr/local/lib/python3.13/dist-packages/transformers/audio_utils.py", line 58, in <module>
+    import torchaudio
+  File "/usr/local/lib/python3.13/dist-packages/torchaudio/__init__.py", line 7, in <module>
+    from . import _extension  # noqa  # usort: skip
+    ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/dist-packages/torchaudio/_extension/__init__.py", line 36, in <module>
+    _check_cuda_version()
+    ~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/dist-packages/torchaudio/_extension/utils.py", line 124, in _check_cuda_version
+    raise RuntimeError(
+    ...<3 lines>...
+    )
+RuntimeError: Detected that PyTorch and TorchAudio were compiled with different CUDA versions. PyTorch has CUDA version 13.2 whereas TorchAudio has CUDA version 13.0. Please install the TorchAudio version that matches your PyTorch version.
+Removing incompatible optional torchaudio wheel (text-only pilot)...
+Found existing installation: torchaudio 2.11.0+cu130
+Uninstalling torchaudio-2.11.0+cu130:
+  Successfully uninstalled torchaudio-2.11.0+cu130
+Colab GPU: NVIDIA A100-SXM4-40GB, 39.5 GiB; CUDA=13.2; torch=2.13.0+cu132
+Loaded 256 selected tasks; 192 unique repository pools
+Chunked 192 pools into 426,267 pool references / 19,186 unique AlignCoder mini-blocks
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (17126 > 16384). Running this sequence through the model will result in indexing errors
+Built 256 fixed query-enhancement prompts
+Loading vLLM generator deepseek-ai/deepseek-coder-1.3b-base@c919139c3a9b4070729c8b2cca4847ab29ca8d94
+(MainProcess pid=5071) INFO 10-24 09:38:03 [api_utils.py:286] non-default args: {'tokenizer': 'deepseek-ai/deepseek-coder-1.3b-base', 'dtype': 'float16', 'seed': 20261024, 'max_model_len': 2112, 'gpu_memory_utilization': 0.78, 'max_num_batched_tokens': 8192, 'max_num_seqs': 64, 'disable_log_stats': True, 'revision': 'c919139c3a9b4070729c8b2cca4847ab29ca8d94', 'tokenizer_revision': 'c919139c3a9b4070729c8b2cca4847ab29ca8d94', 'model': 'deepseek-ai/deepseek-coder-1.3b-base'}
+(MainProcess pid=5071) INFO 10-24 09:38:18 [model.py:733] Resolved architecture: LlamaForCausalLM
+(MainProcess pid=5071) WARNING 10-24 09:38:18 [model.py:2498] Casting torch.bfloat16 to torch.float16.
+(MainProcess pid=5071) INFO 10-24 09:38:18 [model.py:2152] Using max model len 2112
+(MainProcess pid=5071) INFO 10-24 09:38:18 [scheduler.py:307] Chunked prefill is enabled with max_num_batched_tokens=8192.
+(MainProcess pid=5071) INFO 10-24 09:38:18 [kernel.py:467] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'], gelu_and_mul_sparse=['triton', 'native'])
+Fetching 8 files:   0%|          | 0/8 [00:00<?, ?it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+10/24/2026 09:38:19 - WARNING - huggingface_hub.utils._http - Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Fetching 8 files:  62%|██████▎   | 5/8 [00:00<00:00, 20.42it/s]Fetching 8 files: 100%|██████████| 8/8 [00:00<00:00, 15.66it/s]Fetching 8 files: 100%|██████████| 8/8 [00:00<00:00, 16.35it/s]
+(MainProcess pid=5071) WARNING 10-24 09:38:19 [system_utils.py:153] We must use the `spawn` multiprocessing start method. Overriding VLLM_WORKER_MULTIPROC_METHOD to 'spawn'. See https://docs.vllm.ai/en/latest/usage/troubleshooting.html#python-multiprocessing for more information. Reasons: CUDA is initialized
+(EngineCore pid=5757) INFO 10-24 09:38:31 [core.py:133] Initializing a V1 LLM engine (v0.32.0) with config: model='deepseek-ai/deepseek-coder-1.3b-base', speculative_config=None, tokenizer='deepseek-ai/deepseek-coder-1.3b-base', skip_tokenizer_init=False, tokenizer_mode=auto, revision=c919139c3a9b4070729c8b2cca4847ab29ca8d94, tokenizer_revision=c919139c3a9b4070729c8b2cca4847ab29ca8d94, trust_remote_code=False, dtype=torch.float16, max_seq_len=2112, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=None, quantization_config=None, enforce_eager=False, aux_output_config=AuxOutputConfig(enable_return_routed_experts=False, max_bytes=None), kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, per_request_spec_decode_metrics='none', kv_cache_metrics=False, kv_cache_metrics_sample=0.01, custom_histogram_buckets=None, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=20261024, served_model_name=deepseek-ai/deepseek-coder-1.3b-base, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.VLLM_COMPILE: 3>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['none'], 'ir_enable_torch_wrap': True, 'splitting_ops': ['vllm::unified_attention_with_output', 'vllm::unified_mla_attention_with_output', 'vllm::mamba_mixer2', 'vllm::mamba_mixer', 'vllm::short_conv', 'vllm::qwen4_exp_ple_short_conv', 'vllm::qwen4_exp_qsa_with_output', 'vllm::qwen4_exp_qsa_prepare_with_output', 'vllm::linear_attention', 'vllm::qwen_gdn_attention_core', 'vllm::qwen_gdn_attention_core_fused_norm_packed', 'vllm::gdn_attention_core_xpu', 'vllm::olmo_hybrid_gdn_full_forward', 'vllm::sparse_attn_indexer', 'vllm::rocm_aiter_sparse_attn_indexer', 'vllm::deepseek_v4_attention', 'vllm::hpc_rope_norm_forward', 'vllm::unified_kv_cache_update', 'vllm::unified_mla_kv_cache_update'], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'cudagraph_decoder_replay': True, 'decoder_replay_cudagraph_capture_sizes': [], 'decoder_replay_trim_threshold': 768, 'compile_sizes': [], 'compile_ranges_endpoints': [8192], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.FULL_AND_PIECEWISE: (2, 1)>, 'cudagraph_num_of_warmups': 1, 'cudagraph_capture_sizes': [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': False, 'fuse_act_quant': False, 'fuse_attn_quant': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 128, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'], gelu_and_mul_sparse=['triton', 'native']), enable_flashinfer_autotune=True, enable_rocm_segmented_attn_autotune=False, enable_cutedsl_warmup=True, enable_jit_warmup=True, moe_backend='auto', sparse_indexer_topk_backend='auto', linear_backend='auto', linear_backend_per_quant=None)
+(EngineCore pid=5757) INFO 10-24 09:38:33 [parallel_state.py:1906] world_size=1 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_3fce2143aa524743915b05bb7aaee40d backend=nccl
+(EngineCore pid=5757) INFO 10-24 09:38:33 [parallel_state.py:2350] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, ETP rank 0, EP rank N/A, EPLB rank N/A
+(EngineCore pid=5757) INFO 10-24 09:38:33 [gpu_worker.py:518] Using V2 Model Runner
+(EngineCore pid=5757) INFO 10-24 09:38:35 [model_runner.py:392] Loading model from scratch...
+(EngineCore pid=5757) INFO 10-24 09:38:39 [cuda.py:506] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+(EngineCore pid=5757) INFO 10-24 09:38:39 [flash_attn.py:1117] Using FlashAttention version 2
+(EngineCore pid=5757) INFO 10-24 09:38:40 [base_loader.py:82] Initializing model took 5.094539 seconds
+(EngineCore pid=5757) INFO 10-24 09:38:52 [weight_utils.py:532] Time spent downloading weights for deepseek-ai/deepseek-coder-1.3b-base: 11.196403 seconds
+Loading pt checkpoint shards:   0% Completed | 0/1 [00:00<?, ?it/s]
+(EngineCore pid=5757) WARNING 10-24 09:38:53 [utils.py:333] Attempted to load weight embed_tokens.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:53 [utils.py:333] Attempted to load weight layers.0.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:53 [utils.py:333] Attempted to load weight layers.0.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:53 [utils.py:333] Attempted to load weight layers.0.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:53 [utils.py:333] Attempted to load weight layers.0.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:53 [utils.py:333] Attempted to load weight layers.1.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:53 [utils.py:333] Attempted to load weight layers.1.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:53 [utils.py:333] Attempted to load weight layers.1.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:53 [utils.py:333] Attempted to load weight layers.1.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:53 [utils.py:333] Attempted to load weight layers.2.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:53 [utils.py:333] Attempted to load weight layers.2.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:53 [utils.py:333] Attempted to load weight layers.2.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:53 [utils.py:333] Attempted to load weight layers.2.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:53 [utils.py:333] Attempted to load weight layers.3.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:53 [utils.py:333] Attempted to load weight layers.3.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:53 [utils.py:333] Attempted to load weight layers.3.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:53 [utils.py:333] Attempted to load weight layers.3.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.4.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.4.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.4.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.4.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.5.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.5.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.5.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.5.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.6.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.6.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.6.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.6.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.7.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.7.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.7.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.7.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.8.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.8.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.8.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.8.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.9.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.9.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.9.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.9.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.10.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.10.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.10.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.10.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.11.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.11.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.11.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.11.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.12.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.12.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.12.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.12.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.13.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.13.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.13.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.13.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.14.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.14.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.14.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.14.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.15.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.15.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.15.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.15.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.16.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.16.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.16.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.16.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.17.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.17.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.17.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.17.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.18.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.18.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.18.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.18.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.19.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.19.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.19.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.19.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.20.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.20.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.20.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.20.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.21.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.21.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.21.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.21.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.22.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.22.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.22.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.22.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.23.self_attn.o_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.23.mlp.down_proj.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.23.input_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight layers.23.post_attention_layernorm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight norm.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+(EngineCore pid=5757) WARNING 10-24 09:38:54 [utils.py:333] Attempted to load weight lm_head.weight with dtype torch.bfloat16 into parameter with dtype torch.float16
+Loading pt checkpoint shards: 100% Completed | 1/1 [00:02<00:00,  2.56s/it]
+Loading pt checkpoint shards: 100% Completed | 1/1 [00:02<00:00,  2.56s/it]
+
+(EngineCore pid=5757) INFO 10-24 09:38:54 [default_loader.py:501] Loading weights took 2.57 seconds
+(EngineCore pid=5757) INFO 10-24 09:38:56 [model_runner.py:424] Model loading took 2.58 GiB memory and 22.037464 seconds
+(EngineCore pid=5757) INFO 10-24 09:38:56 [topk_topp_sampler.py:124] Using FlashInfer for top-p & top-k sampling.
+(EngineCore pid=5757) INFO 10-24 09:38:56 [torch_utils.py:295] Reducing Torch threads from 6 to 1 for serving. Set OMP_NUM_THREADS in the external environment to override.
+(EngineCore pid=5757) INFO 10-24 09:38:56 [utils.py:347] Using LBNHC KV cache layout.
+(EngineCore pid=5757) INFO 10-24 09:38:58 [monitor.py:40] [backbone] Starting torch.compile
+(EngineCore pid=5757) INFO 10-24 09:39:05 [backends.py:1104] [backbone] Using cache directory: /root/.cache/vllm/torch_compile_cache/c602b41954/rank_0_0/backbone for vLLM's torch.compile
+(EngineCore pid=5757) INFO 10-24 09:39:05 [backends.py:1166] [backbone] Dynamo bytecode transform time: 6.70 s
+(EngineCore pid=5757) INFO 10-24 09:39:12 [backends.py:398] [backbone] Compiling a graph for compile range (1, 8192) takes 6.64 s
+(EngineCore pid=5757) INFO 10-24 09:39:15 [backends.py:927] collected artifacts: 25 entries, 3 artifacts, 3412162 bytes total
+(EngineCore pid=5757) INFO 10-24 09:39:15 [decorators.py:743] [backbone] saved AOT compiled function to /root/.cache/vllm/torch_compile_cache/torch_aot_compile/9f15ac136ceb817420587bb8e49d0ddf430a31bfc1916ee517d06bc775760388/rank_0_0/model
+(EngineCore pid=5757) INFO 10-24 09:39:15 [monitor.py:62] [backbone] torch.compile took 16.77 s in total
+(EngineCore pid=5757) INFO 10-24 09:39:15 [monitor.py:91] [backbone] Initial profiling/warmup run took 0.17 s
+Capturing CUDA graphs (PIECEWISE):   0%|          | 0/19 [00:00<?, ?it/s]Capturing CUDA graphs (PIECEWISE):  16%|█▌        | 3/19 [00:00<00:00, 21.72it/s]Capturing CUDA graphs (PIECEWISE):  32%|███▏      | 6/19 [00:00<00:00, 24.22it/s]Capturing CUDA graphs (PIECEWISE):  47%|████▋     | 9/19 [00:00<00:00, 24.52it/s]Capturing CUDA graphs (PIECEWISE):  63%|██████▎   | 12/19 [00:00<00:00, 25.10it/s]Capturing CUDA graphs (PIECEWISE):  79%|███████▉  | 15/19 [00:00<00:00, 25.57it/s]Capturing CUDA graphs (PIECEWISE):  95%|█████████▍| 18/19 [00:00<00:00, 24.46it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 19/19 [00:00<00:00, 23.95it/s]
+Capturing CUDA graphs (FULL):   0%|          | 0/2 [00:00<?, ?it/s]Capturing CUDA graphs (FULL): 100%|██████████| 2/2 [00:00<00:00, 34.99it/s]
+(EngineCore pid=5757) INFO 10-24 09:39:19 [model_runner.py:1127] Graph capturing finished in 2 secs, took 0.12 GiB
+(EngineCore pid=5757) INFO 10-24 09:39:20 [gpu_worker.py:759] Available KV cache memory: 27.56 GiB
+(EngineCore pid=5757) INFO 10-24 09:39:20 [gpu_worker.py:774] CUDA graph memory profiling is enabled (default since v0.21.0). The current --gpu-memory-utilization=0.7800 is equivalent to --gpu-memory-utilization=0.7767 without CUDA graph memory profiling. To maintain the same effective KV cache size as before, increase --gpu-memory-utilization to 0.7833. To disable, set VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0.
+(EngineCore pid=5757) INFO 10-24 09:39:20 [kv_cache_utils.py:2327] GPU KV cache size: 150,528 tokens, Maximum concurrency for 2,112 tokens per request: 71.27x
+(EngineCore pid=5757) INFO 10-24 09:39:20 [kernel_warmup.py:176] JIT kernel warmup starting.
+(EngineCore pid=5757) INFO 10-24 09:39:20 [kernel_warmup.py:189] JIT kernel warmup finished in 0.00s.
+2026-10-24 09:39:22,884 - INFO - core.py:564 - flashinfer.jit: Building JIT module sampling; this can take several minutes on first use.
+Capturing CUDA graphs (PIECEWISE):   0%|          | 0/19 [00:00<?, ?it/s]Capturing CUDA graphs (PIECEWISE):  16%|█▌        | 3/19 [00:00<00:00, 25.76it/s]Capturing CUDA graphs (PIECEWISE):  32%|███▏      | 6/19 [00:00<00:00, 26.71it/s]Capturing CUDA graphs (PIECEWISE):  47%|████▋     | 9/19 [00:00<00:00, 27.01it/s]Capturing CUDA graphs (PIECEWISE):  63%|██████▎   | 12/19 [00:00<00:00, 27.06it/s]Capturing CUDA graphs (PIECEWISE):  79%|███████▉  | 15/19 [00:00<00:00, 27.07it/s]Capturing CUDA graphs (PIECEWISE):  95%|█████████▍| 18/19 [00:00<00:00, 27.21it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 19/19 [00:00<00:00, 27.07it/s]
+Capturing CUDA graphs (FULL):   0%|          | 0/11 [00:00<?, ?it/s]Capturing CUDA graphs (FULL):  36%|███▋      | 4/11 [00:00<00:00, 37.76it/s]Capturing CUDA graphs (FULL):  73%|███████▎  | 8/11 [00:00<00:00, 37.83it/s]Capturing CUDA graphs (FULL): 100%|██████████| 11/11 [00:00<00:00, 37.91it/s]
+(EngineCore pid=5757) INFO 10-24 09:41:09 [model_runner.py:1127] Graph capturing finished in 2 secs, took 0.06 GiB
+(EngineCore pid=5757) INFO 10-24 09:41:09 [gpu_worker.py:971] CUDA graph pool memory: 0.06 GiB (actual), 0.13 GiB (estimated), difference: 0.07 GiB (106.2%).
+(EngineCore pid=5757) INFO 10-24 09:41:09 [gpu_worker.py:1034] Free memory on device (39.08/39.49 GiB) on startup. Desired GPU memory utilization is (0.78, 30.8 GiB). Actual usage is 2.75 GiB for consumed memory (weights + non-torch), 0.49 GiB for peak activation, and 0.06 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory=29372994601` (27.36 GiB) to fit into requested memory, or `--kv-cache-memory=38253557760` (35.63 GiB) to fully utilize gpu memory. Current kv cache memory in use is 27.56 GiB.
+(EngineCore pid=5757) INFO 10-24 09:41:11 [jit_monitor.py:84] Kernel JIT monitor activated; monitored JIT compilations during inference will use mode=warn.
+(EngineCore pid=5757) INFO 10-24 09:41:11 [core.py:395] init engine (profile, create kv cache, warmup model) took 134.96 s (compilation: 16.77 s)
+Fetching 8 files:   0%|          | 0/8 [00:00<?, ?it/s]Fetching 8 files: 100%|██████████| 8/8 [00:00<00:00, 1701.89it/s]
+(EngineCore pid=5757) INFO 10-24 09:41:11 [kernel.py:467] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'], gelu_and_mul_sparse=['triton', 'native'])
+(MainProcess pid=5071) INFO 10-24 09:41:11 [hf.py:648] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+vLLM generation starting: 256 prompts × 8 completion(s)
+Rendering prompts:   0%|          | 0/256 [00:00<?, ?it/s]Rendering prompts:  12%|█▏        | 30/256 [00:00<00:00, 298.26it/s]Rendering prompts:  24%|██▍       | 61/256 [00:00<00:00, 302.84it/s]Rendering prompts:  36%|███▌      | 92/256 [00:00<00:00, 302.71it/s]Rendering prompts:  48%|████▊     | 123/256 [00:00<00:00, 304.37it/s]Rendering prompts:  60%|██████    | 154/256 [00:00<00:00, 301.86it/s]Rendering prompts:  72%|███████▏  | 185/256 [00:00<00:00, 299.90it/s]Rendering prompts:  84%|████████▍ | 215/256 [00:00<00:00, 297.99it/s]Rendering prompts:  96%|█████████▌| 246/256 [00:00<00:00, 299.51it/s]Rendering prompts: 100%|██████████| 256/256 [00:00<00:00, 300.34it/s]
+Processed prompts:   0%|          | 0/2048 [00:00<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s](EngineCore pid=5757) WARNING 10-24 09:41:13 [jit_monitor.py:140] Triton kernel JIT compilation during inference: _topp_sb_stats_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(EngineCore pid=5757) WARNING 10-24 09:41:14 [jit_monitor.py:140] Triton kernel JIT compilation during inference: _topp_sb_step_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(EngineCore pid=5757) WARNING 10-24 09:41:15 [jit_monitor.py:140] Triton kernel JIT compilation during inference: _topp_sb_mask_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(EngineCore pid=5757) WARNING 10-24 09:41:15 [jit_monitor.py:140] Triton kernel JIT compilation during inference: _gumbel_sample_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+Processed prompts:   0%|          | 8/2048 [00:09<41:51,  1.23s/it, est. speed input: 1427.06 toks/s, output: 51.98 toks/s]Processed prompts:   4%|▎         | 72/2048 [00:10<03:43,  8.83it/s, est. speed input: 11974.85 toks/s, output: 425.19 toks/s]Processed prompts:   7%|▋         | 136/2048 [00:11<01:49, 17.39it/s, est. speed input: 20397.23 toks/s, output: 732.68 toks/s]Processed prompts:  10%|▉         | 200/2048 [00:12<01:11, 25.96it/s, est. speed input: 27410.81 toks/s, output: 998.06 toks/s]Processed prompts:  13%|█▎        | 264/2048 [00:13<00:52, 34.12it/s, est. speed input: 33619.83 toks/s, output: 1227.08 toks/s]Processed prompts:  16%|█▌        | 328/2048 [00:14<00:41, 41.39it/s, est. speed input: 38786.98 toks/s, output: 1426.24 toks/s]Processed prompts:  19%|█▉        | 392/2048 [00:15<00:35, 47.21it/s, est. speed input: 43371.25 toks/s, output: 1595.83 toks/s]Processed prompts:  22%|██▏       | 456/2048 [00:16<00:30, 52.33it/s, est. speed input: 47718.51 toks/s, output: 1751.30 toks/s]Processed prompts:  25%|██▌       | 520/2048 [00:17<00:27, 56.08it/s, est. speed input: 51194.93 toks/s, output: 1888.15 toks/s]Processed prompts:  29%|██▊       | 584/2048 [00:18<00:24, 59.10it/s, est. speed input: 54646.85 toks/s, output: 2011.92 toks/s]Processed prompts:  32%|███▏      | 648/2048 [00:19<00:23, 60.67it/s, est. speed input: 57485.22 toks/s, output: 2119.52 toks/s]Processed prompts:  35%|███▍      | 712/2048 [00:20<00:21, 62.51it/s, est. speed input: 60396.85 toks/s, output: 2220.85 toks/s]Processed prompts:  38%|███▊      | 776/2048 [00:21<00:19, 63.74it/s, est. speed input: 62792.10 toks/s, output: 2312.61 toks/s]Processed prompts:  41%|████      | 840/2048 [00:22<00:18, 64.60it/s, est. speed input: 64970.81 toks/s, output: 2395.24 toks/s]Processed prompts:  44%|████▍     | 904/2048 [00:23<00:17, 64.91it/s, est. speed input: 67086.93 toks/s, output: 2468.72 toks/s]Processed prompts:  47%|████▋     | 968/2048 [00:24<00:16, 65.74it/s, est. speed input: 69082.83 toks/s, output: 2539.12 toks/s]Processed prompts:  50%|█████     | 1032/2048 [00:25<00:15, 66.02it/s, est. speed input: 70829.73 toks/s, output: 2604.79 toks/s]Processed prompts:  54%|█████▎    | 1096/2048 [00:26<00:14, 66.03it/s, est. speed input: 72367.44 toks/s, output: 2664.67 toks/s]Processed prompts:  57%|█████▋    | 1160/2048 [00:27<00:13, 65.87it/s, est. speed input: 73879.95 toks/s, output: 2719.50 toks/s]Processed prompts:  60%|█████▉    | 1224/2048 [00:28<00:12, 65.79it/s, est. speed input: 75292.92 toks/s, output: 2770.68 toks/s]Processed prompts:  63%|██████▎   | 1288/2048 [00:29<00:11, 65.49it/s, est. speed input: 76575.32 toks/s, output: 2817.28 toks/s]Processed prompts:  66%|██████▌   | 1352/2048 [00:30<00:10, 65.89it/s, est. speed input: 77902.57 toks/s, output: 2863.66 toks/s]Processed prompts:  69%|██████▉   | 1416/2048 [00:31<00:09, 65.72it/s, est. speed input: 78973.78 toks/s, output: 2905.16 toks/s]Processed prompts:  72%|███████▏  | 1480/2048 [00:32<00:08, 65.60it/s, est. speed input: 80047.79 toks/s, output: 2942.62 toks/s]Processed prompts:  75%|███████▌  | 1544/2048 [00:32<00:07, 68.49it/s, est. speed input: 81427.68 toks/s, output: 2991.65 toks/s]Processed prompts:  76%|███████▌  | 1552/2048 [00:33<00:07, 66.85it/s, est. speed input: 81430.54 toks/s, output: 2991.48 toks/s]Processed prompts:  79%|███████▊  | 1608/2048 [00:33<00:06, 68.96it/s, est. speed input: 82523.08 toks/s, output: 3030.03 toks/s]Processed prompts:  79%|███████▉  | 1616/2048 [00:34<00:06, 67.00it/s, est. speed input: 82513.24 toks/s, output: 3030.06 toks/s]Processed prompts:  82%|████████▏ | 1672/2048 [00:34<00:05, 68.43it/s, est. speed input: 83404.46 toks/s, output: 3064.12 toks/s]Processed prompts:  82%|████████▏ | 1680/2048 [00:35<00:05, 66.20it/s, est. speed input: 83375.90 toks/s, output: 3063.86 toks/s]Processed prompts:  85%|████████▍ | 1736/2048 [00:35<00:04, 67.58it/s, est. speed input: 84200.17 toks/s, output: 3095.03 toks/s]Processed prompts:  85%|████████▌ | 1744/2048 [00:35<00:04, 65.30it/s, est. speed input: 84187.84 toks/s, output: 3094.63 toks/s]Processed prompts:  88%|████████▊ | 1800/2048 [00:36<00:03, 66.68it/s, est. speed input: 84991.60 toks/s, output: 3123.27 toks/s]Processed prompts:  88%|████████▊ | 1808/2048 [00:36<00:03, 64.35it/s, est. speed input: 84989.74 toks/s, output: 3122.57 toks/s]Processed prompts:  91%|█████████ | 1864/2048 [00:37<00:02, 67.89it/s, est. speed input: 85891.10 toks/s, output: 3153.76 toks/s]Processed prompts:  91%|█████████▏| 1872/2048 [00:37<00:02, 65.64it/s, est. speed input: 85823.82 toks/s, output: 3153.50 toks/s]Processed prompts:  94%|█████████▍| 1928/2048 [00:38<00:01, 67.25it/s, est. speed input: 86414.64 toks/s, output: 3180.19 toks/s]Processed prompts:  95%|█████████▍| 1936/2048 [00:38<00:01, 64.69it/s, est. speed input: 86401.53 toks/s, output: 3179.14 toks/s]Processed prompts:  97%|█████████▋| 1992/2048 [00:39<00:00, 68.38it/s, est. speed input: 87285.07 toks/s, output: 3208.24 toks/s]Processed prompts:  98%|█████████▊| 2000/2048 [00:39<00:00, 66.87it/s, est. speed input: 87309.30 toks/s, output: 3209.20 toks/s]Processed prompts: 100%|██████████| 2048/2048 [00:39<00:00, 66.87it/s, est. speed input: 89426.55 toks/s, output: 3285.93 toks/s]Processed prompts: 100%|██████████| 2048/2048 [00:39<00:00, 51.45it/s, est. speed input: 89426.55 toks/s, output: 3285.93 toks/s]
+vLLM generation finished in 40.7s
+Shared AlignCoder query-enhancement stage complete
+Loading retriever AlignCoder/AlignRetriever@a179c0fdbc5a56d83ae142064ef1ea773a841753
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|██████████| 199/199 [00:00<00:00, 4583.26it/s]
+Reranked 16/256 tasks
+Reranked 32/256 tasks
+Reranked 48/256 tasks
+Reranked 64/256 tasks
+Reranked 80/256 tasks
+Reranked 96/256 tasks
+Reranked 112/256 tasks
+Reranked 128/256 tasks
+Reranked 144/256 tasks
+Reranked 160/256 tasks
+Reranked 176/256 tasks
+Reranked 192/256 tasks
+Reranked 208/256 tasks
+Reranked 224/256 tasks
+Reranked 240/256 tasks
+Reranked 256/256 tasks
+Retriever stage finished in 85.1s; cached 11,844 candidate embeddings
+vLLM generation starting: 1024 prompts × 1 completion(s)
+Rendering prompts:   0%|          | 0/1024 [00:00<?, ?it/s]Rendering prompts:   3%|▎         | 34/1024 [00:00<00:02, 338.99it/s]Rendering prompts:   7%|▋         | 70/1024 [00:00<00:02, 346.20it/s]Rendering prompts:  10%|█         | 105/1024 [00:00<00:02, 346.22it/s]Rendering prompts:  14%|█▎        | 140/1024 [00:00<00:02, 342.67it/s]Rendering prompts:  17%|█▋        | 175/1024 [00:00<00:02, 339.53it/s]Rendering prompts:  21%|██        | 211/1024 [00:00<00:02, 343.46it/s]Rendering prompts:  24%|██▍       | 248/1024 [00:00<00:02, 349.71it/s]Rendering prompts:  28%|██▊       | 283/1024 [00:00<00:02, 345.37it/s]Rendering prompts:  31%|███       | 318/1024 [00:00<00:02, 345.42it/s]Rendering prompts:  34%|███▍      | 353/1024 [00:01<00:01, 346.20it/s]Rendering prompts:  38%|███▊      | 392/1024 [00:01<00:01, 356.56it/s]Rendering prompts:  42%|████▏     | 428/1024 [00:01<00:01, 352.53it/s]Rendering prompts:  45%|████▌     | 464/1024 [00:01<00:01, 348.90it/s]Rendering prompts:  49%|████▊     | 499/1024 [00:01<00:01, 342.16it/s]Rendering prompts:  52%|█████▏    | 536/1024 [00:01<00:01, 350.22it/s]Rendering prompts:  56%|█████▌    | 572/1024 [00:01<00:01, 347.85it/s]Rendering prompts:  59%|█████▉    | 607/1024 [00:01<00:01, 347.68it/s]Rendering prompts:  63%|██████▎   | 642/1024 [00:01<00:01, 340.72it/s]Rendering prompts:  66%|██████▌   | 677/1024 [00:01<00:01, 341.00it/s]Rendering prompts:  70%|██████▉   | 713/1024 [00:02<00:00, 343.89it/s]Rendering prompts:  73%|███████▎  | 748/1024 [00:02<00:00, 342.03it/s]Rendering prompts:  76%|███████▋  | 783/1024 [00:02<00:00, 335.63it/s]Rendering prompts:  80%|███████▉  | 817/1024 [00:02<00:00, 323.39it/s]Rendering prompts:  83%|████████▎ | 850/1024 [00:02<00:00, 317.25it/s]Rendering prompts:  86%|████████▌ | 883/1024 [00:02<00:00, 319.22it/s]Rendering prompts:  89%|████████▉ | 915/1024 [00:02<00:00, 312.92it/s]Rendering prompts:  93%|█████████▎| 949/1024 [00:02<00:00, 318.85it/s]Rendering prompts:  96%|█████████▌| 982/1024 [00:02<00:00, 319.06it/s]Rendering prompts:  99%|█████████▉| 1014/1024 [00:03<00:00, 316.96it/s]Rendering prompts: 100%|██████████| 1024/1024 [00:03<00:00, 335.67it/s]
+Processed prompts:   0%|          | 0/1024 [00:00<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s]Processed prompts:   0%|          | 1/1024 [00:00<01:43,  9.92it/s, est. speed input: 17314.11 toks/s, output: 635.23 toks/s]Processed prompts:   6%|▋         | 65/1024 [00:00<00:08, 108.11it/s, est. speed input: 183272.75 toks/s, output: 6617.28 toks/s]Processed prompts:   8%|▊         | 81/1024 [00:00<00:08, 106.50it/s, est. speed input: 181392.02 toks/s, output: 6601.98 toks/s]Processed prompts:   9%|▉         | 90/1024 [00:00<00:09, 98.42it/s, est. speed input: 173178.73 toks/s, output: 6331.49 toks/s] Processed prompts:  10%|▉         | 99/1024 [00:01<00:12, 74.83it/s, est. speed input: 150675.02 toks/s, output: 5526.91 toks/s]Processed prompts:  11%|█         | 111/1024 [00:01<00:13, 69.79it/s, est. speed input: 143518.24 toks/s, output: 5266.37 toks/s]Processed prompts:  12%|█▏        | 118/1024 [00:01<00:13, 67.70it/s, est. speed input: 140748.71 toks/s, output: 5151.84 toks/s]Processed prompts:  12%|█▏        | 125/1024 [00:01<00:13, 65.82it/s, est. speed input: 137876.43 toks/s, output: 5052.68 toks/s]Processed prompts:  13%|█▎        | 132/1024 [00:02<00:43, 20.44it/s, est. speed input: 85036.64 toks/s, output: 3113.76 toks/s] Processed prompts:  14%|█▍        | 147/1024 [00:02<00:30, 28.94it/s, est. speed input: 87804.23 toks/s, output: 3215.30 toks/s]Processed prompts:  15%|█▌        | 156/1024 [00:03<00:25, 34.57it/s, est. speed input: 89202.95 toks/s, output: 3280.13 toks/s]Processed prompts:  16%|█▌        | 162/1024 [00:03<00:23, 36.77it/s, est. speed input: 88925.85 toks/s, output: 3275.57 toks/s]Processed prompts:  17%|█▋        | 172/1024 [00:03<00:20, 40.94it/s, est. speed input: 88778.52 toks/s, output: 3284.72 toks/s]Processed prompts:  17%|█▋        | 178/1024 [00:03<00:19, 42.74it/s, est. speed input: 88503.80 toks/s, output: 3283.66 toks/s]Processed prompts:  18%|█▊        | 184/1024 [00:03<00:18, 44.25it/s, est. speed input: 88530.85 toks/s, output: 3280.77 toks/s]Processed prompts:  19%|█▊        | 190/1024 [00:03<00:18, 46.07it/s, est. speed input: 88715.27 toks/s, output: 3283.18 toks/s]Processed prompts:  19%|█▉        | 196/1024 [00:04<00:47, 17.44it/s, est. speed input: 73127.32 toks/s, output: 2702.80 toks/s]Processed prompts:  20%|█▉        | 203/1024 [00:04<00:37, 21.62it/s, est. speed input: 73459.58 toks/s, output: 2712.76 toks/s]Processed prompts:  21%|██        | 216/1024 [00:04<00:25, 31.65it/s, est. speed input: 75511.95 toks/s, output: 2784.13 toks/s]Processed prompts:  22%|██▏       | 225/1024 [00:05<00:20, 38.62it/s, est. speed input: 76951.83 toks/s, output: 2833.17 toks/s]Processed prompts:  23%|██▎       | 231/1024 [00:05<00:19, 40.35it/s, est. speed input: 77156.92 toks/s, output: 2838.44 toks/s]Processed prompts:  23%|██▎       | 237/1024 [00:05<00:18, 42.79it/s, est. speed input: 77474.65 toks/s, output: 2849.76 toks/s]Processed prompts:  24%|██▎       | 243/1024 [00:05<00:17, 45.26it/s, est. speed input: 77625.43 toks/s, output: 2862.42 toks/s]Processed prompts:  25%|██▍       | 254/1024 [00:05<00:15, 50.18it/s, est. speed input: 78476.98 toks/s, output: 2893.94 toks/s]Processed prompts:  25%|██▌       | 260/1024 [00:06<00:43, 17.69it/s, est. speed input: 67853.56 toks/s, output: 2500.63 toks/s]Processed prompts:  27%|██▋       | 272/1024 [00:06<00:29, 25.19it/s, est. speed input: 69243.33 toks/s, output: 2546.84 toks/s]Processed prompts:  28%|██▊       | 287/1024 [00:06<00:19, 37.00it/s, est. speed input: 71590.32 toks/s, output: 2632.07 toks/s]Processed prompts:  29%|██▊       | 294/1024 [00:07<00:18, 40.00it/s, est. speed input: 72070.85 toks/s, output: 2649.01 toks/s]Processed prompts:  29%|██▉       | 301/1024 [00:07<00:16, 43.37it/s, est. speed input: 72642.11 toks/s, output: 2667.82 toks/s]Processed prompts:  30%|███       | 308/1024 [00:07<00:15, 46.40it/s, est. speed input: 73196.96 toks/s, output: 2685.25 toks/s]Processed prompts:  31%|███       | 315/1024 [00:07<00:14, 48.11it/s, est. speed input: 73412.58 toks/s, output: 2698.26 toks/s]Processed prompts:  31%|███▏      | 321/1024 [00:08<00:38, 18.25it/s, est. speed input: 66316.63 toks/s, output: 2438.18 toks/s]Processed prompts:  33%|███▎      | 336/1024 [00:08<00:23, 28.88it/s, est. speed input: 67871.33 toks/s, output: 2500.21 toks/s]Processed prompts:  34%|███▍      | 349/1024 [00:08<00:18, 36.06it/s, est. speed input: 68991.99 toks/s, output: 2536.28 toks/s]Processed prompts:  35%|███▍      | 355/1024 [00:08<00:17, 37.95it/s, est. speed input: 69269.73 toks/s, output: 2544.11 toks/s]Processed prompts:  36%|███▌      | 369/1024 [00:09<00:14, 45.95it/s, est. speed input: 70280.20 toks/s, output: 2584.89 toks/s]Processed prompts:  37%|███▋      | 375/1024 [00:09<00:13, 46.70it/s, est. speed input: 70487.28 toks/s, output: 2592.91 toks/s]Processed prompts:  37%|███▋      | 381/1024 [00:09<00:13, 47.36it/s, est. speed input: 70720.54 toks/s, output: 2600.64 toks/s]Processed prompts:  38%|███▊      | 387/1024 [00:10<00:39, 15.95it/s, est. speed input: 63514.82 toks/s, output: 2346.12 toks/s]Processed prompts:  39%|███▊      | 395/1024 [00:10<00:30, 20.50it/s, est. speed input: 63779.84 toks/s, output: 2362.62 toks/s]Processed prompts:  39%|███▉      | 400/1024 [00:10<00:26, 23.28it/s, est. speed input: 63913.67 toks/s, output: 2368.16 toks/s]Processed prompts:  40%|███▉      | 405/1024 [00:10<00:23, 25.97it/s, est. speed input: 63983.60 toks/s, output: 2371.29 toks/s]Processed prompts:  40%|████      | 411/1024 [00:11<00:19, 30.92it/s, est. speed input: 64356.47 toks/s, output: 2383.97 toks/s]Processed prompts:  41%|████      | 418/1024 [00:11<00:16, 36.59it/s, est. speed input: 64838.82 toks/s, output: 2398.83 toks/s]Processed prompts:  41%|████▏     | 424/1024 [00:11<00:15, 39.71it/s, est. speed input: 65092.54 toks/s, output: 2407.61 toks/s]Processed prompts:  42%|████▏     | 432/1024 [00:11<00:14, 40.31it/s, est. speed input: 65266.74 toks/s, output: 2411.77 toks/s]Processed prompts:  43%|████▎     | 437/1024 [00:11<00:14, 41.31it/s, est. speed input: 65358.06 toks/s, output: 2416.19 toks/s]Processed prompts:  43%|████▎     | 444/1024 [00:11<00:12, 47.17it/s, est. speed input: 65877.99 toks/s, output: 2432.95 toks/s]Processed prompts:  44%|████▍     | 450/1024 [00:12<00:36, 15.86it/s, est. speed input: 61416.33 toks/s, output: 2269.09 toks/s]Processed prompts:  45%|████▌     | 463/1024 [00:12<00:21, 25.50it/s, est. speed input: 62433.04 toks/s, output: 2306.18 toks/s]Processed prompts:  46%|████▌     | 473/1024 [00:13<00:17, 30.77it/s, est. speed input: 62854.79 toks/s, output: 2320.91 toks/s]Processed prompts:  47%|████▋     | 482/1024 [00:13<00:14, 37.50it/s, est. speed input: 63510.68 toks/s, output: 2343.57 toks/s]Processed prompts:  48%|████▊     | 488/1024 [00:13<00:13, 39.53it/s, est. speed input: 63710.61 toks/s, output: 2350.69 toks/s]Processed prompts:  48%|████▊     | 494/1024 [00:13<00:12, 41.87it/s, est. speed input: 63938.94 toks/s, output: 2358.85 toks/s]Processed prompts:  49%|████▉     | 500/1024 [00:13<00:12, 43.60it/s, est. speed input: 64140.49 toks/s, output: 2366.10 toks/s]Processed prompts:  49%|████▉     | 506/1024 [00:13<00:13, 39.65it/s, est. speed input: 64031.49 toks/s, output: 2361.57 toks/s]Processed prompts:  50%|█████     | 513/1024 [00:14<00:31, 16.03it/s, est. speed input: 60143.87 toks/s, output: 2228.92 toks/s]Processed prompts:  51%|█████     | 523/1024 [00:14<00:22, 22.40it/s, est. speed input: 60631.81 toks/s, output: 2247.14 toks/s]Processed prompts:  52%|█████▏    | 531/1024 [00:15<00:18, 27.21it/s, est. speed input: 60963.85 toks/s, output: 2258.55 toks/s]Processed prompts:  53%|█████▎    | 543/1024 [00:15<00:12, 37.09it/s, est. speed input: 61759.85 toks/s, output: 2287.59 toks/s]Processed prompts:  54%|█████▍    | 554/1024 [00:15<00:10, 44.28it/s, est. speed input: 62317.94 toks/s, output: 2310.25 toks/s]Processed prompts:  55%|█████▍    | 561/1024 [00:15<00:09, 47.18it/s, est. speed input: 62650.49 toks/s, output: 2321.71 toks/s]Processed prompts:  55%|█████▌    | 568/1024 [00:15<00:09, 49.63it/s, est. speed input: 62987.65 toks/s, output: 2332.68 toks/s]Processed prompts:  56%|█████▌    | 574/1024 [00:15<00:09, 49.43it/s, est. speed input: 63162.94 toks/s, output: 2338.87 toks/s]Processed prompts:  57%|█████▋    | 580/1024 [00:16<00:25, 17.73it/s, est. speed input: 60101.72 toks/s, output: 2224.43 toks/s]Processed prompts:  57%|█████▋    | 587/1024 [00:16<00:19, 21.87it/s, est. speed input: 60330.96 toks/s, output: 2232.24 toks/s]Processed prompts:  58%|█████▊    | 592/1024 [00:16<00:17, 25.07it/s, est. speed input: 60494.46 toks/s, output: 2237.56 toks/s]Processed prompts:  59%|█████▉    | 607/1024 [00:17<00:11, 37.06it/s, est. speed input: 61303.41 toks/s, output: 2266.13 toks/s]Processed prompts:  60%|█████▉    | 613/1024 [00:17<00:10, 40.12it/s, est. speed input: 61525.71 toks/s, output: 2274.43 toks/s]Processed prompts:  61%|██████    | 627/1024 [00:17<00:07, 53.00it/s, est. speed input: 62423.31 toks/s, output: 2306.39 toks/s]Processed prompts:  62%|██████▏   | 634/1024 [00:17<00:07, 54.42it/s, est. speed input: 62729.95 toks/s, output: 2316.53 toks/s]Processed prompts:  63%|██████▎   | 641/1024 [00:18<00:18, 21.09it/s, est. speed input: 60190.41 toks/s, output: 2222.43 toks/s]Processed prompts:  64%|██████▍   | 655/1024 [00:18<00:12, 30.09it/s, est. speed input: 60932.63 toks/s, output: 2248.24 toks/s]Processed prompts:  65%|██████▍   | 663/1024 [00:18<00:10, 34.02it/s, est. speed input: 61221.51 toks/s, output: 2258.15 toks/s]Processed prompts:  66%|██████▌   | 676/1024 [00:18<00:08, 42.86it/s, est. speed input: 61914.91 toks/s, output: 2281.84 toks/s]Processed prompts:  67%|██████▋   | 683/1024 [00:19<00:07, 45.60it/s, est. speed input: 62166.90 toks/s, output: 2291.09 toks/s]Processed prompts:  67%|██████▋   | 690/1024 [00:19<00:07, 44.96it/s, est. speed input: 62298.16 toks/s, output: 2295.00 toks/s]Processed prompts:  69%|██████▊   | 703/1024 [00:19<00:05, 55.72it/s, est. speed input: 62983.28 toks/s, output: 2320.66 toks/s]Processed prompts:  69%|██████▉   | 710/1024 [00:20<00:14, 21.95it/s, est. speed input: 60588.62 toks/s, output: 2232.76 toks/s]Processed prompts:  70%|███████   | 719/1024 [00:20<00:11, 27.11it/s, est. speed input: 60940.12 toks/s, output: 2244.77 toks/s]Processed prompts:  71%|███████   | 727/1024 [00:20<00:09, 32.48it/s, est. speed input: 61270.83 toks/s, output: 2256.85 toks/s]Processed prompts:  72%|███████▏  | 733/1024 [00:20<00:08, 36.22it/s, est. speed input: 61427.40 toks/s, output: 2264.42 toks/s]Processed prompts:  72%|███████▏  | 740/1024 [00:20<00:07, 40.43it/s, est. speed input: 61681.31 toks/s, output: 2272.88 toks/s]Processed prompts:  73%|███████▎  | 746/1024 [00:20<00:06, 42.19it/s, est. speed input: 61837.02 toks/s, output: 2277.78 toks/s]Processed prompts:  73%|███████▎  | 752/1024 [00:21<00:06, 44.04it/s, est. speed input: 61984.94 toks/s, output: 2283.06 toks/s]Processed prompts:  74%|███████▍  | 758/1024 [00:21<00:05, 45.38it/s, est. speed input: 62125.14 toks/s, output: 2288.08 toks/s]Processed prompts:  75%|███████▍  | 764/1024 [00:21<00:05, 46.65it/s, est. speed input: 62282.32 toks/s, output: 2293.27 toks/s]Processed prompts:  75%|███████▌  | 770/1024 [00:22<00:18, 13.69it/s, est. speed input: 59418.47 toks/s, output: 2187.31 toks/s]Processed prompts:  76%|███████▌  | 779/1024 [00:22<00:12, 19.60it/s, est. speed input: 59768.51 toks/s, output: 2199.57 toks/s]Processed prompts:  77%|███████▋  | 787/1024 [00:22<00:09, 25.36it/s, est. speed input: 60075.11 toks/s, output: 2210.07 toks/s]Processed prompts:  78%|███████▊  | 795/1024 [00:22<00:07, 31.21it/s, est. speed input: 60357.06 toks/s, output: 2219.96 toks/s]Processed prompts:  79%|███████▊  | 805/1024 [00:23<00:06, 35.53it/s, est. speed input: 60572.77 toks/s, output: 2227.19 toks/s]Processed prompts:  80%|███████▉  | 816/1024 [00:23<00:05, 40.91it/s, est. speed input: 60913.83 toks/s, output: 2238.54 toks/s]Processed prompts:  81%|████████  | 827/1024 [00:23<00:03, 49.75it/s, est. speed input: 61359.92 toks/s, output: 2256.26 toks/s]Processed prompts:  81%|████████▏ | 834/1024 [00:24<00:09, 20.82it/s, est. speed input: 59443.87 toks/s, output: 2185.29 toks/s]Processed prompts:  82%|████████▏ | 843/1024 [00:24<00:06, 26.65it/s, est. speed input: 59777.86 toks/s, output: 2198.08 toks/s]Processed prompts:  83%|████████▎ | 851/1024 [00:24<00:05, 31.34it/s, est. speed input: 60019.65 toks/s, output: 2206.49 toks/s]Processed prompts:  84%|████████▍ | 859/1024 [00:24<00:04, 34.02it/s, est. speed input: 60090.57 toks/s, output: 2210.70 toks/s]Processed prompts:  85%|████████▍ | 869/1024 [00:25<00:03, 38.84it/s, est. speed input: 60361.85 toks/s, output: 2219.86 toks/s]Processed prompts:  85%|████████▌ | 875/1024 [00:25<00:03, 40.91it/s, est. speed input: 60513.21 toks/s, output: 2224.58 toks/s]Processed prompts:  86%|████████▌ | 881/1024 [00:25<00:03, 44.12it/s, est. speed input: 60694.36 toks/s, output: 2230.73 toks/s]Processed prompts:  87%|████████▋ | 887/1024 [00:25<00:02, 45.72it/s, est. speed input: 60836.32 toks/s, output: 2235.54 toks/s]Processed prompts:  88%|████████▊ | 896/1024 [00:25<00:02, 46.05it/s, est. speed input: 60995.29 toks/s, output: 2241.20 toks/s]Processed prompts:  88%|████████▊ | 902/1024 [00:26<00:06, 18.04it/s, est. speed input: 59241.15 toks/s, output: 2177.03 toks/s]Processed prompts:  89%|████████▉ | 911/1024 [00:26<00:04, 23.12it/s, est. speed input: 59443.22 toks/s, output: 2183.38 toks/s]Processed prompts:  90%|████████▉ | 919/1024 [00:26<00:03, 27.22it/s, est. speed input: 59589.36 toks/s, output: 2188.03 toks/s]Processed prompts:  91%|█████████ | 927/1024 [00:27<00:02, 33.12it/s, est. speed input: 59833.13 toks/s, output: 2197.05 toks/s]Processed prompts:  92%|█████████▏| 937/1024 [00:27<00:02, 40.18it/s, est. speed input: 60107.72 toks/s, output: 2208.33 toks/s]Processed prompts:  92%|█████████▏| 943/1024 [00:27<00:01, 42.14it/s, est. speed input: 60184.53 toks/s, output: 2212.74 toks/s]Processed prompts:  93%|█████████▎| 950/1024 [00:27<00:01, 45.78it/s, est. speed input: 60368.56 toks/s, output: 2219.50 toks/s]Processed prompts:  93%|█████████▎| 956/1024 [00:27<00:01, 46.97it/s, est. speed input: 60515.26 toks/s, output: 2223.94 toks/s]Processed prompts:  94%|█████████▍| 962/1024 [00:28<00:03, 16.35it/s, est. speed input: 58667.43 toks/s, output: 2157.60 toks/s]Processed prompts:  98%|█████████▊| 999/1024 [00:28<00:00, 49.42it/s, est. speed input: 60755.18 toks/s, output: 2232.38 toks/s]Processed prompts: 100%|██████████| 1024/1024 [00:28<00:00, 49.42it/s, est. speed input: 62244.78 toks/s, output: 2286.49 toks/s]Processed prompts: 100%|██████████| 1024/1024 [00:28<00:00, 35.73it/s, est. speed input: 62244.78 toks/s, output: 2286.49 toks/s]
+vLLM generation finished in 31.7s
+/usr/local/lib/python3.13/dist-packages/fuzzywuzzy/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning
+  warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')
+(MainProcess pid=5071) INFO 10-24 09:44:02 [utils.py:628] [shutdown] Process manager: send sigterm to process EngineCore
+(EngineCore pid=5757) INFO 10-24 09:44:02 [core.py:1454] [shutdown] EngineCore: trigger received signal=SIGTERM
+(EngineCore pid=5757) INFO 10-24 09:44:02 [core.py:1635] [shutdown] EngineCore: start mode=abort timeout=0s
+(EngineCore pid=5757) INFO 10-24 09:44:02 [core.py:1666] [shutdown] EngineCore: request processing complete; starting resource teardown
+(EngineCore pid=5757) INFO 10-24 09:44:02 [core.py:1499] [shutdown] EngineCore: exiting busy loop
+{
+  "status": "complete",
+  "results": "/content/graph_dependency_pilot/output/graph_dependency_pilot_results.tar.gz",
+  "metrics": {
+    "aligncoder_code": {
+      "cceval_java": {
+        "em": 6.25,
+        "es": 53.5156,
+        "id_em": 21.875,
+        "id_precision": 48.6328,
+        "id_recall": 45.612,
+        "id_f1": 44.8099
+      },
+      "cceval_python": {
+        "em": 7.8125,
+        "es": 39.3438,
+        "id_em": 9.375,
+        "id_precision": 35.756,
+        "id_recall": 64.0625,
+        "id_f1": 40.2657
+      },
+      "repoeval_api": {
+        "em": 1.5625,
+        "es": 41.375,
+        "repo_macro_em": 1.8519,
+        "repo_macro_es": 32.7549
+      },
+      "repoeval_line": {
+        "em": 1.5625,
+        "es": 24.0938,
+        "repo_macro_em": 1.6667,
+        "repo_macro_es": 17.1213
+      }
+    },
+    "graph_rerank_code": {
+      "cceval_java": {
+        "em": 6.25,
+        "es": 51.2031,
+        "id_em": 21.875,
+        "id_precision": 47.7059,
+        "id_recall": 44.7786,
+        "id_f1": 43.7902
+      },
+      "cceval_python": {
+        "em": 6.25,
+        "es": 41.0156,
+        "id_em": 9.375,
+        "id_precision": 34.9081,
+        "id_recall": 66.4583,
+        "id_f1": 40.5249
+      },
+      "repoeval_api": {
+        "em": 1.5625,
+        "es": 40.0312,
+        "repo_macro_em": 1.8519,
+        "repo_macro_es": 31.494
+      },
+      "repoeval_line": {
+        "em": 1.5625,
+        "es": 22.9531,
+        "repo_macro_em": 1.6667,
+        "repo_macro_es": 16.3791
+      }
+    },
+    "aligncoder_dep_prompt": {
+      "cceval_java": {
+        "em": 6.25,
+        "es": 54.25,
+        "id_em": 21.875,
+        "id_precision": 49.7307,
+        "id_recall": 47.6953,
+        "id_f1": 45.9626
+      },
+      "cceval_python": {
+        "em": 7.8125,
+        "es": 39.2188,
+        "id_em": 9.375,
+        "id_precision": 35.7803,
+        "id_recall": 67.8125,
+        "id_f1": 41.7239
+      },
+      "repoeval_api": {
+        "em": 1.5625,
+        "es": 41.3906,
+        "repo_macro_em": 1.8519,
+        "repo_macro_es": 33.1929
+      },
+      "repoeval_line": {
+        "em": 1.5625,
+        "es": 24.5312,
+        "repo_macro_em": 1.6667,
+        "repo_macro_es": 17.2163
+      }
+    },
+    "graph_rerank_dep_prompt": {
+      "cceval_java": {
+        "em": 6.25,
+        "es": 51.375,
+        "id_em": 21.875,
+        "id_precision": 46.5375,
+        "id_recall": 44.1276,
+        "id_f1": 43.0688
+      },
+      "cceval_python": {
+        "em": 7.8125,
+        "es": 38.8438,
+        "id_em": 9.375,
+        "id_precision": 33.6542,
+        "id_recall": 67.5,
+        "id_f1": 40.2213
+      },
+      "repoeval_api": {
+        "em": 1.5625,
+        "es": 39.7344,
+        "repo_macro_em": 1.8519,
+        "repo_macro_es": 32.1515
+      },
+      "repoeval_line": {
+        "em": 1.5625,
+        "es": 24.7344,
+        "repo_macro_em": 1.6667,
+        "repo_macro_es": 17.5803
+      }
+    }
+  },
+  "retrieval": {
+    "cceval_java": {
+      "mean_dep_recall_at10_aligncoder": 64.5255,
+      "mean_dep_recall_at10_graph": 88.9795,
+      "dependency_hit_rate_aligncoder": 84.375,
+      "dependency_hit_rate_graph": 96.875
+    },
+    "cceval_python": {
+      "mean_dep_recall_at10_aligncoder": 52.0381,
+      "mean_dep_recall_at10_graph": 84.4756,
+      "dependency_hit_rate_aligncoder": 78.125,
+      "dependency_hit_rate_graph": 100.0
+    },
+    "repoeval_api": {
+      "mean_dep_recall_at10_aligncoder": 23.4781,
+      "mean_dep_recall_at10_graph": 33.8247,
+      "dependency_hit_rate_aligncoder": 51.5625,
+      "dependency_hit_rate_graph": 60.9375
+    },
+    "repoeval_line": {
+      "mean_dep_recall_at10_aligncoder": 12.7526,
+      "mean_dep_recall_at10_graph": 45.3107,
+      "dependency_hit_rate_aligncoder": 21.875,
+      "dependency_hit_rate_graph": 68.75
+    }
+  }
+}

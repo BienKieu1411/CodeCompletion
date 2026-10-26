@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Báo cáo CADRE và AIRCoder: thiết kế và kết quả thực nghiệm</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    h1, h2, h3, h4, .brand-font { font-family: 'Outfit', sans-serif; }
+    code, pre, .font-mono { font-family: 'Fira Code', monospace; }
+    .gradient-hero { background: radial-gradient(circle at top right, #1e1b4b 0%, #0f172a 60%, #020617 100%); }
+    .badge-win { background: linear-gradient(135deg, #059669 0%, #10b981 100%); }
+    .badge-sota { background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); }
+    .card-glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- TOP STICKY NAVBAR -->
+  <header class="sticky top-0 z-50 bg-slate-900/90 backdrop-blur border-b border-slate-800 text-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <span class="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="text-xl font-bold tracking-tight brand-font bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">CADRE</span>
+        <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">Báo cáo CADRE và AIRCoder</span>
+      </div>
+      <nav class="hidden md:flex space-x-6 text-sm font-medium text-slate-300">
+        <a href="#summary" class="hover:text-emerald-400 transition">Tóm Tắt</a>
+        <a href="#motivation" class="hover:text-emerald-400 transition">Ví dụ minh họa</a>
+        <a href="#gaps" class="hover:text-emerald-400 transition">Điểm cần kiểm tra</a>
+        <a href="#architecture" class="hover:text-emerald-400 transition">Thiết kế CADRE</a>
+        <a href="#results" class="hover:text-emerald-400 transition">Kết quả trên 8.004 tác vụ</a>
+        <a href="#ablation" class="hover:text-emerald-400 transition">So sánh cấu hình</a>
+      </nav>
+      <div class="text-xs bg-emerald-950/80 text-emerald-400 px-3 py-1.5 rounded-full border border-emerald-500/30 font-mono">
+        Kết quả đánh giá trên 8.004 tác vụ
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO SECTION -->
+  <section class="gradient-hero text-white py-16 px-4 sm:px-6 lg:px-8 border-b border-slate-800">
+    <div class="max-w-7xl mx-auto">
+      <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold uppercase tracking-wider mb-6">
+        <span>Báo cáo kỹ thuật và kết quả thực nghiệm</span>
+      </div>
+      <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight max-w-5xl mb-6">
+        CADRE: Thử nghiệm ghép ngữ cảnh hai phần cho hoàn thiện mã trong repository
+      </h1>
+      <p class="text-lg sm:text-xl text-slate-300 max-w-4xl font-light leading-relaxed mb-10">
+        Báo cáo mô tả CADRE, một cách ghép ví dụ mã và thông tin cấu trúc vào prompt, cùng kết quả trên 8.004 tác vụ. Các con số phản ánh cấu hình và bộ đánh giá được nêu trong tài liệu; chúng chưa đủ để kết luận phương pháp tốt hơn trong mọi thiết lập.
+      </p>
+
+      <!-- KEY METRICS GRID -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-slate-800/80 rounded-xl p-5 border border-slate-700/60 backdrop-blur shadow-lg">
+          <div class="text-slate-400 text-xs font-medium uppercase tracking-wider">EM gộp trên 8.004 tác vụ</div>
+          <div class="text-3xl lg:text-4xl font-extrabold text-white mt-1">36.33%</div>
+          <div class="text-emerald-400 text-xs font-semibold mt-1 flex items-center">
+            <span>Chênh lệch quan sát: +5.33 điểm phần trăm</span>
+            <span class="ml-1.5 text-slate-400">so với AIRCoder tái lập: 31.00%</span>
+          </div>
+        </div>
+        <div class="bg-slate-800/80 rounded-xl p-5 border border-slate-700/60 backdrop-blur shadow-lg">
+          <div class="text-slate-400 text-xs font-medium uppercase tracking-wider">CCEval-Python EM</div>
+          <div class="text-3xl lg:text-4xl font-extrabold text-white mt-1">30.58%</div>
+          <div class="text-emerald-400 text-xs font-semibold mt-1 flex items-center">
+            <span>Chênh lệch quan sát: +8.03 điểm phần trăm</span>
+            <span class="ml-1.5 text-slate-400">so với AIRCoder tái lập: 22.55%</span>
+          </div>
+        </div>
+        <div class="bg-slate-800/80 rounded-xl p-5 border border-slate-700/60 backdrop-blur shadow-lg">
+          <div class="text-slate-400 text-xs font-medium uppercase tracking-wider">CCEval-Java EM</div>
+          <div class="text-3xl lg:text-4xl font-extrabold text-white mt-1">27.96%</div>
+          <div class="text-emerald-400 text-xs font-semibold mt-1 flex items-center">
+            <span>Chênh lệch quan sát: +6.03 điểm phần trăm</span>
+            <span class="ml-1.5 text-slate-400">so với AIRCoder tái lập: 21.93%</span>
+          </div>
+        </div>
+        <div class="bg-slate-800/80 rounded-xl p-5 border border-slate-700/60 backdrop-blur shadow-lg">
+          <div class="text-slate-400 text-xs font-medium uppercase tracking-wider">RepoEval-API EM</div>
+          <div class="text-3xl lg:text-4xl font-extrabold text-white mt-1">42.25%</div>
+          <div class="text-emerald-400 text-xs font-semibold mt-1 flex items-center">
+            <span>Chênh lệch quan sát: +4.69 điểm phần trăm</span>
+            <span class="ml-1.5 text-slate-400">so với AIRCoder tái lập: 37.56%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN CONTENT CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
+
+    <!-- SECTION 1: EXECUTIVE SUMMARY -->
+    <section id="summary" class="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm">
+      <div class="flex items-center space-x-3 mb-6 border-b border-slate-100 pb-4">
+        <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-lg">1</div>
+        <h2 class="text-2xl font-bold text-slate-900">Tóm tắt</h2>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-8 text-slate-600 leading-relaxed">
+        <div>
+          <h3 class="text-lg font-semibold text-slate-800 mb-3 flex items-center">
+            <span class="text-indigo-600 mr-2 font-mono">01.</span> Cấu hình và các mốc đối chiếu
+          </h3>
+          <p class="mb-4 text-justify">
+            Báo cáo chạy CADRE với <strong>DeepSeek-Coder 1.3B</strong> và đặt kết quả cạnh các mốc từ <strong>RLCoder</strong>, <strong>AlignCoder</strong> và lần tái lập <strong>AIRCoder</strong>. Các bộ dữ liệu gồm CrossCodeEval Python/Java và RepoEval Line/API. Thiết lập, prompt và cách tính điểm có thể khác giữa các nguồn, nên cần căn chỉnh chúng trước khi diễn giải chênh lệch như một so sánh trực tiếp.
+          </p>
+
+          <h3 class="text-lg font-semibold text-slate-800 mb-3 flex items-center">
+            <span class="text-indigo-600 mr-2 font-mono">02.</span> Cách ghép ngữ cảnh thành hai phần
+          </h3>
+          <p class="text-justify">
+            DCA tách prompt thành hai phần. <strong>Channel A</strong> chứa các khối mã được gom theo tệp, tối đa 3.200 token. <strong>Channel B</strong> chứa thông tin cấu trúc ngắn, đặt gần vị trí con trỏ; trong cấu hình này, khoảng cách được đặt dưới 1.500 token. Báo cáo cần thêm thí nghiệm để xác định tác động của cách bố trí này.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="text-lg font-semibold text-slate-800 mb-3 flex items-center">
+            <span class="text-indigo-600 mr-2 font-mono">03.</span> Thông tin cấu trúc cho Python và Java
+          </h3>
+          <p class="mb-4 text-justify">
+            CADRE dùng bộ phân tích cú pháp để lấy thông tin như lớp, interface, chữ ký phương thức <code>public/protected</code> và trường dữ liệu. Thông tin này được đưa vào prompt. Mức độ ảnh hưởng đến lỗi tham số hoặc lời gọi API cần được đo trên nhiều tác vụ.
+          </p>
+
+          <h3 class="text-lg font-semibold text-slate-800 mb-3 flex items-center">
+            <span class="text-indigo-600 mr-2 font-mono">04.</span> Kết quả trong lần đánh giá này
+          </h3>
+          <p class="text-justify">
+            Trên 8.004 tác vụ trong lần chạy này, CADRE đạt 36,33% EM và lần tái lập AIRCoder đạt 31,00%. Chênh lệch theo từng bộ dữ liệu không giống nhau; riêng RepoEval-Line có chênh lệch nhỏ và kết quả McNemar là <span class="font-mono bg-slate-100 text-slate-800 px-1 rounded">p = 0,349</span>. Các con số mô tả tập và cấu hình đang báo cáo.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: MOTIVATING EXAMPLE -->
+    <section id="motivation" class="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm">
+      <div class="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
+        <div class="flex items-center space-x-3">
+          <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-lg">2</div>
+          <h2 class="text-2xl font-bold text-slate-900">Ví dụ minh họa: hai cách ghép context trên một tác vụ</h2>
+        </div>
+        <span class="text-xs bg-slate-100 text-slate-600 font-mono px-3 py-1 rounded-full border border-slate-200">Grounded: project_cc_python/1440</span>
+      </div>
+
+      <div class="mb-6 bg-slate-50 border border-slate-200 rounded-xl p-5 text-sm text-slate-700 leading-relaxed">
+        <strong class="text-slate-900">Tác vụ minh họa:</strong> Trong tệp <code>chatbot/services/conversation_service.py</code>, điểm cần hoàn thiện là lời gọi dịch vụ:
+        <code>response = self.client.[CURSOR]</code>. Định nghĩa gốc nằm ở <code>chatbot/client.py</code> dài 1,850 tokens với chữ ký đầy đủ:
+        <code>def converse(self, message: str, conversation_id: Optional[str] = None) -> Response:</code>.
+      </div>
+
+      <!-- VISUAL SIDE-BY-SIDE COMPARISON -->
+      <div class="grid lg:grid-cols-2 gap-8">
+
+        <!-- AIRCODER CONFIGURATION IN THE EXAMPLE -->
+        <div class="rounded-xl border-2 border-red-200 bg-red-50/30 p-6 flex flex-col justify-between shadow-sm">
+          <div>
+            <div class="flex items-center justify-between mb-4 pb-2 border-b border-red-200">
+              <span class="px-2.5 py-1 rounded bg-red-100 text-red-700 font-bold text-xs uppercase tracking-wider">AIRCoder trong cấu hình được tái lập</span>
+              <span class="text-red-600 text-xs font-semibold">Không khớp target trong ví dụ</span>
+            </div>
+
+            <div class="text-xs text-slate-600 mb-3 space-y-1">
+              <div><strong class="text-red-700">1. File test được xếp hạng cao:</strong> Trong tác vụ này, bộ truy hồi RRF xếp file test lên <strong>hạng 1</strong>, có thể do nội dung từ vựng tương tự:</div>
+              <div class="bg-slate-900 text-slate-200 p-2.5 rounded font-mono text-[11px]">
+                # tests/test_client.py (Rank 1)<br>
+                <span class="text-red-400">c.converse(message="ping")</span> # Lời gọi test có một tham số
+              </div>
+            </div>
+
+            <div class="text-xs text-slate-600 mb-3 space-y-1">
+              <div><strong class="text-red-700">2. Giới hạn context 800 token:</strong> Với cấu hình này, phần file định nghĩa sau hàm <code>__init__</code> không được đưa vào context:</div>
+              <div class="bg-slate-900 text-slate-400 p-2.5 rounded font-mono text-[11px]">
+                # chatbot/client.py (Rank 8 - Truncated at token 800)<br>
+                class ChatServiceClient:<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;def __init__(self, endpoint: str): ...<br>
+                <span class="text-red-400">[... PHẦN converse() nằm sau giới hạn 800 token ...]</span>
+              </div>
+            </div>
+
+            <div class="text-xs text-slate-600 mb-3 space-y-1">
+              <div><strong class="text-red-700">3. Output thiếu đối số:</strong> Dự đoán được ghi nhận trong ví dụ là:</div>
+              <div class="bg-slate-900 text-amber-300 p-2.5 rounded font-mono text-xs">
+                # DỰ ĐOÁN CỦA AIRCODER:<br>
+                converse(message=user_message)
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-red-200 text-xs text-red-800 bg-red-100/60 p-3 rounded-lg">
+            <strong>Trong ví dụ này:</strong> Dự đoán thiếu <code>conversation_id</code>. Ảnh hưởng của lỗi này trong ứng dụng cần được đánh giá riêng.
+          </div>
+        </div>
+
+        <!-- CADRE SOLUTION CARD -->
+        <div class="rounded-xl border-2 border-emerald-300 bg-emerald-50/30 p-6 flex flex-col justify-between shadow-sm">
+          <div>
+            <div class="flex items-center justify-between mb-4 pb-2 border-b border-emerald-200">
+              <span class="px-2.5 py-1 rounded bg-emerald-100 text-emerald-800 font-bold text-xs uppercase tracking-wider">CADRE trong cấu hình thử nghiệm</span>
+              <span class="text-emerald-700 text-xs font-semibold">Khớp target trong tác vụ minh họa</span>
+            </div>
+
+            <div class="text-xs text-slate-600 mb-3 space-y-1">
+              <div><strong class="text-emerald-800">1. Tra cứu kiểu tại con trỏ (CS-STR):</strong> Báo cáo ghi thời gian xử lý là 0,72 ms trong phép đo này:</div>
+              <div class="bg-slate-900 text-emerald-300 p-2.5 rounded font-mono text-[11px]">
+                self.client ──> Kiểu: <span class="text-white font-bold">ChatServiceClient</span> (tại chatbot/client.py)
+              </div>
+            </div>
+
+            <div class="text-xs text-slate-600 mb-3 space-y-1">
+              <div><strong class="text-emerald-800">2. Trích xuất thông tin cấu trúc (145 token):</strong> Phần context được đưa vào gồm:</div>
+              <div class="bg-slate-900 text-slate-200 p-2.5 rounded font-mono text-[11px]">
+                # Channel B: CURSOR STRUCTURAL CONTRACT<br>
+                class ChatServiceClient:<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;def converse(self, message: str, <span class="text-emerald-400 font-bold">conversation_id: str</span>) -> Response: ...
+              </div>
+            </div>
+
+            <div class="text-xs text-slate-600 mb-3 space-y-1">
+              <div><strong class="text-emerald-800">3. Bố trí hai phần context:</strong> Channel B được đặt trước file đích trong cấu hình này:</div>
+              <div class="bg-slate-900 text-emerald-400 p-2.5 rounded font-mono text-xs">
+                # DỰ ĐOÁN CỦA CADRE:<br>
+                converse(message=user_message, conversation_id=conversation_id)
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-emerald-200 text-xs text-emerald-900 bg-emerald-100/60 p-3 rounded-lg">
+            <strong>Kết quả ở tác vụ minh họa:</strong> Dự đoán khớp target. Một ví dụ đơn lẻ chưa cho biết mức cải thiện trên toàn bộ benchmark.
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 3: 6 RESEARCH GAPS -->
+    <section id="gaps" class="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm">
+      <div class="flex items-center space-x-3 mb-6 border-b border-slate-100 pb-4">
+        <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-lg">3</div>
+        <h2 class="text-2xl font-bold text-slate-900">Sáu điểm cần kiểm tra trong thiết kế retrieval và context</h2>
+      </div>
+
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        <!-- GAP 1 -->
+        <div class="p-5 rounded-xl border border-slate-200 bg-slate-50 hover:border-indigo-300 transition flex flex-col justify-between">
+          <div>
+            <div class="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2">Điểm cần kiểm tra 1</div>
+            <h4 class="font-bold text-slate-900 mb-2">Giới hạn token và độ dài file</h4>
+            <p class="text-xs text-slate-600 leading-relaxed mb-3">
+              Trong cấu hình được khảo sát, ngân sách context ngoài file là <strong>800 token</strong>. Nếu phần mã cần thiết nằm sau điểm cắt, model sẽ không thấy phần đó. Cần đo tần suất và ảnh hưởng của trường hợp này trên benchmark.
+            </p>
+          </div>
+          <div class="text-xs bg-indigo-50 text-indigo-900 p-2.5 rounded border border-indigo-100">
+            <strong>CADRE thử nghiệm:</strong> Tăng ngân sách tối đa lên 3.200 token và gom các đoạn theo file.
+          </div>
+        </div>
+
+        <!-- GAP 2 -->
+        <div class="p-5 rounded-xl border border-slate-200 bg-slate-50 hover:border-indigo-300 transition flex flex-col justify-between">
+          <div>
+            <div class="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2">Điểm cần kiểm tra 2</div>
+            <h4 class="font-bold text-slate-900 mb-2">Thứ hạng giữa file test và file định nghĩa</h4>
+            <p class="text-xs text-slate-600 leading-relaxed mb-3">
+              File test hoặc demo có thể được xếp cao khi dùng chung nhiều từ với truy vấn. Khi đó, file chứa định nghĩa có thể nằm thấp hơn trong danh sách. Mức độ và tác động của hiện tượng này cần được kiểm tra theo từng tác vụ.
+            </p>
+          </div>
+          <div class="text-xs bg-indigo-50 text-indigo-900 p-2.5 rounded border border-indigo-100">
+            <strong>CADRE thử nghiệm:</strong> CS-STR tra cứu kiểu tĩnh và thêm thông tin về định nghĩa liên quan. Hiệu quả cần được đo cùng với thứ hạng BM25.
+          </div>
+        </div>
+
+        <!-- GAP 3 -->
+        <div class="p-5 rounded-xl border border-slate-200 bg-slate-50 hover:border-indigo-300 transition flex flex-col justify-between">
+          <div>
+            <div class="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2">Điểm cần kiểm tra 3</div>
+            <h4 class="font-bold text-slate-900 mb-2">Vị trí của context được truy hồi</h4>
+            <p class="text-xs text-slate-600 leading-relaxed mb-3">
+              Khi nối nhiều chunk, thông tin cần thiết có thể nằm xa vị trí con trỏ. Báo cáo kiểm tra cách đặt thông tin cấu trúc gần con trỏ; mức ảnh hưởng của vị trí cần được so sánh qua ablation.
+            </p>
+          </div>
+          <div class="text-xs bg-indigo-50 text-indigo-900 p-2.5 rounded border border-indigo-100">
+            <strong>CADRE thử nghiệm:</strong> Đặt ví dụ mã trong Channel A và thông tin cấu trúc trong Channel B gần file đích.
+          </div>
+        </div>
+
+        <!-- GAP 4 -->
+        <div class="p-5 rounded-xl border border-slate-200 bg-slate-50 hover:border-indigo-300 transition flex flex-col justify-between">
+          <div>
+            <div class="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2">Điểm cần kiểm tra 4</div>
+            <h4 class="font-bold text-slate-900 mb-2">Query khi API chưa xuất hiện trong repository</h4>
+            <p class="text-xs text-slate-600 leading-relaxed mb-3">
+              Nếu API cần hoàn thiện chưa xuất hiện trong repository, query enhancement có thể tạo từ khóa không khớp với mã nguồn và đưa về các chunk ít liên quan. Cần đo tần suất và ảnh hưởng của trường hợp này.
+            </p>
+          </div>
+          <div class="text-xs bg-indigo-50 text-indigo-900 p-2.5 rounded border border-indigo-100">
+            <strong>CADRE thử nghiệm:</strong> Khi không tìm thấy định nghĩa cụ thể, đưa thông tin về các trường của lớp vào context.
+          </div>
+        </div>
+
+        <!-- GAP 5 -->
+        <div class="p-5 rounded-xl border border-slate-200 bg-slate-50 hover:border-indigo-300 transition flex flex-col justify-between">
+          <div>
+            <div class="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2">Điểm cần kiểm tra 5</div>
+            <h4 class="font-bold text-slate-900 mb-2">Thông tin kiểu trong Java và C#</h4>
+            <p class="text-xs text-slate-600 leading-relaxed mb-3">
+              Với Java và C#, kiểu trả về, interface và chữ ký phương thức có thể cung cấp tín hiệu hữu ích cho completion. Báo cáo kiểm tra cách đưa các thông tin này vào context.
+            </p>
+          </div>
+          <div class="text-xs bg-indigo-50 text-indigo-900 p-2.5 rounded border border-indigo-100">
+            <strong>CADRE thử nghiệm:</strong> CSSI trích xuất thông tin về class, interface và kiểu trả về trong Java.
+          </div>
+        </div>
+
+        <!-- GAP 6 -->
+        <div class="p-5 rounded-xl border border-slate-200 bg-slate-50 hover:border-indigo-300 transition flex flex-col justify-between">
+          <div>
+            <div class="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2">Điểm cần kiểm tra 6</div>
+            <h4 class="font-bold text-slate-900 mb-2">API phổ biến và wrapper riêng của dự án</h4>
+            <p class="text-xs text-slate-600 leading-relaxed mb-3">
+              Model có thể đề xuất API phổ biến như <code>json.dumps</code> dù repository dùng wrapper riêng như <code>safe_json_dumps</code>. Cần kiểm tra liệu thông tin về wrapper có trong context giúp dự đoán đúng hơn hay không.
+            </p>
+          </div>
+          <div class="text-xs bg-indigo-50 text-indigo-900 p-2.5 rounded border border-indigo-100">
+            <strong>CADRE thử nghiệm:</strong> Đưa định nghĩa wrapper nội bộ vào Channel B và đo ảnh hưởng đến dự đoán.
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 4: CADRE ARCHITECTURE -->
+    <section id="architecture" class="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm">
+      <div class="flex items-center space-x-3 mb-6 border-b border-slate-100 pb-4">
+        <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-lg">4</div>
+        <h2 class="text-2xl font-bold text-slate-900">Thiết kế ghép context của CADRE</h2>
+      </div>
+
+      <div class="bg-slate-900 rounded-xl p-6 text-slate-200 font-mono text-xs overflow-x-auto leading-relaxed mb-6 border border-slate-800">
+        <div class="text-emerald-400 font-bold mb-2">// BỐ TRÍ HAI PHẦN CONTEXT TRONG CADRE DCA</div>
+        ┌────────────────────────────────────────────────────────────────────────────────────────┐<br>
+        │ <span class="text-indigo-400 font-bold">CHANNEL A: Coalesced Exemplars</span> (Tối đa 3,200 tokens)                                   │<br>
+        │   - Các khối code mẫu ngoài tệp được gom nhóm theo từng file liên tục                     │<br>
+        │   - Giữ các đoạn cùng file gần nhau trong prompt               │<br>
+        ├────────────────────────────────────────────────────────────────────────────────────────┤<br>
+        │ <span class="text-emerald-400 font-bold">CHANNEL B: Cursor Structural Invariants (CSSI)</span> (Tối đa 384 tokens)                   │<br>
+        │   - Hợp đồng cú pháp tối thiểu (Class header, method signatures, return types)          │<br>
+        │   - Đặt gần file đích ──> <span class="text-yellow-300">dưới 1.500 token trong cấu hình này</span>  │<br>
+        ├────────────────────────────────────────────────────────────────────────────────────────┤<br>
+        │ <span class="text-cyan-400 font-bold">CONTEXT CỦA FILE ĐÍCH</span> (Ngân sách linh hoạt 4,000 - 6,000 tokens)                        │<br>
+        │   # file path: chatbot/services/conversation_service.py                                │<br>
+        │   class ConversationManager:                                                           │<br>
+        │       def process_query(self, user_message: str, conversation_id: str):                │<br>
+        │           response = self.client.<span class="text-amber-400 font-bold">[CURSOR]</span>                                             │<br>
+        └────────────────────────────────────────────────────────────────────────────────────────┘<br>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-6 text-sm text-slate-600">
+        <div class="p-4 rounded-lg bg-slate-50 border border-slate-200">
+          <strong class="text-slate-800 block mb-1">1. Phân tích cú pháp</strong>
+          Dùng AST để phân tích biểu thức gần con trỏ mà không chạy code. Báo cáo ghi nhận thời gian dưới 1 ms trong phép đo hiện tại.
+        </div>
+        <div class="p-4 rounded-lg bg-slate-50 border border-slate-200">
+          <strong class="text-slate-800 block mb-1">2. Gom chunk theo file</strong>
+          Nối các chunk cùng file bằng <code>...</code> và bỏ header lặp. Cách này giữ lại thông tin về file nguồn trong prompt.
+        </div>
+        <div class="p-4 rounded-lg bg-slate-50 border border-slate-200">
+          <strong class="text-slate-800 block mb-1">3. Đặt thông tin cấu trúc gần con trỏ</strong>
+          Thử đặt Channel B gần con trỏ. Báo cáo chưa tách riêng ảnh hưởng của vị trí khỏi các thay đổi context khác.
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5: FULL BENCHMARK RESULTS -->
+    <section id="results" class="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm">
+      <div class="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
+        <div class="flex items-center space-x-3">
+          <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-lg">5</div>
+          <h2 class="text-2xl font-bold text-slate-900">Kết quả đánh giá trên 8.004 tác vụ</h2>
+        </div>
+        <span class="text-xs bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-full border border-emerald-300">
+          Bộ metric dùng trong lần chạy này
+        </span>
+      </div>
+
+      <p class="text-sm text-slate-600 mb-6 leading-relaxed">
+        Báo cáo chạy 8.004 tác vụ trên A100-80GB bằng vLLM. Script dùng <code>get_python_one_statement</code> cho Python, <code>get_bracket_lang_statement</code> cho Java, cắt RepoEval theo <code>len(gt_lines)</code> và tính ES bằng <code>fuzz.ratio</code>. Đây là mô tả của cấu hình đánh giá trong báo cáo.
+      </p>
+
+      <!-- SUBSECTION 5.1: PER-BENCHMARK RESULTS -->
+      <h3 class="text-lg font-bold text-slate-900 mb-3 flex items-center">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-600 mr-2"></span>
+        5.1. Kết quả theo từng bộ dữ liệu (8.004 tác vụ)
+      </h3>
+
+      <!-- DEEP DIVE BOX: EVALUATION PROTOCOL DISCREPANCY -->
+      <div class="mb-6 p-5 bg-amber-50/70 border border-amber-300 rounded-xl text-xs text-amber-900 leading-relaxed shadow-sm">
+        <div class="flex items-center font-bold text-sm text-amber-950 mb-2">
+          <svg class="w-5 h-5 mr-1.5 text-amber-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+          Cách tính điểm và giới hạn khi so sánh
+        </div>
+        <p class="mb-2">
+          Bảng dùng các hàm đánh giá được nêu dưới đây. Cần giữ cùng cách chuẩn hóa và cắt output khi so sánh kết quả giữa các hệ thống:
+        </p>
+        <ul class="list-disc list-inside space-y-1.5 ml-2">
+          <li><strong>Python và Java:</strong> Tree-sitter lấy một câu lệnh bằng <code>get_python_one_statement</code> hoặc <code>get_bracket_lang_statement</code>. Script so sánh câu lệnh đã tách bằng <code>pred == gt</code>; phần output sau câu lệnh đó không tham gia phép so sánh.</li>
+          <li><strong>AIRCoder:</strong> Mã tại <code>RepoClone/AIRCoder/src/evaluation.py</code> (dòng 28) cắt prediction bằng <code class="bg-amber-100 text-amber-950 px-1 py-0.5 rounded font-mono font-bold">prediction[:len(target)]</code> trước khi tính EM. Cách xử lý này có thể làm thay đổi điểm khi prediction dài hơn target. Khi chạy lại theo script trong báo cáo, AIRCoder đạt <strong>31,00% EM</strong>. Đây là kết quả của lần tái lập và metric này, không phải một con số đại diện cho mọi cấu hình AIRCoder.</li>
+          <li><strong>So sánh trên tập gộp:</strong> CADRE đạt <strong>36,33% EM</strong> và lần tái lập AIRCoder đạt <strong>31,00%</strong>, chênh lệch 5,33 điểm phần trăm trong lần chạy này. Kiểm định McNemar được báo cáo là <strong>p = 1,63 × 10⁻⁵⁶</strong> trên tập gộp. Trên RepoEval-Line, chênh lệch riêng lẻ không có ý nghĩa thống kê theo kết quả báo cáo (<strong>p = 0,349</strong>).</li>
+          <li><strong>AlignCoder trong paper:</strong> Table I, trang 8, báo EM/ES cho cấu hình DeepSeekCoder-1B. Các giá trị trong cột này được chép từ paper, không được tính lại bằng evaluator của report.</li>
+        </ul>
+      </div>
+
+      <!-- RESULTS TABLE -->
+      <div class="overflow-x-auto border border-slate-200 rounded-xl mb-6 shadow-sm">
+        <table class="min-w-full divide-y divide-slate-200 text-xs">
+          <thead class="bg-slate-900 text-white font-medium">
+            <tr>
+              <th class="px-3.5 py-3 text-left">Bộ dữ liệu</th>
+              <th class="px-3 py-3 text-center bg-sky-950 text-sky-200">ReACC (paper)<br><span class="text-[10px] text-sky-300 font-normal">DeepSeekCoder-1B · EM / ES</span></th>
+              <th class="px-3 py-3 text-center bg-sky-950 text-sky-200">RepoCoder (paper)<br><span class="text-[10px] text-sky-300 font-normal">DeepSeekCoder-1B · EM / ES</span></th>
+              <th class="px-3 py-3 text-center bg-sky-950 text-sky-200">RLCoder (paper)<br><span class="text-[10px] text-sky-300 font-normal">DeepSeekCoder-1B · EM / ES</span></th>
+              <th class="px-3 py-3 text-center bg-sky-950 text-sky-200">AlignCoder (paper)<br><span class="text-[10px] text-sky-300 font-normal">DeepSeekCoder-1B · EM / ES</span></th>
+              <th class="px-3 py-3 text-center bg-slate-800 text-slate-200">AIRCoder (tái lập trong report)<br><span class="text-[10px] text-slate-400 font-normal">EM / ES / ID-EM / ID-F1</span></th>
+              <th class="px-3 py-3 text-center bg-emerald-950 text-emerald-200">Ours<br><span class="text-[10px] text-emerald-400 font-normal">EM / ES / ID-EM / ID-F1</span></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 bg-white">
+
+            <!-- CCEVAL PYTHON -->
+            <tr class="hover:bg-slate-50 font-medium">
+              <td class="px-3.5 py-3 font-bold text-slate-900">CrossCodeEval-Python</td>
+              <td class="px-3 py-3 text-center font-mono text-sky-900 bg-sky-50/60">19.74 / 67.68</td>
+              <td class="px-3 py-3 text-center font-mono text-sky-900 bg-sky-50/60">20.23 / 68.78</td>
+              <td class="px-3 py-3 text-center font-mono text-sky-900 bg-sky-50/60">24.02 / 70.45</td>
+              <td class="px-3 py-3 text-center font-mono text-sky-900 bg-sky-50/60">28.37 / 73.02</td>
+              <td class="px-3 py-3 text-center font-mono">22.55 / 69.47 / 33.96 / 59.91</td>
+              <td class="px-3 py-3 text-center font-mono font-bold text-emerald-900 bg-emerald-50/70">30.58 / 74.46 / 41.31 / 67.68</td>
+            </tr>
+
+            <!-- CCEVAL JAVA -->
+            <tr class="hover:bg-slate-50 font-medium">
+              <td class="px-3.5 py-3 font-bold text-slate-900">CrossCodeEval-Java</td>
+              <td class="px-3 py-3 text-center font-mono text-sky-900 bg-sky-50/60">18.89 / 62.47</td>
+              <td class="px-3 py-3 text-center font-mono text-sky-900 bg-sky-50/60">19.59 / 62.35</td>
+              <td class="px-3 py-3 text-center font-mono text-sky-900 bg-sky-50/60">20.66 / 63.17</td>
+              <td class="px-3 py-3 text-center font-mono text-sky-900 bg-sky-50/60">23.24 / 64.58</td>
+              <td class="px-3 py-3 text-center font-mono">21.93 / 66.22 / 32.63 / 58.34</td>
+              <td class="px-3 py-3 text-center font-mono font-bold text-emerald-900 bg-emerald-50/70">27.96 / 69.32 / 37.91 / 62.36</td>
+            </tr>
+
+            <!-- REPOEVAL API -->
+            <tr class="hover:bg-slate-50 font-medium">
+              <td class="px-3.5 py-3 font-bold text-slate-900">RepoEval-API</td>
+              <td class="px-3 py-3 text-center font-mono text-sky-900 bg-sky-50/60">33.00 / 60.41</td>
+              <td class="px-3 py-3 text-center font-mono text-sky-900 bg-sky-50/60">35.13 / 61.92</td>
+              <td class="px-3 py-3 text-center font-mono text-sky-900 bg-sky-50/60">36.00 / 62.50</td>
+              <td class="px-3 py-3 text-center font-mono text-sky-900 bg-sky-50/60">37.25 / 64.43</td>
+              <td class="px-3 py-3 text-center font-mono">37.56 / 72.55 / 46.00 / 70.02</td>
+              <td class="px-3 py-3 text-center font-mono font-bold text-emerald-900 bg-emerald-50/70">42.25 / 69.14 / 46.31 / 72.30</td>
+            </tr>
+
+            <!-- REPOEVAL LINE -->
+            <tr class="hover:bg-slate-50 font-medium">
+              <td class="px-3.5 py-3 font-bold text-slate-900">RepoEval-Line</td>
+              <td class="px-3 py-3 text-center font-mono text-sky-900 bg-sky-50/60">39.31 / 62.04</td>
+              <td class="px-3 py-3 text-center font-mono text-sky-900 bg-sky-50/60">40.88 / 63.56</td>
+              <td class="px-3 py-3 text-center font-mono text-sky-900 bg-sky-50/60">44.06 / 66.05</td>
+              <td class="px-3 py-3 text-center font-mono text-sky-900 bg-sky-50/60">44.69 / 66.74</td>
+              <td class="px-3 py-3 text-center font-mono">50.62 / 76.94 / 59.38 / 70.92</td>
+              <td class="px-3 py-3 text-center font-mono font-bold text-emerald-900 bg-emerald-50/70">51.19 / 71.34 / 58.50 / 63.58</td>
+            </tr>
+
+            <!-- MACRO AVERAGE -->
+            <tr class="bg-slate-100/80 font-bold border-t-2 border-slate-300">
+              <td class="px-3.5 py-3 text-slate-950 font-black">Macro Mean (4 Benchmarks)</td>
+              <td class="px-3 py-3 text-center font-mono text-slate-700">27.74 / 63.15</td>
+              <td class="px-3 py-3 text-center font-mono text-slate-700">28.96 / 64.15</td>
+              <td class="px-3 py-3 text-center font-mono text-slate-700">32.80 / 64.68</td>
+              <td class="px-3 py-3 text-center font-mono text-slate-700">36.10 / 65.44</td>
+              <td class="px-3 py-3 text-center font-mono text-slate-800">33.17 / 71.30</td>
+              <td class="px-3 py-3 text-center font-mono font-black text-emerald-950 bg-emerald-100/70">37.99 / 71.06 / 46.01 / 66.48</td>
+            </tr>
+
+            <!-- MICRO OVERALL -->
+            <tr class="bg-emerald-50/90 font-black">
+              <td class="px-3.5 py-3 text-emerald-950 font-black">Toàn bộ 8.004 Tác Vụ (Micro)</td>
+              <td class="px-3 py-3 text-center font-mono text-slate-400">—</td>
+              <td class="px-3 py-3 text-center font-mono text-slate-400">—</td>
+              <td class="px-3 py-3 text-center font-mono text-slate-400">—</td>
+              <td class="px-3 py-3 text-center font-mono text-slate-400">—</td>
+              <td class="px-3 py-3 text-center font-mono text-slate-800">31.00% (2.481)</td>
+              <td class="px-3 py-3 text-center font-mono font-black text-emerald-950 bg-emerald-200/60">36.33% (2.908)</td>
+            </tr>
+
+
+
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-3 text-xs text-slate-500">ReACC, RepoCoder, RLCoder và AlignCoder: số liệu paper-reported từ <a class="underline" href="https://arxiv.org/pdf/2601.19697" target="_blank" rel="noopener noreferrer">AlignCoder Table I (trang 8)</a>, ở hàng DeepSeekCoder-1B theo cách gọi của paper. AIRCoder và CADRE là kết quả trong report này, với các metric ghi ở đầu cột. Các baseline trong paper được giữ nguyên theo bài báo, không tính lại bằng evaluator hiện tại; vì vậy bảng là đối chiếu tham khảo, chưa phải so sánh đã căn chỉnh cùng checkpoint và evaluator.</p>
+    </section>
+
+    <section id="ablation" class="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm">
+      <div class="flex items-center space-x-3 mb-6 border-b border-slate-100 pb-4">
+        <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-lg">6</div>
+        <h2 class="text-2xl font-bold text-slate-900">So sánh bốn cấu hình trên 256 tác vụ</h2>
+      </div>
+
+      <p class="text-sm text-slate-600 mb-6 leading-relaxed">
+        Bốn cấu hình được chạy trên 256 tác vụ: 64 Python, 64 Java, 64 RepoEval API và 64 RepoEval Line. Bảng dưới đây dùng để xem kết quả thay đổi ra sao khi cấu hình khác nhau. Với quy mô này, nên xem các con số là kết quả thăm dò; chúng chưa tự xác định nguyên nhân của chênh lệch.
+      </p>
+
+      <div class="overflow-x-auto border border-slate-200 rounded-xl mb-6 shadow-sm">
+        <table class="min-w-full divide-y divide-slate-200 text-sm">
+          <thead class="bg-slate-900 text-white font-medium">
+            <tr>
+              <th class="px-4 py-3 text-left">Cấu hình</th>
+              <th class="px-4 py-3 text-left">Thay đổi chính</th>
+              <th class="px-4 py-3 text-center font-mono">Micro EM</th>
+              <th class="px-4 py-3 text-center font-mono">Macro EM</th>
+              <th class="px-4 py-3 text-center font-mono">Edit similarity (ES)</th>
+              <th class="px-4 py-3 text-center font-mono">Identifier EM</th>
+              <th class="px-4 py-3 text-center text-emerald-400">Chênh lệch EM so với AIRCoder</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 bg-white">
+            <tr class="hover:bg-slate-50">
+              <td class="px-4 py-3 font-bold text-slate-800">Arm 1: AIRCoder Replication</td>
+              <td class="px-4 py-3 text-slate-600 text-xs">Trần 800 tokens SPC cố định, ghép nối phẳng RRF</td>
+              <td class="px-4 py-3 text-center font-mono">35.94%</td>
+              <td class="px-4 py-3 text-center font-mono">35.36%</td>
+              <td class="px-4 py-3 text-center font-mono">64.88%</td>
+              <td class="px-4 py-3 text-center font-mono">45.31%</td>
+              <td class="px-4 py-3 text-center text-slate-400 font-mono">Mốc so sánh</td>
+            </tr>
+            <tr class="hover:bg-slate-50">
+              <td class="px-4 py-3 font-bold text-slate-800">Arm 2: +Coalesce & Dynamic Budget</td>
+              <td class="px-4 py-3 text-slate-600 text-xs">Mở rộng trần 3,584 tokens, gom nhóm khối code theo file</td>
+              <td class="px-4 py-3 text-center font-mono font-semibold text-indigo-700">38.67%</td>
+              <td class="px-4 py-3 text-center font-mono">38.04%</td>
+              <td class="px-4 py-3 text-center font-mono">67.00%</td>
+              <td class="px-4 py-3 text-center font-mono">48.44%</td>
+              <td class="px-4 py-3 text-center text-indigo-600 font-mono font-bold">+2.73 pp</td>
+            </tr>
+            <tr class="hover:bg-slate-50">
+              <td class="px-4 py-3 font-bold text-slate-800">Arm 3: +CSSI Flat Assembly</td>
+              <td class="px-4 py-3 text-slate-600 text-xs">Thêm hợp đồng cấu trúc CSSI nhưng xếp phẳng chung</td>
+              <td class="px-4 py-3 text-center font-mono font-semibold text-indigo-700">38.28%</td>
+              <td class="px-4 py-3 text-center font-mono">37.52%</td>
+              <td class="px-4 py-3 text-center font-mono">66.70%</td>
+              <td class="px-4 py-3 text-center font-mono">48.05%</td>
+              <td class="px-4 py-3 text-center text-indigo-600 font-mono font-bold">+2.34 pp</td>
+            </tr>
+            <tr class="bg-emerald-50/80 hover:bg-emerald-100/80 font-bold border-t-2 border-emerald-400">
+              <td class="px-4 py-3.5 text-emerald-950">Arm 4: Full CADRE (Dual-Channel DCA)</td>
+              <td class="px-4 py-3.5 text-emerald-900 text-xs font-normal">Ghép 2 kênh tách biệt: Channel A (Exemplars) + Channel B (CSSI)</td>
+              <td class="px-4 py-3.5 text-center font-mono text-emerald-700 text-base">39.84%</td>
+              <td class="px-4 py-3.5 text-center font-mono text-emerald-700 text-base">39.15%</td>
+              <td class="px-4 py-3.5 text-center font-mono text-emerald-700">67.59%</td>
+              <td class="px-4 py-3.5 text-center font-mono text-emerald-700">51.17%</td>
+              <td class="px-4 py-3.5 text-center text-emerald-700 font-mono text-base font-extrabold">+3.90 pp (p = 0.0305)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-4 text-xs text-slate-600">
+        <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
+          <strong class="text-slate-900 block mb-1">Kết quả Arm 2 (+2,73 pp):</strong>
+          Trong lần chạy này, Arm 2 đạt 38,67% EM, cao hơn mốc Arm 1 là 35,94%. Kết quả chưa tách riêng tác động của ngân sách và việc gom chunk theo file.
+        </div>
+        <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
+          <strong class="text-slate-900 block mb-1">Kết quả Arm 3:</strong>
+          Arm 3 đạt 38,28% EM trong lần chạy này. Bảng chưa đủ để kết luận nguyên nhân của chênh lệch so với Arm 2.
+        </div>
+        <div class="p-4 bg-emerald-50 rounded-lg border border-emerald-300 text-emerald-950">
+          <strong class="text-emerald-900 block mb-1">Kết quả Arm 4:</strong>
+          Arm 4 đạt <strong>39,84% EM</strong> và <strong>51,17% ID-EM</strong> trong lần chạy này. Cần thêm lần chạy và kiểm soát từng thay đổi để xác định liệu mức chênh lệch có lặp lại hay không.
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 7: REPRODUCIBILITY & ARTIFACTS -->
+    <section class="bg-slate-900 text-slate-300 rounded-2xl p-8 border border-slate-800 shadow-xl">
+      <div class="flex items-center space-x-3 mb-6 border-b border-slate-800 pb-4">
+        <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-lg">7</div>
+        <h2 class="text-2xl font-bold text-white">Mã nguồn, dữ liệu và cấu hình chạy</h2>
+      </div>
+
+      <p class="text-sm text-slate-400 mb-6 leading-relaxed">
+        Phần này liệt kê các tệp và cấu hình dùng cho lần chạy được mô tả. Có thể dùng chúng để kiểm tra cách tạo dữ liệu, sinh output và tính metric. Kết quả cần được đối chiếu với đúng phiên bản code, dữ liệu và môi trường trước khi dùng trong báo cáo khác.
+      </p>
+
+      <div class="grid md:grid-cols-2 gap-4 font-mono text-xs">
+        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+          <div class="text-emerald-400 font-bold mb-2">// TỆP DỮ LIỆU VÀ CHƯƠNG TRÌNH CHẠY</div>
+          <ul class="space-y-1.5 text-slate-300">
+            <li><span class="text-slate-500">• Runner Full:</span> experiments/mb_spt_iterative/run_full_benchmark.py</li>
+            <li><span class="text-slate-500">• Bundle Full:</span> experiments/mb_spt_iterative/full_benchmark_8004_bundle.tar.gz</li>
+            <li><span class="text-slate-500">• Daemon Engine:</span> experiments/mb_spt_iterative/colab_daemon.py</li>
+            <li><span class="text-slate-500">• Metrics File:</span> experiments/mb_spt_iterative/cadre_vs_aircoder_full_8004_v3_metrics.json</li>
+          </ul>
+        </div>
+        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+          <div class="text-indigo-400 font-bold mb-2">// PHẦN CỨNG VÀ MÔ HÌNH</div>
+          <ul class="space-y-1.5 text-slate-300">
+            <li><span class="text-slate-500">• Model Base:</span> deepseek-ai/deepseek-coder-1.3b-base (8k Context)</li>
+            <li><span class="text-slate-500">• Phần Cứng:</span> NVIDIA A100-SXM4-80GB (Google Colab High-RAM)</li>
+            <li><span class="text-slate-500">• Suy Luận:</span> vLLM Offline Batched Engine (Greedy Decoding T=0.0)</li>
+            <li><span class="text-slate-500">• Đánh Giá:</span> CCEval Parser + AlignCoder Official Eval Utilities</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="bg-slate-950 border-t border-slate-900 py-8 text-center text-xs text-slate-500 font-mono">
+    CADRE Research Report &copy; 2026.
+  </footer>
+
+</body>
+</html>

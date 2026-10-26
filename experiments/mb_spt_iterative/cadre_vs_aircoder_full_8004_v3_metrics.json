@@ -1,0 +1,233 @@
+{
+  "tag": "cadre_vs_aircoder_full_8004_v3",
+  "total_tasks": 8004,
+  "total_duration_minutes": 27.61,
+  "arms": {
+    "aircoder_r": {
+      "aligncoder_protocol": {
+        "overall": {
+          "em": 31.8,
+          "es": 68.93,
+          "id_em": 39.57,
+          "id_f1": 62.73,
+          "count": 8004
+        },
+        "by_benchmark": {
+          "cceval_python": {
+            "aligncoder_em": "23.68(23.68)",
+            "aligncoder_es": "7084.47(7084.47)",
+            "micro_em": 23.68,
+            "macro_em": 23.68,
+            "micro_es": 70.84,
+            "macro_es": 70.84,
+            "id_em": 33.4,
+            "id_f1": 61.97,
+            "count": 2665
+          },
+          "cceval_java": {
+            "aligncoder_em": "21.65(21.65)",
+            "aligncoder_es": "6559.19(6559.19)",
+            "micro_em": 21.65,
+            "macro_em": 21.65,
+            "micro_es": 65.59,
+            "macro_es": 65.59,
+            "id_em": 30.01,
+            "id_f1": 57.07,
+            "count": 2139
+          },
+          "repoeval_api": {
+            "aligncoder_em": "40.31(40.31)",
+            "aligncoder_es": "6823.62(6823.62)",
+            "micro_em": 40.31,
+            "macro_em": 40.31,
+            "micro_es": 68.24,
+            "macro_es": 68.24,
+            "id_em": 44.5,
+            "id_f1": 71.14,
+            "count": 1600
+          },
+          "repoeval_line": {
+            "aligncoder_em": "50.38(50.38)",
+            "aligncoder_es": "7090.02(7090.02)",
+            "micro_em": 50.38,
+            "macro_em": 50.38,
+            "micro_es": 70.9,
+            "macro_es": 70.9,
+            "id_em": 57.69,
+            "id_f1": 63.14,
+            "count": 1600
+          }
+        }
+      },
+      "aircoder_official_protocol": {
+        "overall": {
+          "em": 32.0,
+          "es": 63.37,
+          "id_em": 39.13,
+          "id_f1": 61.06,
+          "count": 8004
+        },
+        "by_benchmark": {
+          "cceval_python": {
+            "micro_em": 23.53,
+            "micro_es": 60.82,
+            "id_em": 32.38,
+            "id_f1": 58.87,
+            "count": 2665
+          },
+          "cceval_java": {
+            "micro_em": 21.74,
+            "micro_es": 56.72,
+            "id_em": 29.27,
+            "id_f1": 54.94,
+            "count": 2139
+          },
+          "repoeval_api": {
+            "micro_em": 40.94,
+            "micro_es": 68.76,
+            "id_em": 45.25,
+            "id_f1": 71.14,
+            "count": 1600
+          },
+          "repoeval_line": {
+            "micro_em": 50.88,
+            "micro_es": 71.11,
+            "id_em": 57.44,
+            "id_f1": 62.79,
+            "count": 1600
+          }
+        }
+      }
+    },
+    "cadre_full_dual_channel": {
+      "aligncoder_protocol": {
+        "overall": {
+          "em": 36.33,
+          "es": 71.4,
+          "id_em": 44.84,
+          "id_f1": 66.36,
+          "count": 8004
+        },
+        "by_benchmark": {
+          "cceval_python": {
+            "aligncoder_em": "30.58(30.58)",
+            "aligncoder_es": "7445.67(7445.67)",
+            "micro_em": 30.58,
+            "macro_em": 30.58,
+            "micro_es": 74.46,
+            "macro_es": 74.46,
+            "id_em": 41.31,
+            "id_f1": 67.68,
+            "count": 2665
+          },
+          "cceval_java": {
+            "aligncoder_em": "27.96(27.96)",
+            "aligncoder_es": "6931.7(6931.70)",
+            "micro_em": 27.96,
+            "macro_em": 27.96,
+            "micro_es": 69.32,
+            "macro_es": 69.32,
+            "id_em": 37.91,
+            "id_f1": 62.36,
+            "count": 2139
+          },
+          "repoeval_api": {
+            "aligncoder_em": "42.25(42.25)",
+            "aligncoder_es": "6914.14(6914.14)",
+            "micro_em": 42.25,
+            "macro_em": 42.25,
+            "micro_es": 69.14,
+            "macro_es": 69.14,
+            "id_em": 46.31,
+            "id_f1": 72.3,
+            "count": 1600
+          },
+          "repoeval_line": {
+            "aligncoder_em": "51.19(51.19)",
+            "aligncoder_es": "7133.56(7133.56)",
+            "micro_em": 51.19,
+            "macro_em": 51.19,
+            "micro_es": 71.34,
+            "macro_es": 71.34,
+            "id_em": 58.5,
+            "id_f1": 63.58,
+            "count": 1600
+          }
+        }
+      },
+      "aircoder_official_protocol": {
+        "overall": {
+          "em": 36.59,
+          "es": 66.25,
+          "id_em": 44.15,
+          "id_f1": 64.7,
+          "count": 8004
+        },
+        "by_benchmark": {
+          "cceval_python": {
+            "micro_em": 30.54,
+            "micro_es": 65.54,
+            "id_em": 40.11,
+            "id_f1": 64.93,
+            "count": 2665
+          },
+          "cceval_java": {
+            "micro_em": 28.1,
+            "micro_es": 60.74,
+            "id_em": 36.56,
+            "id_f1": 60.04,
+            "count": 2139
+          },
+          "repoeval_api": {
+            "micro_em": 42.69,
+            "micro_es": 69.52,
+            "id_em": 47.0,
+            "id_f1": 72.14,
+            "count": 1600
+          },
+          "repoeval_line": {
+            "micro_em": 51.94,
+            "micro_es": 71.54,
+            "id_em": 58.19,
+            "id_f1": 63.1,
+            "count": 1600
+          }
+        }
+      }
+    }
+  },
+  "overall_by_arm": {
+    "aircoder_r": {
+      "aligncoder_protocol": {
+        "em": 31.8,
+        "es": 68.93,
+        "id_em": 39.57,
+        "id_f1": 62.73,
+        "count": 8004
+      },
+      "aircoder_official_protocol": {
+        "em": 32.0,
+        "es": 63.37,
+        "id_em": 39.13,
+        "id_f1": 61.06,
+        "count": 8004
+      }
+    },
+    "cadre_full_dual_channel": {
+      "aligncoder_protocol": {
+        "em": 36.33,
+        "es": 71.4,
+        "id_em": 44.84,
+        "id_f1": 66.36,
+        "count": 8004
+      },
+      "aircoder_official_protocol": {
+        "em": 36.59,
+        "es": 66.25,
+        "id_em": 44.15,
+        "id_f1": 64.7,
+        "count": 8004
+      }
+    }
+  }
+}

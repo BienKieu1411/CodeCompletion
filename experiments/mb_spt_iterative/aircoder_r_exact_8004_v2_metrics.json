@@ -1,0 +1,85 @@
+{
+  "tag": "aircoder_r_exact_8004_v2",
+  "total_tasks": 8004,
+  "total_duration_minutes": 10.67,
+  "generator": "deepseek-ai/deepseek-coder-1.3b-base",
+  "setting": "AIRCoder_r ACL 2026 Exact (800-token budget, 8-metric RRF k=60, ascending order, triple-quote)",
+  "aligncoder_protocol": {
+    "overall": {
+      "em": 31.0,
+      "es": 70.71,
+      "id_em": 41.09,
+      "id_f1": 63.71,
+      "count": 8004
+    },
+    "by_benchmark": {
+      "cceval_python": {
+        "micro_em": 22.55,
+        "micro_es": 69.47,
+        "id_em": 33.96,
+        "id_f1": 59.91,
+        "count": 2665
+      },
+      "cceval_java": {
+        "micro_em": 21.93,
+        "micro_es": 66.22,
+        "id_em": 32.63,
+        "id_f1": 58.34,
+        "count": 2139
+      },
+      "repoeval_api": {
+        "micro_em": 37.56,
+        "micro_es": 72.55,
+        "id_em": 46.0,
+        "id_f1": 70.02,
+        "count": 1600
+      },
+      "repoeval_line": {
+        "micro_em": 50.62,
+        "micro_es": 76.94,
+        "id_em": 59.38,
+        "id_f1": 70.92,
+        "count": 1600
+      }
+    }
+  },
+  "aircoder_official_protocol": {
+    "overall": {
+      "em": 32.26,
+      "es": 71.45,
+      "id_em": 40.77,
+      "id_f1": 62.03,
+      "count": 8004
+    },
+    "by_benchmark": {
+      "cceval_python": {
+        "micro_em": 23.34,
+        "micro_es": 70.06,
+        "id_em": 34.41,
+        "id_f1": 58.37,
+        "count": 2665
+      },
+      "cceval_java": {
+        "micro_em": 22.25,
+        "micro_es": 65.36,
+        "id_em": 31.0,
+        "id_f1": 55.39,
+        "count": 2139
+      },
+      "repoeval_api": {
+        "micro_em": 41.19,
+        "micro_es": 75.83,
+        "id_em": 46.19,
+        "id_f1": 69.23,
+        "count": 1600
+      },
+      "repoeval_line": {
+        "micro_em": 51.56,
+        "micro_es": 77.52,
+        "id_em": 59.0,
+        "id_f1": 69.8,
+        "count": 1600
+      }
+    }
+  }
+}

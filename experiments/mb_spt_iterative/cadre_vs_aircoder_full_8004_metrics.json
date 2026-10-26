@@ -1,0 +1,117 @@
+{
+  "tag": "cadre_vs_aircoder_full_8004",
+  "total_tasks": 8004,
+  "total_duration_minutes": 9.58,
+  "arms": {
+    "aircoder_r": {
+      "overall": {
+        "em": 16.67,
+        "es": 52.28,
+        "id_em": 23.05,
+        "id_f1": 49.49,
+        "count": 8004
+      },
+      "by_benchmark": {
+        "cceval_python": {
+          "micro_em": 5.93,
+          "macro_em": 5.93,
+          "micro_es": 48.5,
+          "macro_es": 48.5,
+          "id_em": 12.95,
+          "id_f1": 44.92,
+          "count": 2665
+        },
+        "cceval_java": {
+          "micro_em": 5.52,
+          "macro_em": 5.52,
+          "micro_es": 46.01,
+          "macro_es": 46.01,
+          "id_em": 12.16,
+          "id_f1": 44.67,
+          "count": 2139
+        },
+        "repoeval_api": {
+          "micro_em": 29.69,
+          "macro_em": 29.69,
+          "micro_es": 58.59,
+          "macro_es": 58.59,
+          "id_em": 32.81,
+          "id_f1": 60.12,
+          "count": 1600
+        },
+        "repoeval_line": {
+          "micro_em": 36.44,
+          "macro_em": 36.44,
+          "micro_es": 60.67,
+          "macro_es": 60.67,
+          "id_em": 44.69,
+          "id_f1": 52.9,
+          "count": 1600
+        }
+      }
+    },
+    "cadre_full_dual_channel": {
+      "overall": {
+        "em": 18.28,
+        "es": 53.31,
+        "id_em": 24.74,
+        "id_f1": 51.01,
+        "count": 8004
+      },
+      "by_benchmark": {
+        "cceval_python": {
+          "micro_em": 10.43,
+          "macro_em": 10.43,
+          "micro_es": 51.29,
+          "macro_es": 51.29,
+          "id_em": 17.6,
+          "id_f1": 49.11,
+          "count": 2665
+        },
+        "cceval_java": {
+          "micro_em": 5.52,
+          "macro_em": 5.52,
+          "micro_es": 46.01,
+          "macro_es": 46.01,
+          "id_em": 12.16,
+          "id_f1": 44.67,
+          "count": 2139
+        },
+        "repoeval_api": {
+          "micro_em": 29.69,
+          "macro_em": 29.69,
+          "micro_es": 58.62,
+          "macro_es": 58.62,
+          "id_em": 32.94,
+          "id_f1": 60.29,
+          "count": 1600
+        },
+        "repoeval_line": {
+          "micro_em": 37.0,
+          "macro_em": 37.0,
+          "micro_es": 61.15,
+          "macro_es": 61.15,
+          "id_em": 45.25,
+          "id_f1": 53.39,
+          "count": 1600
+        }
+      }
+    }
+  },
+  "overall_by_arm": {
+    "aircoder_r": {
+      "em": 16.67,
+      "es": 52.28,
+      "id_em": 23.05,
+      "id_f1": 49.49,
+      "count": 8004
+    },
+    "cadre_full_dual_channel": {
+      "em": 18.28,
+      "es": 53.31,
+      "id_em": 24.74,
+      "id_f1": 51.01,
+      "count": 8004
+    }
+  }
+}

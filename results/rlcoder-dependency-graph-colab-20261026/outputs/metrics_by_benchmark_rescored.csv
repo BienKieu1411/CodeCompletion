@@ -1,0 +1,5 @@
+benchmark,n,raw_es,dependency_graph_es,delta_graph_minus_raw,es_ci95_low,es_ci95_high,raw_em,dependency_graph_em
+cceval_java,64,58.75,18.515625,-40.234375,-47.421875,-33.078125,0.125,0
+cceval_python,64,73.9375,16.03125,-57.90625,-64.54765625,-51.109375,0.328125,0
+repoeval_api,64,72.5,21.90625,-50.59375,-58.109375,-42.59375,0.4375,0
+repoeval_line,64,53.296875,17.078125,-36.21875,-44.922265625,-27.249609375,0.265625,0

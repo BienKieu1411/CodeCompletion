@@ -1,0 +1,179 @@
+{
+  "paired_task_count": 400,
+  "bootstrap_replicates": 20000,
+  "benchmarks": {
+    "cceval_java": {
+      "n_tasks": 100,
+      "bootstrap_unit": "task",
+      "repo_count": null,
+      "delta_em": 0.03,
+      "delta_em_95ci": [
+        0.0,
+        0.07
+      ],
+      "delta_es": 0.013300000000000001,
+      "delta_es_95ci": [
+        -0.013499999999999998,
+        0.0371
+      ],
+      "task_level_es_win_tie_loss": {
+        "win": 9,
+        "tie": 87,
+        "loss": 4
+      }
+    },
+    "cceval_python": {
+      "n_tasks": 100,
+      "bootstrap_unit": "task",
+      "repo_count": null,
+      "delta_em": 0.04,
+      "delta_em_95ci": [
+        0.0,
+        0.09
+      ],
+      "delta_es": -0.0006000000000000003,
+      "delta_es_95ci": [
+        -0.028999999999999998,
+        0.026999999999999996
+      ],
+      "task_level_es_win_tie_loss": {
+        "win": 8,
+        "tie": 82,
+        "loss": 10
+      }
+    },
+    "repoeval_api": {
+      "n_tasks": 100,
+      "bootstrap_unit": "repo",
+      "repo_count": 8,
+      "delta_em": -0.0078125,
+      "delta_em_95ci": [
+        -0.0234375,
+        0.0
+      ],
+      "delta_es": -0.005769538105692386,
+      "delta_es_95ci": [
+        -0.029485274757283984,
+        0.01794619854589921
+      ],
+      "task_level_es_win_tie_loss": {
+        "win": 5,
+        "tie": 88,
+        "loss": 7
+      }
+    },
+    "repoeval_line": {
+      "n_tasks": 100,
+      "bootstrap_unit": "repo",
+      "repo_count": 8,
+      "delta_em": 0.00615079365079365,
+      "delta_em_95ci": [
+        -0.03333333333333333,
+        0.046230158730158726
+      ],
+      "delta_es": -0.01718684764526554,
+      "delta_es_95ci": [
+        -0.038204904365470464,
+        0.004959466511630531
+      ],
+      "task_level_es_win_tie_loss": {
+        "win": 6,
+        "tie": 86,
+        "loss": 8
+      }
+    }
+  },
+  "macro_delta_high_minus_low": {
+    "em": 0.017084573412698412,
+    "es": -0.0025640964377394815,
+    "em_95ci": [
+      -0.00017596726190476,
+      0.03555679563492063
+    ],
+    "es_95ci": [
+      -0.0148545267853766,
+      0.009603084458870207
+    ],
+    "bootstrap_unit": "task for CCEval; repository for RepoEval; four benchmarks macro-averaged"
+  },
+  "arm_metrics": {
+    "512": {
+      "total_context_tokens": 3072,
+      "cross_file_budget": 512,
+      "metrics": {
+        "cceval_java": {
+          "n": 100,
+          "em": 0.11,
+          "es": 0.6173,
+          "repo_count": null
+        },
+        "cceval_python": {
+          "n": 100,
+          "em": 0.17,
+          "es": 0.6512,
+          "repo_count": null
+        },
+        "repoeval_api": {
+          "n": 100,
+          "em": 0.3863771645021645,
+          "es": 0.6463734696827412,
+          "repo_count": 8
+        },
+        "repoeval_line": {
+          "n": 100,
+          "em": 0.43982753357753357,
+          "es": 0.666493367956163,
+          "repo_count": 8
+        },
+        "macro_mean_4_benchmarks": {
+          "em": 0.2765511745199245,
+          "es": 0.645341709409726
+        }
+      },
+      "mean_selected_snippets": 3.255,
+      "mean_cross_file_tokens": 223.615,
+      "mean_left_context_tokens": 1427.7925
+    },
+    "2344": {
+      "total_context_tokens": 3072,
+      "cross_file_budget": 2344,
+      "metrics": {
+        "cceval_java": {
+          "n": 100,
+          "em": 0.14,
+          "es": 0.6306,
+          "repo_count": null
+        },
+        "cceval_python": {
+          "n": 100,
+          "em": 0.21,
+          "es": 0.6506000000000001,
+          "repo_count": null
+        },
+        "repoeval_api": {
+          "n": 100,
+          "em": 0.3785646645021645,
+          "es": 0.6406039315770489,
+          "repo_count": 8
+        },
+        "repoeval_line": {
+          "n": 100,
+          "em": 0.4459783272283272,
+          "es": 0.6493065203108974,
+          "repo_count": 8
+        },
+        "macro_mean_4_benchmarks": {
+          "em": 0.2936357479326229,
+          "es": 0.6427776129719867
+        }
+      },
+      "mean_selected_snippets": 3.255,
+      "mean_cross_file_tokens": 670.4925,
+      "mean_left_context_tokens": 1282.5525
+    }
+  },
+  "paired_selection_overlap": {
+    "selected_count_identical": true,
+    "selected_snippets_identical": true
+  }
+}

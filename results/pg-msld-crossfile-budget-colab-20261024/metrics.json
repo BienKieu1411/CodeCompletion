@@ -1,0 +1,136 @@
+{
+  "status": "complete",
+  "created_at_utc": "2026-10-24T16:50:07.972344+00:00",
+  "protocol": {
+    "checkpoint_sha256": "30a6807a0b2727cf558d87308fe70a2bea6d40eb0893d002ae4a3105311686f7",
+    "checkpoint_schema": "rlcoder_natural_random2k_slate15_weighted_positive_gain_listwise_kd_v7",
+    "checkpoint_updates": 2480,
+    "valid_sha256": "7658522ea93f31ce86ee50b90162cbeae9e18bb32bec5256c001e977364a8582",
+    "n": 400,
+    "generator": "deepseek-ai/deepseek-coder-1.3b-base",
+    "generator_revision": "c919139c3a9b4070729c8b2cca4847ab29ca8d94",
+    "generator_backend": "Hugging Face Transformers, greedy decoding, bf16",
+    "retriever": "microsoft/unixcoder-base",
+    "retriever_revision": "5604afdc964f6c53782a6813140ade5216b99006",
+    "retriever_input": "RLCoder encoder-only format; query=last 20 non-empty left-context lines; candidate=natural block with file/line header",
+    "chunking": "RLCoder natural blank-line mini-blocks, max 15 non-empty lines",
+    "bm25_pool": 100,
+    "max_real_snippets": 10,
+    "selection_count_control": "per-task selected_count frozen from the previous 400-row PG-MSLD eval; candidate identity reranked by the same checkpoint",
+    "total_context_tokens_fixed": 3072,
+    "cross_file_budgets": [
+      512,
+      2344
+    ],
+    "max_new_tokens": 64,
+    "scoring": "same score_prediction convention as src/train/benchmark_validation.py; RepoEval macro-averaged by repo"
+  },
+  "arms": {
+    "512": {
+      "total_context_tokens": 3072,
+      "cross_file_budget": 512,
+      "metrics": {
+        "cceval_java": {
+          "n": 100,
+          "em": 0.11,
+          "es": 0.6173,
+          "repo_count": null
+        },
+        "cceval_python": {
+          "n": 100,
+          "em": 0.17,
+          "es": 0.6512,
+          "repo_count": null
+        },
+        "repoeval_api": {
+          "n": 100,
+          "em": 0.3863771645021645,
+          "es": 0.6463734696827412,
+          "repo_count": 8
+        },
+        "repoeval_line": {
+          "n": 100,
+          "em": 0.43982753357753357,
+          "es": 0.666493367956163,
+          "repo_count": 8
+        },
+        "macro_mean_4_benchmarks": {
+          "em": 0.2765511745199245,
+          "es": 0.645341709409726
+        }
+      },
+      "mean_selected_snippets": 3.255,
+      "mean_cross_file_tokens": 223.615,
+      "mean_left_context_tokens": 1427.7925
+    },
+    "2344": {
+      "total_context_tokens": 3072,
+      "cross_file_budget": 2344,
+      "metrics": {
+        "cceval_java": {
+          "n": 100,
+          "em": 0.14,
+          "es": 0.6306,
+          "repo_count": null
+        },
+        "cceval_python": {
+          "n": 100,
+          "em": 0.21,
+          "es": 0.6506000000000001,
+          "repo_count": null
+        },
+        "repoeval_api": {
+          "n": 100,
+          "em": 0.3785646645021645,
+          "es": 0.6406039315770489,
+          "repo_count": 8
+        },
+        "repoeval_line": {
+          "n": 100,
+          "em": 0.4459783272283272,
+          "es": 0.6493065203108974,
+          "repo_count": 8
+        },
+        "macro_mean_4_benchmarks": {
+          "em": 0.2936357479326229,
+          "es": 0.6427776129719867
+        }
+      },
+      "mean_selected_snippets": 3.255,
+      "mean_cross_file_tokens": 670.4925,
+      "mean_left_context_tokens": 1282.5525
+    }
+  },
+  "paired_delta_high_minus_low": {
+    "cceval_java": {
+      "n": 100,
+      "em": 0.03,
+      "es": 0.013300000000000001,
+      "repo_count": null
+    },
+    "cceval_python": {
+      "n": 100,
+      "em": 0.04,
+      "es": -0.0006000000000000003,
+      "repo_count": null
+    },
+    "repoeval_api": {
+      "n": 100,
+      "em": -0.0078125,
+      "es": -0.005769538105692386,
+      "repo_count": 8
+    },
+    "repoeval_line": {
+      "n": 100,
+      "em": 0.00615079365079365,
+      "es": -0.01718684764526554,
+      "repo_count": 8
+    },
+    "macro_mean_4_benchmarks": {
+      "em": 0.017084573412698412,
+      "es": -0.0025640964377394815
+    }
+  },
+  "elapsed_seconds": 569.20641116,
+  "gpu": "NVIDIA A100-SXM4-40GB"
+}

@@ -1,0 +1,7 @@
+language,method,samples,exact_match,edit_similarity,rescued_exact_match
+java,aligncoder_baseline,100,19.00%,51.05,19.00%
+java,no_retrieval,100,4.00%,42.12,4.00%
+java,scit_proposed,100,7.00%,38.65,7.00%
+python,aligncoder_baseline,100,20.00%,59.23,20.00%
+python,no_retrieval,100,7.00%,44.40,7.00%
+python,scit_proposed,100,5.00%,43.98,5.00%

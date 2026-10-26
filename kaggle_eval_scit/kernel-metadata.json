@@ -1,0 +1,14 @@
+{
+  "id": "bienkieu/eval-scit-benchmark-v2",
+  "title": "Eval SCIT Benchmark V2",
+  "code_file": "eval_scit_benchmark.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_tpu": "false",
+  "enable_internet": "true",
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": []
+}

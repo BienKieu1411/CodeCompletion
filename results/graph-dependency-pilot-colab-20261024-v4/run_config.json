@@ -1,0 +1,28 @@
+{
+  "retriever": "AlignCoder/AlignRetriever",
+  "retriever_revision": "a179c0fdbc5a56d83ae142064ef1ea773a841753",
+  "generator": "deepseek-ai/deepseek-coder-1.3b-base",
+  "generator_revision": "c919139c3a9b4070729c8b2cca4847ab29ca8d94",
+  "chunking": "AlignCoder default mini-block (blank-line grouping, <=15 nonempty lines)",
+  "bm25_topk": 100,
+  "retriever_topk": 10,
+  "generator_crossfile_tokens": 1536,
+  "generator_context_tokens": 2048,
+  "generator_max_new_tokens": 64,
+  "query_enhancement": "AlignCoder-style shared 8 samples, T=.8, top_p=.95",
+  "graph": "prefix-only import-to-definition edges; score=cosine+0.12*edge-coverage",
+  "arms": [
+    "aligncoder_code",
+    "graph_rerank_code",
+    "aligncoder_dep_prompt",
+    "graph_rerank_dep_prompt"
+  ],
+  "seed": 20261024,
+  "device": "NVIDIA A100-SXM4-40GB",
+  "torch_version": "2.13.0+cu132",
+  "cuda_version": "13.2",
+  "vllm_version": "0.32.0",
+  "vllm_gpu_memory_utilization": 0.78,
+  "vllm_max_num_seqs": 64,
+  "vllm_max_num_batched_tokens": 8192
+}

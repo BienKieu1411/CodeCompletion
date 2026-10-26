@@ -1,0 +1,61 @@
+[{"stream_name":"stderr","time":11.007057314,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":11.00709539,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":11.007101411,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":11.007105373,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stderr","time":11.817980328,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":11.818008938,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":11.818013826,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":11.818017628,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stdout","time":59.779557745,"data":"CUDA available: True\n"}
+,{"stream_name":"stdout","time":59.779582494,"data":"Device name: Tesla T4\n"}
+,{"stream_name":"stdout","time":59.77958639,"data":"VRAM: 15.64 GB\n"}
+,{"stream_name":"stdout","time":59.979525714,"data":"Successfully loaded 200 benchmark tasks:\n"}
+,{"stream_name":"stdout","time":59.979565679,"data":" - Python tasks: 100\n"}
+,{"stream_name":"stdout","time":59.97956987,"data":" - Java tasks:   100\n"}
+,{"stream_name":"stdout","time":60.180106931,"data":"Loading model deepseek-ai/deepseek-coder-1.3b-base in float16...\n"}
+,{"stream_name":"stderr","time":60.199376932,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stderr","time":60.199425924,"data":"\n"}
+,{"stream_name":"stderr","time":60.199432221,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stderr","time":62.47038794,"data":"[transformers] `torch_dtype` is deprecated! Use `dtype` instead!\n"}
+,{"stream_name":"stderr","time":62.470442208,"data":"\n"}
+,{"stream_name":"stderr","time":62.47044676,"data":"[transformers] `torch_dtype` is deprecated! Use `dtype` instead!\n"}
+,{"stream_name":"stdout","time":84.029509807,"data":"Model loaded successfully in 24.0s!\n"}
+,{"stream_name":"stdout","time":84.232169997,"data":"Starting generation and evaluation across all methods...\n"}
+,{"stream_name":"stdout","time":84.232224784,"data":"Generating completions for no_retrieval (200 prompts)...\n"}
+,{"stream_name":"stdout","time":149.952282842,"data":"Completed no_retrieval in 65.5s!\n"}
+,{"stream_name":"stdout","time":149.952329508,"data":"Generating completions for aligncoder_baseline (200 prompts)...\n"}
+,{"stream_name":"stdout","time":323.858671829,"data":"Completed aligncoder_baseline in 173.8s!\n"}
+,{"stream_name":"stdout","time":323.858710159,"data":"Generating completions for scit_proposed (200 prompts)...\n"}
+,{"stream_name":"stdout","time":500.136150636,"data":"Completed scit_proposed in 176.4s!\n"}
+,{"stream_name":"stdout","time":500.136210883,"data":"All evaluations completed in 415.9s!\n"}
+,{"stream_name":"stdout","time":500.269651469,"data":"\n"}
+,{"stream_name":"stdout","time":500.269681124,"data":"=====================================================================================\n"}
+,{"stream_name":"stdout","time":500.269688364,"data":"FINAL CCEVAL BENCHMARK EVALUATION RESULTS (deepseek-coder-1.3b-base)\n"}
+,{"stream_name":"stdout","time":500.269711149,"data":"=====================================================================================\n"}
+,{"stream_name":"stdout","time":500.26971617,"data":"language              method  samples exact_match edit_similarity rescued_exact_match\n"}
+,{"stream_name":"stdout","time":500.269720558,"data":"    java aligncoder_baseline      100      19.00%           51.05              19.00%\n"}
+,{"stream_name":"stdout","time":500.269723949,"data":"    java        no_retrieval      100       4.00%           42.12               4.00%\n"}
+,{"stream_name":"stdout","time":500.269727249,"data":"    java       scit_proposed      100       7.00%           38.65               7.00%\n"}
+,{"stream_name":"stdout","time":500.269730695,"data":"  python aligncoder_baseline      100      20.00%           59.23              20.00%\n"}
+,{"stream_name":"stdout","time":500.269734249,"data":"  python        no_retrieval      100       7.00%           44.40               7.00%\n"}
+,{"stream_name":"stdout","time":500.269737694,"data":"  python       scit_proposed      100       5.00%           43.98               5.00%\n"}
+,{"stream_name":"stdout","time":500.269741455,"data":"=====================================================================================\n"}
+,{"stream_name":"stdout","time":500.269746069,"data":"\n"}
+,{"stream_name":"stdout","time":500.26974999,"data":"\u003e\u003e\u003e [PYTHON] SCIT vs AlignCoder Baseline:\n"}
+,{"stream_name":"stdout","time":500.269754801,"data":"    - Exact Match (EM):     5.00% vs 20.00%  (-15.00%)\n"}
+,{"stream_name":"stdout","time":500.269758023,"data":"    - Edit Similarity (ES): 43.98 vs 59.23  (-15.26)\n"}
+,{"stream_name":"stdout","time":500.269761557,"data":"    - Rescue Subset EM:     5.00% vs 20.00%  (-15.00%)\n"}
+,{"stream_name":"stdout","time":500.269765241,"data":"\n"}
+,{"stream_name":"stdout","time":500.269777602,"data":"\u003e\u003e\u003e [JAVA] SCIT vs AlignCoder Baseline:\n"}
+,{"stream_name":"stdout","time":500.269781393,"data":"    - Exact Match (EM):     7.00% vs 19.00%  (-12.00%)\n"}
+,{"stream_name":"stdout","time":500.269784861,"data":"    - Edit Similarity (ES): 38.65 vs 51.05  (-12.40)\n"}
+,{"stream_name":"stdout","time":500.269788835,"data":"    - Rescue Subset EM:     7.00% vs 19.00%  (-12.00%)\n"}
+,{"stream_name":"stderr","time":506.114196359,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":506.114229719,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":506.316721319,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":506.316747815,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":507.154583145,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to notebook\n"}
+,{"stream_name":"stderr","time":507.253949926,"data":"[NbConvertApp] Writing 602959 bytes to __notebook__.ipynb\n"}
+,{"stream_name":"stderr","time":509.98995304,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to html\n"}
+,{"stream_name":"stderr","time":510.582299826,"data":"[NbConvertApp] Writing 882186 bytes to __results__.html\n"}
+]
