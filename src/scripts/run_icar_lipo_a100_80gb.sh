@@ -14,12 +14,13 @@ TRAIN_DATASETS_DEFAULT="${DATA_DIR}/github_repos/python/train.parquet,${DATA_DIR
 TRAIN_DATASETS="${TRAIN_DATASETS:-${TRAIN_DATASET:-${TRAIN_DATASETS_DEFAULT}}}"
 GENERATOR_NAME="${GENERATOR_NAME:-deepseek-ai/deepseek-coder-6.7b-base}"
 ENCODER_NAME="${ENCODER_NAME:-microsoft/unixcoder-base}"
-# Retriever-first with no optional adapter is the wall-clock-safe default: it
-# keeps the generator frozen and builds the expensive preference pool once.
-# Set EXPERIMENT_MODE=intent_main and ADAPTER_TYPE=soft_prompt explicitly for
-# the full alternating paper run.
-EXPERIMENT_MODE="${EXPERIMENT_MODE:-sequential_retriever_first}"
+# The primary paper baseline must isolate retrieval: DeepSeek-Coder is frozen,
+# no soft prompt is trained, and retrieval is always enabled.  After this run,
+# use EXPERIMENT_MODE=sequential_retriever_first ADAPTER_TYPE=soft_prompt for
+# the optional generator-adaptation ablation.
+EXPERIMENT_MODE="${EXPERIMENT_MODE:-retriever_only}"
 ADAPTER_TYPE="${ADAPTER_TYPE:-none}"
+GATE_MODE="${GATE_MODE:-learned}"
 MAX_TRAIN_SAMPLES="${MAX_TRAIN_SAMPLES:-0}"
 COMPLETION_LEVEL="${COMPLETION_LEVEL:-mixed}"
 TRAIN_EPOCHS="${TRAIN_EPOCHS:-${NUM_EPOCHS:-10}}"
@@ -32,7 +33,8 @@ MAX_PAIRS_PER_SAMPLE="${MAX_PAIRS_PER_SAMPLE:-4}"
 UTILITY_SCORE_MICROBATCH_SIZE="${UTILITY_SCORE_MICROBATCH_SIZE:-2}"
 TRAIN_BATCH_SIZE="${TRAIN_BATCH_SIZE:-8}"
 BATCH_ENCODE_SIZE="${BATCH_ENCODE_SIZE:-64}"
-EVAL_BATCH_SIZE="${EVAL_BATCH_SIZE:-2}"
+EVAL_BATCH_SIZE="${EVAL_BATCH_SIZE:-1}"
+EVAL_MAX_NEW_TOKENS="${EVAL_MAX_NEW_TOKENS:-64}"
 BUILD_TRAIN_INDEX="${BUILD_TRAIN_INDEX:-0}"
 REFRESH_TRAIN_INDEX="${REFRESH_TRAIN_INDEX:-0}"
 EVAL_MAX_SAMPLES="${EVAL_MAX_SAMPLES:-0}"
@@ -42,8 +44,11 @@ EVAL_INDEX_MODE="${EVAL_INDEX_MODE:-sharded}"
 EVAL_INDEX_ROOT="${EVAL_INDEX_ROOT:-${OUTPUT_ROOT}/eval_index}"
 EVAL_INDEX_SHARD_SIZE="${EVAL_INDEX_SHARD_SIZE:-50000}"
 BUILD_EVAL_INDEX="${BUILD_EVAL_INDEX:-1}"
-EVAL_RETRIEVER_DEVICE="${EVAL_RETRIEVER_DEVICE:-cpu}"
-EVAL_MAX_CONTEXT_TOKENS="${EVAL_MAX_CONTEXT_TOKENS:-3072}"
+EVAL_RETRIEVER_DEVICE="${EVAL_RETRIEVER_DEVICE:-cuda}"
+# Evaluation uses the validated 4K window. The packer keeps the cursor tail
+# and only includes complete snippets. Training remains explicitly configured
+# at 4096 below to keep its memory footprint predictable.
+EVAL_MAX_CONTEXT_TOKENS="${EVAL_MAX_CONTEXT_TOKENS:-4096}"
 EVAL_SKIP_NLL="${EVAL_SKIP_NLL:-0}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 
@@ -119,7 +124,11 @@ if [[ "${RUN_TRAIN}" == "1" ]]; then
   echo "Training ${EXPERIMENT_MODE} for TRAIN_EPOCHS=${TRAIN_EPOCHS} (epoch_budget_mode=${EPOCH_BUDGET_MODE})"
   echo "Encoder: ${ENCODER_NAME}"
   echo "Generator: ${GENERATOR_NAME}"
-  echo "Generator backbone: frozen; adapter: ${ADAPTER_TYPE}"
+  effective_gate_mode="${GATE_MODE}"
+  if [[ "${EXPERIMENT_MODE}" == "retriever_only" ]]; then
+    effective_gate_mode="always_retrieve"
+  fi
+  echo "Generator backbone: frozen; adapter: ${ADAPTER_TYPE}; gate: ${effective_gate_mode}"
   echo "Completion level: ${COMPLETION_LEVEL}"
   echo "Preference pool top-k: ${PREFERENCE_POOL_TOP_K}; max pairs/sample: ${MAX_PAIRS_PER_SAMPLE}"
   echo "Batch sizes: data_loader=${TRAIN_BATCH_SIZE}, encoder_microbatch=${BATCH_ENCODE_SIZE}, utility_score_microbatch=${UTILITY_SCORE_MICROBATCH_SIZE}, eval_loader=${EVAL_BATCH_SIZE}"
@@ -138,7 +147,7 @@ if [[ "${RUN_TRAIN}" == "1" ]]; then
     --generator-name "${GENERATOR_NAME}" \
     --experiment-mode "${EXPERIMENT_MODE}" \
     --intent-mode static \
-    --gate-mode learned \
+    --gate-mode "${GATE_MODE}" \
     --adapter-type "${ADAPTER_TYPE}" \
     --retriever-loss lipo \
     --lipo-tau 1.0 \
@@ -267,7 +276,7 @@ if [[ "${RUN_EVAL}" == "1" ]]; then
       --eval-index-shard-size "${EVAL_INDEX_SHARD_SIZE}" \
       --eval-retriever-device "${EVAL_RETRIEVER_DEVICE}" \
       --max-context-tokens "${EVAL_MAX_CONTEXT_TOKENS}" \
-      --max-new-tokens 128 \
+      --max-new-tokens "${EVAL_MAX_NEW_TOKENS}" \
       --leave-one-out-analysis-samples "${LEAVE_ONE_OUT_ANALYSIS_SAMPLES}" \
       "${EVAL_NLL_ARGS[@]}" \
       "${EVAL_EXTRA_ARGS[@]}" \

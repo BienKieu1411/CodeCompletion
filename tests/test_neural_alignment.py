@@ -56,6 +56,39 @@ def _chunk(symbol: str) -> CodeChunk:
     )
 
 
+class _WhitespaceTokenizer:
+    def encode(self, text, add_special_tokens=False):
+        return str(text).split()
+
+    def decode(self, ids, skip_special_tokens=True):
+        return " ".join(ids)
+
+
+def test_token_budget_keeps_complete_snippets_and_cursor_tail():
+    tokenizer = _WhitespaceTokenizer()
+    large = CodeChunk(
+        file_path="large.py",
+        start_line=1,
+        end_line=25,
+        chunk_type="function",
+        text=" ".join(f"large{i}" for i in range(25)),
+    )
+    manager = TokenBudgetManager(
+        max_tokens=35,
+        num_prompt_tokens=4,
+        generation_headroom=4,
+        left_context_reserve_tokens=8,
+    )
+    left_context = " ".join(f"left{i}" for i in range(30))
+
+    packed = manager.pack([large, _chunk("small")], left_context, tokenizer)
+
+    assert len(tokenizer.encode(packed)) <= manager.retrieval_budget
+    assert "large0" not in packed
+    assert "def small(): pass" in packed
+    assert packed.split()[-1] == "left29"
+
+
 class TinyDenseRetriever(DenseRetriever):
     def __init__(self) -> None:
         nn.Module.__init__(self)
@@ -633,6 +666,73 @@ def test_sequential_retriever_first_does_not_refresh_preferences_after_adapter()
     ]
     assert trainer.use_adapter is True
     assert result[0]["preference_data_builds"] == 1
+
+
+def test_retriever_only_disables_adapter_and_gate_by_default():
+    trainer = NeuralCoTrainer.__new__(NeuralCoTrainer)
+    trainer.config = SimpleNamespace(
+        experiment_mode="retriever_only",
+        adapter_type="soft_prompt",
+        gate_mode="learned",
+    )
+
+    trainer._apply_experiment_defaults()
+
+    assert trainer.config.adapter_type == "none"
+    assert trainer.config.gate_mode == "always_retrieve"
+
+
+def test_retriever_only_uses_one_preference_build_and_no_prompt_or_gate_steps():
+    trainer = NeuralCoTrainer.__new__(NeuralCoTrainer)
+    trainer.config = SimpleNamespace(
+        experiment_mode="retriever_only",
+        adapter_type="none",
+        gate_mode="always_retrieve",
+        train_epochs=10,
+        epoch_budget_mode=False,
+        num_rounds=3,
+        steps_per_round_retriever=7,
+        steps_per_round_dpo=7,
+        retriever_loss="lipo",
+    )
+    trainer.use_adapter = False
+    trainer.calls = []
+
+    preference_data = SimpleNamespace(
+        lipo_groups=[object()],
+        pairs=[],
+        gate_examples=[object()],
+        gate_positive_count=1,
+        mean_max_utility=0.0,
+        mean_gate_adjusted_utility=0.0,
+        mean_gate_context_cost=0.0,
+        pair_type_counts={},
+        strategy_counts={},
+    )
+
+    def phase2(samples):
+        trainer.calls.append("preference")
+        return preference_data
+
+    def phase3(data, steps=None, gate_steps=None):
+        trainer.calls.append(("retriever", steps, gate_steps))
+        return {"phase3_retriever_steps": steps, "phase3_gate_steps": gate_steps}
+
+    trainer.phase2_build_preference_data = phase2
+    trainer.phase3_retriever_training = phase3
+    trainer.phase4_refresh_index = lambda: trainer.calls.append("refresh")
+
+    result = trainer.phase5_retriever_only(samples=[object()])
+
+    assert trainer.calls == [
+        "preference",
+        ("retriever", 21, 0),
+        "refresh",
+    ]
+    assert result[0]["prompt_steps_budget"] == 0
+    assert result[0]["gate_steps_budget"] == 0
+    assert result[0]["soft_prompt_updated"] is False
+    assert result[0]["gate_updated"] is False
 
 
 def test_epoch_budget_mode_uses_full_pass_steps_without_extra_refreshes():

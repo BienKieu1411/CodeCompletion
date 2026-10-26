@@ -556,18 +556,21 @@ def _evaluate_neural(cfg: Dict[str, Any]) -> Dict[str, Any]:
             "generator_dtype": cfg.get(
                 "generator_dtype", checkpoint_cfg.get("generator_dtype", "float16")
             ),
-            # Evaluation is deliberately capped below the training context
-            # by default. This prevents long-prefill attention from consuming
-            # the entire A100; callers can raise it after a memory smoke test.
+            # Keep evaluation at the validated 4K window unless the caller
+            # explicitly requests another value. The budget manager preserves
+            # the cursor tail and only admits complete retrieved snippets.
             "max_context_tokens": int(
                 cfg.get(
                     "max_context_tokens",
-                    min(int(checkpoint_cfg.get("max_context_tokens", 4096)), 3072),
+                    min(int(checkpoint_cfg.get("max_context_tokens", 4096)), 4096),
                 )
             ),
             "top_k": int(cfg.get("top_k", checkpoint_cfg.get("top_k", 3))),
             "max_new_tokens": int(
                 cfg.get("max_new_tokens", checkpoint_cfg.get("max_new_tokens", 128))
+            ),
+            "eval_batch_size": int(
+                cfg.get("eval_batch_size", checkpoint_cfg.get("eval_batch_size", 1))
             ),
             "eval_skip_nll": bool(cfg.get("eval_skip_nll", False)),
             "batch_encode_size": int(

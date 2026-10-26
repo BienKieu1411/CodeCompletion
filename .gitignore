@@ -41,3 +41,6 @@ test.jsonl
 
 # Local papers
 *.pdf
+
+
+local_server_results/
