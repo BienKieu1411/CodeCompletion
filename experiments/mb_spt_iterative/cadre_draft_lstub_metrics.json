@@ -1,0 +1,54 @@
+{
+  "Pass 1: Baseline CADRE v3 (Full Context)": {
+    "cceval_python": {
+      "em": 22.0,
+      "es": 3574.0,
+      "count": 100
+    },
+    "cceval_java": {
+      "em": 35.0,
+      "es": 3825.0,
+      "count": 100
+    },
+    "repoeval_api": {
+      "em": 48.04,
+      "es": 5479.87,
+      "count": 100
+    },
+    "repoeval_line": {
+      "em": 60.45,
+      "es": 3330.37,
+      "count": 100
+    },
+    "macro_mean": {
+      "em": 41.37,
+      "es": 4052.31
+    }
+  },
+  "Pass 2: CADRE-DraftStub (Targeted L_stub Refined)": {
+    "cceval_python": {
+      "em": 22.0,
+      "es": 3573.0,
+      "count": 100
+    },
+    "cceval_java": {
+      "em": 35.0,
+      "es": 3825.0,
+      "count": 100
+    },
+    "repoeval_api": {
+      "em": 48.04,
+      "es": 5479.87,
+      "count": 100
+    },
+    "repoeval_line": {
+      "em": 60.45,
+      "es": 3333.91,
+      "count": 100
+    },
+    "macro_mean": {
+      "em": 41.37,
+      "es": 4052.94
+    }
+  }
+}

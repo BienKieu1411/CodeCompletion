@@ -1,0 +1,131 @@
+{
+  "pred_arm1": {
+    "cceval_python": {
+      "count": 2665,
+      "aligncoder_em": 15.57,
+      "prefix_em": 15.57,
+      "edit_sim": 37.85,
+      "id_f1": 37.69
+    },
+    "cceval_java": {
+      "count": 2139,
+      "aligncoder_em": 17.44,
+      "prefix_em": 17.44,
+      "edit_sim": 35.1,
+      "id_f1": 39.19
+    },
+    "repoeval_api": {
+      "count": 1600,
+      "aligncoder_em": 28.38,
+      "prefix_em": 28.38,
+      "edit_sim": 37.83,
+      "id_f1": 40.51
+    },
+    "repoeval_line": {
+      "count": 1600,
+      "aligncoder_em": 34.69,
+      "prefix_em": 34.69,
+      "edit_sim": 27.56,
+      "id_f1": 27.89
+    },
+    "micro_mean": {
+      "count": 8004,
+      "aligncoder_em": 22.45,
+      "prefix_em": 22.45,
+      "edit_sim": 35.06,
+      "id_f1": 36.69
+    },
+    "macro_mean": {
+      "aligncoder_em": 24.02,
+      "prefix_em": 24.02,
+      "edit_sim": 34.59,
+      "id_f1": 36.32
+    }
+  },
+  "pred_arm2": {
+    "cceval_python": {
+      "count": 2665,
+      "aligncoder_em": 16.4,
+      "prefix_em": 16.4,
+      "edit_sim": 35.02,
+      "id_f1": 37.83
+    },
+    "cceval_java": {
+      "count": 2139,
+      "aligncoder_em": 18.51,
+      "prefix_em": 18.51,
+      "edit_sim": 35.18,
+      "id_f1": 40.15
+    },
+    "repoeval_api": {
+      "count": 1600,
+      "aligncoder_em": 30.81,
+      "prefix_em": 30.81,
+      "edit_sim": 41.46,
+      "id_f1": 45.1
+    },
+    "repoeval_line": {
+      "count": 1600,
+      "aligncoder_em": 38.69,
+      "prefix_em": 38.69,
+      "edit_sim": 30.44,
+      "id_f1": 29.1
+    },
+    "micro_mean": {
+      "count": 8004,
+      "aligncoder_em": 24.3,
+      "prefix_em": 24.3,
+      "edit_sim": 35.43,
+      "id_f1": 38.16
+    },
+    "macro_mean": {
+      "aligncoder_em": 26.1,
+      "prefix_em": 26.1,
+      "edit_sim": 35.52,
+      "id_f1": 38.04
+    }
+  },
+  "pred_arm3": {
+    "cceval_python": {
+      "count": 2665,
+      "aligncoder_em": 16.4,
+      "prefix_em": 16.4,
+      "edit_sim": 35.09,
+      "id_f1": 37.84
+    },
+    "cceval_java": {
+      "count": 2139,
+      "aligncoder_em": 18.51,
+      "prefix_em": 18.51,
+      "edit_sim": 35.13,
+      "id_f1": 40.13
+    },
+    "repoeval_api": {
+      "count": 1600,
+      "aligncoder_em": 30.69,
+      "prefix_em": 30.69,
+      "edit_sim": 41.41,
+      "id_f1": 45.18
+    },
+    "repoeval_line": {
+      "count": 1600,
+      "aligncoder_em": 38.88,
+      "prefix_em": 38.88,
+      "edit_sim": 30.29,
+      "id_f1": 28.92
+    },
+    "micro_mean": {
+      "count": 8004,
+      "aligncoder_em": 24.31,
+      "prefix_em": 24.31,
+      "edit_sim": 35.4,
+      "id_f1": 38.14
+    },
+    "macro_mean": {
+      "aligncoder_em": 26.12,
+      "prefix_em": 26.12,
+      "edit_sim": 35.48,
+      "id_f1": 38.02
+    }
+  }
+}

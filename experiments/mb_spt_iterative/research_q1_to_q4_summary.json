@@ -1,0 +1,409 @@
+{
+  "cadre_budget_8k": {
+    "arm": "cadre_budget_8k",
+    "title": "Question 1: Full 8k Budget (CADRE+)",
+    "tasks": 256,
+    "gen_time_seconds": 28.926220655441284,
+    "micro_em_align": 37.109375,
+    "micro_es_align": 72.7890625,
+    "micro_em_air": 37.890625,
+    "by_bm": {
+      "cceval_python": {
+        "count": 64,
+        "em_align": 32.8125,
+        "es_align": 76.4375,
+        "em_air": 34.375
+      },
+      "cceval_java": {
+        "count": 64,
+        "em_align": 21.875,
+        "es_align": 63.0625,
+        "em_air": 23.4375
+      },
+      "repoeval_api": {
+        "count": 64,
+        "em_align": 48.4375,
+        "es_align": 76.015625,
+        "em_air": 48.4375
+      },
+      "repoeval_line": {
+        "count": 64,
+        "em_align": 45.3125,
+        "es_align": 75.640625,
+        "em_air": 45.3125
+      }
+    },
+    "macro_em_align": 37.109375,
+    "macro_em_air": 37.890625
+  },
+  "cadre_budget_4k": {
+    "arm": "cadre_budget_4k",
+    "title": "Question 1: Reduced 4k Budget",
+    "tasks": 256,
+    "gen_time_seconds": 19.394867420196533,
+    "micro_em_align": 35.9375,
+    "micro_es_align": 71.984375,
+    "micro_em_air": 36.71875,
+    "by_bm": {
+      "cceval_python": {
+        "count": 64,
+        "em_align": 31.25,
+        "es_align": 75.5625,
+        "em_air": 32.8125
+      },
+      "cceval_java": {
+        "count": 64,
+        "em_align": 20.3125,
+        "es_align": 63.328125,
+        "em_air": 21.875
+      },
+      "repoeval_api": {
+        "count": 64,
+        "em_align": 45.3125,
+        "es_align": 72.578125,
+        "em_air": 45.3125
+      },
+      "repoeval_line": {
+        "count": 64,
+        "em_align": 46.875,
+        "es_align": 76.46875,
+        "em_air": 46.875
+      }
+    },
+    "macro_em_align": 35.9375,
+    "macro_em_air": 36.71875
+  },
+  "cadre_budget_2k": {
+    "arm": "cadre_budget_2k",
+    "title": "Question 1: Constrained 2k Budget",
+    "tasks": 256,
+    "gen_time_seconds": 10.981442928314209,
+    "micro_em_align": 31.640625,
+    "micro_es_align": 69.23046875,
+    "micro_em_air": 32.03125,
+    "by_bm": {
+      "cceval_python": {
+        "count": 64,
+        "em_align": 26.5625,
+        "es_align": 73.671875,
+        "em_air": 26.5625
+      },
+      "cceval_java": {
+        "count": 64,
+        "em_align": 17.1875,
+        "es_align": 62.640625,
+        "em_air": 18.75
+      },
+      "repoeval_api": {
+        "count": 64,
+        "em_align": 42.1875,
+        "es_align": 71.65625,
+        "em_air": 42.1875
+      },
+      "repoeval_line": {
+        "count": 64,
+        "em_align": 40.625,
+        "es_align": 68.953125,
+        "em_air": 40.625
+      }
+    },
+    "macro_em_align": 31.640625,
+    "macro_em_air": 32.03125
+  },
+  "bm25_raw_flat": {
+    "arm": "bm25_raw_flat",
+    "title": "Question 2: BM-25 Top 10 Raw Baseline",
+    "tasks": 256,
+    "gen_time_seconds": 16.320853233337402,
+    "micro_em_align": 18.359375,
+    "micro_es_align": 60.21484375,
+    "micro_em_air": 19.140625,
+    "by_bm": {
+      "cceval_python": {
+        "count": 64,
+        "em_align": 9.375,
+        "es_align": 61.40625,
+        "em_air": 9.375
+      },
+      "cceval_java": {
+        "count": 64,
+        "em_align": 12.5,
+        "es_align": 53.265625,
+        "em_air": 14.0625
+      },
+      "repoeval_api": {
+        "count": 64,
+        "em_align": 23.4375,
+        "es_align": 63.53125,
+        "em_air": 25.0
+      },
+      "repoeval_line": {
+        "count": 64,
+        "em_align": 28.125,
+        "es_align": 62.65625,
+        "em_air": 28.125
+      }
+    },
+    "macro_em_align": 18.359375,
+    "macro_em_air": 19.140625
+  },
+  "bm25_plus_cadre": {
+    "arm": "bm25_plus_cadre",
+    "title": "Question 2: BM-25 Top 10 + CADRE",
+    "tasks": 256,
+    "gen_time_seconds": 20.061728477478027,
+    "micro_em_align": 19.53125,
+    "micro_es_align": 61.85546875,
+    "micro_em_air": 20.3125,
+    "by_bm": {
+      "cceval_python": {
+        "count": 64,
+        "em_align": 17.1875,
+        "es_align": 64.671875,
+        "em_air": 17.1875
+      },
+      "cceval_java": {
+        "count": 64,
+        "em_align": 10.9375,
+        "es_align": 60.015625,
+        "em_air": 12.5
+      },
+      "repoeval_api": {
+        "count": 64,
+        "em_align": 23.4375,
+        "es_align": 62.15625,
+        "em_air": 25.0
+      },
+      "repoeval_line": {
+        "count": 64,
+        "em_align": 26.5625,
+        "es_align": 60.578125,
+        "em_air": 26.5625
+      }
+    },
+    "macro_em_align": 19.53125,
+    "macro_em_air": 20.3125
+  },
+  "rlcoder_raw_flat": {
+    "arm": "rlcoder_raw_flat",
+    "title": "Question 2: RLCoder Top 10 Raw Baseline",
+    "tasks": 256,
+    "gen_time_seconds": 18.583558559417725,
+    "micro_em_align": 17.1875,
+    "micro_es_align": 59.46484375,
+    "micro_em_air": 17.96875,
+    "by_bm": {
+      "cceval_python": {
+        "count": 64,
+        "em_align": 9.375,
+        "es_align": 61.203125,
+        "em_air": 9.375
+      },
+      "cceval_java": {
+        "count": 64,
+        "em_align": 9.375,
+        "es_align": 53.40625,
+        "em_air": 10.9375
+      },
+      "repoeval_api": {
+        "count": 64,
+        "em_align": 23.4375,
+        "es_align": 63.421875,
+        "em_air": 25.0
+      },
+      "repoeval_line": {
+        "count": 64,
+        "em_align": 26.5625,
+        "es_align": 59.828125,
+        "em_air": 26.5625
+      }
+    },
+    "macro_em_align": 17.1875,
+    "macro_em_air": 17.96875
+  },
+  "rlcoder_plus_cadre": {
+    "arm": "rlcoder_plus_cadre",
+    "title": "Question 2: RLCoder Top 10 + CADRE",
+    "tasks": 256,
+    "gen_time_seconds": 24.14762830734253,
+    "micro_em_align": 20.703125,
+    "micro_es_align": 62.78515625,
+    "micro_em_air": 21.484375,
+    "by_bm": {
+      "cceval_python": {
+        "count": 64,
+        "em_align": 18.75,
+        "es_align": 67.84375,
+        "em_air": 18.75
+      },
+      "cceval_java": {
+        "count": 64,
+        "em_align": 12.5,
+        "es_align": 58.890625,
+        "em_air": 14.0625
+      },
+      "repoeval_api": {
+        "count": 64,
+        "em_align": 23.4375,
+        "es_align": 62.140625,
+        "em_air": 25.0
+      },
+      "repoeval_line": {
+        "count": 64,
+        "em_align": 28.125,
+        "es_align": 62.265625,
+        "em_air": 28.125
+      }
+    },
+    "macro_em_align": 20.703125,
+    "macro_em_air": 21.484375
+  },
+  "bm25_cssi_expanded_cadre": {
+    "arm": "bm25_cssi_expanded_cadre",
+    "title": "Question 3: BM-25 CSSI-Expanded Query + CADRE",
+    "tasks": 256,
+    "gen_time_seconds": 20.51928734779358,
+    "micro_em_align": 19.921875,
+    "micro_es_align": 61.71875,
+    "micro_em_air": 20.703125,
+    "by_bm": {
+      "cceval_python": {
+        "count": 64,
+        "em_align": 17.1875,
+        "es_align": 64.671875,
+        "em_air": 17.1875
+      },
+      "cceval_java": {
+        "count": 64,
+        "em_align": 12.5,
+        "es_align": 59.296875,
+        "em_air": 14.0625
+      },
+      "repoeval_api": {
+        "count": 64,
+        "em_align": 23.4375,
+        "es_align": 62.25,
+        "em_air": 25.0
+      },
+      "repoeval_line": {
+        "count": 64,
+        "em_align": 26.5625,
+        "es_align": 60.65625,
+        "em_air": 26.5625
+      }
+    },
+    "macro_em_align": 19.921875,
+    "macro_em_air": 20.703125
+  },
+  "cadre_linear_stub": {
+    "arm": "cadre_linear_stub",
+    "title": "Question 4: Canonical Interface Stub (PEP 484/Java Interface)",
+    "tasks": 256,
+    "gen_time_seconds": 28.31560254096985,
+    "micro_em_align": 37.109375,
+    "micro_es_align": 72.91015625,
+    "micro_em_air": 37.890625,
+    "by_bm": {
+      "cceval_python": {
+        "count": 64,
+        "em_align": 32.8125,
+        "es_align": 76.4375,
+        "em_air": 34.375
+      },
+      "cceval_java": {
+        "count": 64,
+        "em_align": 21.875,
+        "es_align": 63.828125,
+        "em_air": 23.4375
+      },
+      "repoeval_api": {
+        "count": 64,
+        "em_align": 48.4375,
+        "es_align": 76.015625,
+        "em_air": 48.4375
+      },
+      "repoeval_line": {
+        "count": 64,
+        "em_align": 45.3125,
+        "es_align": 75.359375,
+        "em_air": 45.3125
+      }
+    },
+    "macro_em_align": 37.109375,
+    "macro_em_air": 37.890625
+  },
+  "cadre_linear_tree": {
+    "arm": "cadre_linear_tree",
+    "title": "Question 4: Explicit DFS Indented Tree Notation",
+    "tasks": 256,
+    "gen_time_seconds": 28.44759774208069,
+    "micro_em_align": 36.71875,
+    "micro_es_align": 73.09375,
+    "micro_em_air": 37.5,
+    "by_bm": {
+      "cceval_python": {
+        "count": 64,
+        "em_align": 32.8125,
+        "es_align": 76.03125,
+        "em_air": 34.375
+      },
+      "cceval_java": {
+        "count": 64,
+        "em_align": 21.875,
+        "es_align": 63.828125,
+        "em_air": 23.4375
+      },
+      "repoeval_api": {
+        "count": 64,
+        "em_align": 46.875,
+        "es_align": 76.859375,
+        "em_air": 46.875
+      },
+      "repoeval_line": {
+        "count": 64,
+        "em_align": 45.3125,
+        "es_align": 75.65625,
+        "em_air": 45.3125
+      }
+    },
+    "macro_em_align": 36.71875,
+    "macro_em_air": 37.5
+  },
+  "cadre_linear_schema": {
+    "arm": "cadre_linear_schema",
+    "title": "Question 4: JSON-Schema AST Type Map",
+    "tasks": 256,
+    "gen_time_seconds": 28.451395988464355,
+    "micro_em_align": 36.71875,
+    "micro_es_align": 72.78515625,
+    "micro_em_air": 37.5,
+    "by_bm": {
+      "cceval_python": {
+        "count": 64,
+        "em_align": 32.8125,
+        "es_align": 76.078125,
+        "em_air": 34.375
+      },
+      "cceval_java": {
+        "count": 64,
+        "em_align": 21.875,
+        "es_align": 62.609375,
+        "em_air": 23.4375
+      },
+      "repoeval_api": {
+        "count": 64,
+        "em_align": 46.875,
+        "es_align": 76.796875,
+        "em_air": 46.875
+      },
+      "repoeval_line": {
+        "count": 64,
+        "em_align": 45.3125,
+        "es_align": 75.65625,
+        "em_air": 45.3125
+      }
+    },
+    "macro_em_align": 36.71875,
+    "macro_em_air": 37.5
+  }
+}

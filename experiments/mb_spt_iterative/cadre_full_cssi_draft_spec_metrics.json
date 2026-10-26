@@ -1,0 +1,54 @@
+{
+  "Pass 1: CADRE (Retrieval + CSSI L_stub)": {
+    "cceval_python": {
+      "em": 22.0,
+      "es": 3610.0,
+      "count": 100
+    },
+    "cceval_java": {
+      "em": 35.0,
+      "es": 3825.0,
+      "count": 100
+    },
+    "repoeval_api": {
+      "em": 47.26,
+      "es": 5431.81,
+      "count": 100
+    },
+    "repoeval_line": {
+      "em": 60.45,
+      "es": 3333.4,
+      "count": 100
+    },
+    "macro_mean": {
+      "em": 41.18,
+      "es": 4050.05
+    }
+  },
+  "Pass 2: CADRE-FullCSSI-DraftSpec (CSSI + Enriched Target Spec)": {
+    "cceval_python": {
+      "em": 24.0,
+      "es": 3677.0,
+      "count": 100
+    },
+    "cceval_java": {
+      "em": 36.0,
+      "es": 3834.0,
+      "count": 100
+    },
+    "repoeval_api": {
+      "em": 46.26,
+      "es": 5428.92,
+      "count": 100
+    },
+    "repoeval_line": {
+      "em": 60.45,
+      "es": 3338.58,
+      "count": 100
+    },
+    "macro_mean": {
+      "em": 41.68,
+      "es": 4069.62
+    }
+  }
+}

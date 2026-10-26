@@ -1,0 +1,126 @@
+{
+  "metadata": {
+    "timestamp": "2026-10-26 10:26:25",
+    "generator": "deepseek-ai/deepseek-coder-1.3b-base",
+    "retriever": "nov3630/RLCoder",
+    "total_tasks": 8004,
+    "max_tokens": 64,
+    "context_tokens": 4096,
+    "cross_max_tokens": 1280,
+    "cssi_max_tokens": 512,
+    "duration_sec": 3075.5
+  },
+  "arms": {
+    "rlcoder_base_4k": {
+      "cceval_python": {
+        "count": 2665,
+        "em": 15.08,
+        "es": 27.19,
+        "id_f1": 23.44
+      },
+      "cceval_java": {
+        "count": 2139,
+        "em": 17.16,
+        "es": 31.13,
+        "id_f1": 29.1
+      },
+      "repoeval_api": {
+        "count": 1600,
+        "em": 28.38,
+        "es": 38.6,
+        "id_f1": 38.8
+      },
+      "repoeval_line": {
+        "count": 1600,
+        "em": 34.31,
+        "es": 26.42,
+        "id_f1": 21.32
+      },
+      "micro_mean": {
+        "count": 8004,
+        "em": 22.14,
+        "es": 30.37,
+        "id_f1": 27.6
+      },
+      "macro_mean": {
+        "em": 23.73,
+        "es": 30.83,
+        "id_f1": 28.16
+      }
+    },
+    "cadre_posthoc_cssi_4k": {
+      "cceval_python": {
+        "count": 2665,
+        "em": 16.1,
+        "es": 26.89,
+        "id_f1": 23.61
+      },
+      "cceval_java": {
+        "count": 2139,
+        "em": 18.23,
+        "es": 31.05,
+        "id_f1": 28.39
+      },
+      "repoeval_api": {
+        "count": 1600,
+        "em": 30.81,
+        "es": 38.46,
+        "id_f1": 38.8
+      },
+      "repoeval_line": {
+        "count": 1600,
+        "em": 38.25,
+        "es": 26.0,
+        "id_f1": 20.73
+      },
+      "micro_mean": {
+        "count": 8004,
+        "em": 24.04,
+        "es": 30.14,
+        "id_f1": 27.35
+      },
+      "macro_mean": {
+        "em": 25.85,
+        "es": 30.6,
+        "id_f1": 27.88
+      }
+    },
+    "cadre_pre_and_post_cssi_4k": {
+      "cceval_python": {
+        "count": 2665,
+        "em": 16.14,
+        "es": 26.87,
+        "id_f1": 23.72
+      },
+      "cceval_java": {
+        "count": 2139,
+        "em": 18.23,
+        "es": 31.02,
+        "id_f1": 28.37
+      },
+      "repoeval_api": {
+        "count": 1600,
+        "em": 30.69,
+        "es": 38.49,
+        "id_f1": 38.8
+      },
+      "repoeval_line": {
+        "count": 1600,
+        "em": 38.44,
+        "es": 25.99,
+        "id_f1": 20.61
+      },
+      "micro_mean": {
+        "count": 8004,
+        "em": 24.06,
+        "es": 30.13,
+        "id_f1": 27.36
+      },
+      "macro_mean": {
+        "em": 25.87,
+        "es": 30.59,
+        "id_f1": 27.87
+      }
+    }
+  }
+}

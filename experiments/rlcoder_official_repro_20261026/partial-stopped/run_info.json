@@ -1,0 +1,65 @@
+{
+  "status": "running",
+  "official_repo_commit": "164d8d88cde324a38f5da70c4f858cc4679ef08e",
+  "dataset_repo": "nov3630/Data4RLCoder",
+  "dataset_revision": "cb9639f20f2374d75e5b0b8e8650f1b20802bf9f",
+  "retriever_repo": "nov3630/RLRetriever",
+  "retriever_revision": "ec587f5d8635462fff3cfb06f9a946148acda08b",
+  "generator_repo": "deepseek-ai/deepseek-coder-1.3b-base",
+  "generator_revision": "c919139c3a9b4070729c8b2cca4847ab29ca8d94",
+  "generator_batch_size_per_gpu": 32,
+  "retriever_batch_size_per_gpu": 64,
+  "bm25_pool_size": 100,
+  "retrieved_snippets": 10,
+  "stop_block_enabled": true,
+  "crossfile_token_limit": 512,
+  "total_prompt_token_limit": 1024,
+  "max_generation_tokens": 64,
+  "fixed_block": false,
+  "progressive_generation": false,
+  "metrics_impl": "official RLCoder utils.eval_metric.compute_metric_stmt",
+  "eval_only_entrypoint": true,
+  "eval_loss_skipped": true,
+  "torch": "2.11.0+cu130",
+  "transformers": "5.20.2",
+  "tree_sitter": "0.20.4",
+  "python": "3.13.16 (main, Oct  1 2026, 15:40:24) [GCC 13.3.0]",
+  "gpu": [
+    "NVIDIA A100-SXM4-40GB"
+  ],
+  "benchmarks_requested": [
+    "cceval_java",
+    "cceval_python",
+    "repoeval_api",
+    "repoeval_line"
+  ],
+  "limit_per_benchmark": null,
+  "benchmarks": {
+    "cceval_python": {
+      "n": 2665,
+      "mean_selected_count": 10.0,
+      "scores": {
+        "em": "1.5385(1.54)",
+        "es": "35.8499(26.9)",
+        "id_em": 4.9156,
+        "id_f1": 32.9825,
+        "total": 2665
+      },
+      "seconds": 1782.55,
+      "peak_vram_gib": 10.598
+    },
+    "cceval_java": {
+      "n": 2139,
+      "mean_selected_count": 10.0,
+      "scores": {
+        "em": "7.1529(7.15)",
+        "es": "58.3675(51.16)",
+        "id_em": 20.9444,
+        "id_f1": 49.3439,
+        "total": 2139
+      },
+      "seconds": 1266.27,
+      "peak_vram_gib": 10.594
+    }
+  }
+}

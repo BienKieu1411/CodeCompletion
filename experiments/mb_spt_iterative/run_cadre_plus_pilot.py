@@ -1,366 +1,460 @@
 #!/usr/bin/env python3
-"""CADRE+ (Line-Commented Coalescing + Param-Aligned CSSI + 64-token gen) on 256-Task Pilot.
+"""
+CADRE-Plus Experimental Run on 400 Pilot Tasks (DeepSeek-Coder-1.3B)
 
-Targeting:
-- Beating AIRCoder's reported numbers: CCEval-Python > 31.26%, RepoEval-API > 43.94%
-- Beating baseline AIRCoder replication (33.59%)
-- Demonstrating the exact mechanism that achieves >40% Micro EM under AlignCoder standard metric.
+Architecture of CADRE-Plus:
+1. Full Context Retention:
+   - Preserves complete raw chunks (up to 3,200 tokens) with full implementation bodies.
+   - Sibling function implementations are retained intact for pattern copying.
+2. Call-Site Usage Injection (RFSC v2):
+   - Extracts real usage lines (# [CSSI Usage]: res = obj.method(...)) for receiver and callee triggers.
+   - Injected as compact contract lines without displacing implementation chunks.
+3. Targeted 2-Pass IDGR:
+   - For Python CCEval: draft-guided retrieval pulls missing callee modules into Top-1 rank.
+   - For Java & RepoEval: single-pass with full context to avoid overload pull.
 """
 
-from __future__ import annotations
-
-import difflib
 import gzip
 import json
-import keyword
 import os
 import re
+import subprocess
 import sys
-import time
+import tarfile
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
+import difflib
 
-ROOT_DIR = Path("/content/mb_spt")
+# 1. Environment & Dependencies
+def ensure_deps():
+    needed = []
+    for mod, pkg in [("fuzzywuzzy", "fuzzywuzzy"), ("Levenshtein", "python-Levenshtein"), ("editdistance", "editdistance")]:
+        try:
+            __import__(mod)
+        except ImportError:
+            needed.append(pkg)
+    try:
+        from importlib.metadata import version
+        if version("tree-sitter") != "0.20.4":
+            needed.append("tree-sitter==0.20.4")
+    except Exception:
+        needed.append("tree-sitter==0.20.4")
+    try:
+        import vllm
+    except ImportError:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "uv"])
+        subprocess.check_call(["uv", "pip", "install", "--system", "vllm", "--torch-backend=auto"])
+    try:
+        import torchaudio
+        subprocess.call([sys.executable, "-m", "pip", "uninstall", "-y", "torchaudio"])
+    except Exception:
+        pass
+    if needed:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", *needed])
+
+ensure_deps()
+
+from transformers import AutoTokenizer
+from tree_sitter import Language, Parser
+from vllm import LLM, SamplingParams
+try:
+    from fuzzywuzzy import fuzz
+    def cal_edit_sim(p: str, g: str) -> float:
+        return float(fuzz.ratio(p.strip(), g.strip()))
+except ImportError:
+    def cal_edit_sim(p: str, g: str) -> float:
+        return difflib.SequenceMatcher(None, p.strip(), g.strip()).ratio() * 100.0
+
+# 2. Paths & Configurations
+DATA_ROOT = Path("/content") if Path("/content").exists() else Path("experiments/mb_spt_iterative")
+BUNDLE_PATH = Path("/content/full_benchmark_8004_bundle.tar.gz") if Path("/content/full_benchmark_8004_bundle.tar.gz").exists() else Path("experiments/mb_spt_iterative/full_benchmark_8004_bundle.tar.gz")
+OUTPUT_DIR = DATA_ROOT / "outputs"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
 GENERATOR = "deepseek-ai/deepseek-coder-1.3b-base"
 GENERATOR_REVISION = "c919139c3a9b4070729c8b2cca4847ab29ca8d94"
-SEED = 20261024
+SEED = 20261026
 
-ID_RE = re.compile(r"\b[_A-Za-z][_A-Za-z0-9]*\b")
-WORD_RE = re.compile(r"\w+")
+print(f"Extracting bundle if needed...", flush=True)
+if not (DATA_ROOT / "tasks.jsonl.gz").exists() and BUNDLE_PATH.exists():
+    with tarfile.open(BUNDLE_PATH, "r:gz") as t:
+        t.extractall(DATA_ROOT)
 
-STOP_SYMS = {
-    "self", "this", "None", "True", "False", "null", "return", "args", "kwargs",
-    "init", "__init__", "super", "cls", "pass", "break", "continue", "from",
-    "import", "class", "def", "void", "public", "private", "protected", "static", "final",
-    "else", "if", "for", "in", "with", "try", "except", "finally", "while",
+print(f"Loading tokenizer {GENERATOR}...", flush=True)
+tok = AutoTokenizer.from_pretrained(GENERATOR, revision=GENERATOR_REVISION, use_fast=True)
+if tok.pad_token_id is None:
+    tok.pad_token = tok.eos_token
+
+# 3. Load datasets
+all_tasks = [json.loads(l) for l in gzip.open(DATA_ROOT / "tasks.jsonl.gz", "rt")]
+traces = {(r["benchmark"], r["task_id"]): r for r in map(json.loads, gzip.open(DATA_ROOT / "retrieval_trace.jsonl.gz", "rt"))}
+files = {r["file_id"]: {"path": r["path"], "text": r["text"]} for r in map(json.loads, gzip.open(DATA_ROOT / "files.jsonl.gz", "rt"))}
+pools = {}
+if (DATA_ROOT / "pools.jsonl.gz").exists():
+    pools = {r["pool_id"]: r["file_ids"] for r in map(json.loads, gzip.open(DATA_ROOT / "pools.jsonl.gz", "rt"))}
+
+parsers = {}
+so_dir = Path("/content/build") if Path("/content/build").exists() else Path("RepoClone/AlignCoder/utils/build")
+for lang in ("python", "java"):
+    so_p = so_dir / f"{lang}-lang-parser.so"
+    if so_p.exists():
+        p = Parser()
+        p.set_language(Language(str(so_p), lang))
+        parsers[lang] = p
+
+# Load EXACT 400 pilot tasks
+pilot_pool_path = Path("/content/rerank_pilot_pool.jsonl.gz")
+if not pilot_pool_path.exists():
+    pilot_pool_path = DATA_ROOT / "rerank_pilot_pool.jsonl.gz"
+if not pilot_pool_path.exists():
+    pilot_pool_path = Path("experiments/mb_spt_iterative/rerank_pilot_pool.jsonl.gz")
+
+with gzip.open(pilot_pool_path, "rt") as f:
+    pilot_pool_records = [json.loads(l) for l in f]
+
+pilot_keys_set = {(r["benchmark"], r["task_id"]) for r in pilot_pool_records}
+tasks = [t for t in all_tasks if (t["benchmark"], t["task_id"]) in pilot_keys_set]
+print(f"Loaded {len(tasks)} pilot tasks matching baseline pool exactly.", flush=True)
+
+# 4. Syntactic Trigger & Call-site Extraction
+CALL_RE = re.compile(r"([A-Za-z_][A-Za-z0-9_.]*)\s*\(")
+DOT_MEMBER_RE = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)\s*\.\s*([A-Za-z_][A-Za-z0-9_]*)")
+DOT_END_RE = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)\s*\.\s*$")
+STOP_WORDS = {
+    "self", "this", "None", "True", "False", "def", "class", "if", "for", "while",
+    "return", "import", "from", "public", "private", "protected", "static", "void",
+    "int", "str", "float", "bool", "list", "dict", "set", "super", "try", "except"
 }
 
+def clean_bpe_text(s: str) -> str:
+    return s.replace("Ġ", " ").replace("Ċ", "\n")
 
-def extract_cursor_context_symbols(left_context: str, language: str) -> dict[str, Any]:
-    nonempty = [l for l in left_context.splitlines() if l.strip()]
-    tail = "\n".join(nonempty[-6:]) if nonempty else ""
+def remove_comments(code: str) -> str:
+    code = re.sub(r"#.*", "", code)
+    code = re.sub(r"//.*", "", code)
+    return code
+
+def get_bracket_stmt(completion: str) -> str:
+    end_idx = None
+    for i in range(len(completion)):
+        if completion[i] in [";", "}", "{"]:
+            end_idx = i
+            break
+    return completion[:end_idx + 1] if end_idx is not None else completion
+
+def extract_cursor_triggers(left_context: str) -> tuple[list[str], list[str]]:
+    lines = [l.strip() for l in left_context.splitlines() if l.strip()]
+    if not lines:
+        return [], []
+    last_line = lines[-1]
     
-    receivers = re.findall(r"([A-Za-z_][A-Za-z0-9_]*)\s*\.\s*[A-Za-z0-9_]*\s*\(?$", tail)
-    constructors = re.findall(r"(?:new\s+)?([A-Z][A-Za-z0-9_]*)\s*\(", tail)
-    
-    bases = []
-    for line in nonempty:
-        if language == "python":
-            m = re.search(r"class\s+([A-Za-z0-9_]+)\s*\(([^)]+)\):", line)
-            if m: bases.extend([b.strip() for b in m.group(2).split(",") if b.strip()])
-        elif language == "java":
-            m = re.search(r"class\s+([A-Za-z0-9_]+)\s+(?:extends|implements)\s+([A-Za-z0-9_,\s]+)", line)
-            if m: bases.extend([b.strip() for b in re.split(r"[,\s]+", m.group(2)) if b.strip()])
-                
-    imports = []
-    if language == "python":
-        for m in re.finditer(r"from\s+([A-Za-z0-9_.]+)\s+import\s*\(([^)]+)\)", left_context, re.DOTALL):
-            imports.extend([s.strip() for s in m.group(2).split(",") if s.strip()])
-        for m in re.finditer(r"from\s+([A-Za-z0-9_.]+)\s+import\s+([A-Za-z0-9_,\s]+)", left_context):
-            imports.extend([s.strip() for s in m.group(2).split(",") if s.strip() and not s.strip().startswith("(")])
-    elif language == "java":
-        for m in re.finditer(r"import\s+([A-Za-z0-9_.]+);", left_context):
-            parts = m.group(1).split(".")
-            if parts: imports.append(parts[-1])
+    callees = []
+    for m in CALL_RE.finditer(last_line):
+        full = m.group(1).split(".")[-1]
+        if len(full) > 1 and full not in STOP_WORDS:
+            callees.append(full)
             
-    var_types: dict[str, str] = {}
-    for line in nonempty[-25:]:
-        m = re.search(r"([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(?:new\s+)?([A-Z][a-zA-Z0-9_]*)\s*\(", line)
-        if m: var_types[m.group(1)] = m.group(2)
+    receivers = []
+    for m in DOT_MEMBER_RE.finditer(last_line):
+        rec = m.group(1)
+        if len(rec) > 1 and rec not in STOP_WORDS:
+            receivers.append(rec)
             
-    local_vars = {w for w in ID_RE.findall(tail) if w not in STOP_SYMS and len(w) >= 3}
-    
-    return {
-        "receivers": receivers,
-        "constructors": constructors,
-        "bases": bases,
-        "imports": imports,
-        "var_types": var_types,
-        "local_vars": local_vars,
-    }
-
-
-def extract_cssi_contract(symbols: dict[str, Any], pool_files: list[dict[str, Any]], language: str, max_tokens: int = 300, tok: Any = None) -> str:
-    target_names: set[str] = set()
-    for r in symbols["receivers"]:
-        if r in symbols["var_types"]: target_names.add(symbols["var_types"][r])
-        elif r in ("self", "this"): target_names.update(symbols["bases"])
-        else: target_names.add(r)
-    target_names.update(symbols["constructors"])
-    target_names.update(symbols["bases"])
-    target_names.update(symbols["imports"])
-    target_names = {t for t in target_names if t not in STOP_SYMS and len(t) >= 3}
-    if not target_names: return ""
-        
-    stubs = []
-    comment_sym = "#" if language == "python" else "//"
-    
-    for pf in pool_files:
-        text = pf.get("text", "")
-        if not text: continue
-        p = pf.get("path", "")
-        stem = Path(p).stem
-        
-        matched = {t for t in target_names if t == stem or f"class {t}" in text or f"interface {t}" in text}
-        if not matched: continue
+    m_end = DOT_END_RE.search(last_line)
+    if m_end:
+        rec = m_end.group(1)
+        if len(rec) > 1 and rec not in STOP_WORDS:
+            receivers.append(rec)
             
-        lines = text.splitlines()
-        extracted_lines = []
-        in_class = False
-        
-        for line in lines:
-            if not in_class:
-                m_cls = re.search(r"^(\s*)(?:public\s+|abstract\s+)*(?:class|interface)\s+([A-Za-z0-9_]+)", line)
-                if m_cls and m_cls.group(2) in target_names:
-                    in_class = True
-                    extracted_lines.append(line.rstrip())
-                    continue
-            else:
-                if language == "python":
-                    m_attr = re.match(r"^(\s{4,8})([A-Z_0-9]{3,}|self\.[a-z_0-9]+)\s*=", line)
-                    if m_attr and len(extracted_lines) < 8:
-                        extracted_lines.append(line.rstrip())
-                    m_def = re.match(r"^(\s{4,8})(?:async\s+)?def\s+([a-zA-Z_0-9]+)\s*\((.*?)\):", line)
-                    if m_def:
-                        sig_name = m_def.group(2)
-                        params = m_def.group(3)
-                        sig_params = set(ID_RE.findall(params)) - STOP_SYMS
-                        overlap = len(sig_params & symbols["local_vars"])
-                        extracted_lines.append(f"{m_def.group(1)}def {sig_name}({params}): ...")
-                elif language == "java":
-                    m_mth = re.match(r"^(\s{4,8})(?:public\s+|protected\s+|static\s+|final\s+)*([\w<>\[\]]+)\s+([a-zA-Z_0-9]+)\s*\((.*?)\)", line)
-                    if m_mth:
-                        ret_type = m_mth.group(2)
-                        sig_name = m_mth.group(3)
-                        params = m_mth.group(4)
-                        extracted_lines.append(f"{m_mth.group(1)}{ret_type} {sig_name}({params});")
-                        
-                if len(extracted_lines) >= 15: break
-                    
-        if extracted_lines:
-            stub_text = f"{comment_sym} [CADRE-CSSI Contract: {p}]\n" + "\n".join(
-                f"{comment_sym} {l}" for l in extracted_lines
-            )
-            stubs.append(stub_text)
-            if len(stubs) >= 2: break
-                
-    if not stubs: return ""
-    contract = "\n\n".join(stubs)
-    if tok is not None:
-        c_ids = tok.encode(contract, add_special_tokens=False)
-        if len(c_ids) > max_tokens:
-            c_ids = c_ids[:max_tokens]
-            contract = tok.decode(c_ids, skip_special_tokens=True)
-    return contract
+    return list(dict.fromkeys(callees)), list(dict.fromkeys(receivers))
 
-
-def coalesce_commented_chunks(chunks: list[dict[str, Any]], language: str) -> list[str]:
-    """Coalesce chunks by file AND prefix every line with comment symbol (# or //)."""
-    comment_sym = "#" if language == "python" else "//"
-    file_chunks: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    for c in chunks:
-        p = c.get("path")
-        if not p or c.get("kind") == "stop": continue
-        file_chunks[p].append(c)
+def extract_callsite_usages(
+    callees: list[str],
+    receivers: list[str],
+    sources: list[tuple[str, str]],
+    lang: str,
+    max_lines: int = 3
+) -> str:
+    comment = "#" if lang == "python" else "//"
+    target_names = set(callees[:2] + receivers[:2])
+    if not target_names:
+        return ""
         
-    blocks = []
-    for p, f_chunk_list in file_chunks.items():
-        if p == "file_path":
-            body = "\n".join(f"{comment_sym} {l}" for c in f_chunk_list for l in c.get("code", "").splitlines() if l.strip())
-            if body: blocks.append(f"{comment_sym} Potential invoked APIs:\n{body}")
-            continue
+    usages = []
+    seen = set()
+    for path, text in sources:
+        for l in text.splitlines():
+            s = l.strip()
+            if not s or s.startswith(("#", "//", "def ", "class ", "import ", "from ", "package ", "public ", "private ")):
+                continue
+            for name in target_names:
+                if (name + "(" in s or name + "." in s) and 10 < len(s) < 120 and s not in seen:
+                    seen.add(s)
+                    usages.append(f"{comment} [CSSI Usage]: {s}")
+                    break
+            if len(usages) >= max_lines:
+                break
+        if len(usages) >= max_lines:
+            break
             
-        f_chunk_list.sort(key=lambda x: int(x.get("line_start", 0)))
-        merged_lines = []
-        last_end = -1
-        range_start = -1
-        
-        for c in f_chunk_list:
-            s = int(c.get("line_start", 0))
-            e = int(c.get("line_end", 0))
-            c_lines = c.get("code", "").splitlines()
-            if last_end != -1 and s <= last_end + 3:
-                merged_lines.extend(c_lines)
-                last_end = max(last_end, e)
-            else:
-                if merged_lines:
-                    hdr = f"{comment_sym} file path: {p}\n{comment_sym} lines: {range_start}-{last_end}"
-                    body = "\n".join(f"{comment_sym} {l}" for l in merged_lines if l.strip())
-                    blocks.append(f"{hdr}\n{body}")
-                range_start = s
-                last_end = e
-                merged_lines = list(c_lines)
-                
-        if merged_lines:
-            hdr = f"{comment_sym} file path: {p}\n{comment_sym} lines: {range_start}-{last_end}"
-            body = "\n".join(f"{comment_sym} {l}" for l in merged_lines if l.strip())
-            blocks.append(f"{hdr}\n{body}")
-            
-    return blocks
+    if not usages:
+        return ""
+    return "\n".join(usages) + "\n"
 
-
-def format_aircoder_exact(chunks: list[dict[str, Any]], language: str) -> list[str]:
-    label = "#" if language == "python" else "//"
-    blocks = []
-    for c in chunks:
-        if c.get("kind") == "stop" or not c.get("path"): break
-        if c["path"] == "file_path":
-            hdr = f"{label} Potential invoked APIs:"
-        else:
-            hdr = f"{label} file path: {c['path']}\n{label} lines: {c['line_start']}-{c['line_end']}"
-        body = "\n".join(f"{label} {line}" for line in c["code"].split("\n") if line)
-        blocks.append(f"{hdr}\n{body}".strip())
-    return blocks
-
-
-def build_plus_prompt(arm: str, task: dict[str, Any], trace: dict[str, Any], pool_files: list[dict[str, Any]], tok: Any) -> tuple[list[int], int, int]:
+# 5. Prompt Construction
+def build_prompt_raw_chunks(
+    task: dict[str, Any],
+    tr: dict[str, Any],
+    pool_files: list[dict[str, Any]],
+    use_callsite: bool = False,
+    extra_callee: str | None = None,
+) -> list[int]:
     lang = task["language"]
-    top10 = list(trace.get("aligncoder_top10") or trace.get("spc_chunks") or [])
-    path_text = f"\n\n# file path: {task['path']}\n\n" if lang == "python" else f"\n\n// file path: {task['path']}\n\n"
-    path_ids = tok.encode(path_text, add_special_tokens=False)
-    left_all_ids = tok.encode(task["left_context"], add_special_tokens=False)
-    symbols = extract_cursor_context_symbols(task["left_context"], lang)
+    left_context = task["left_context"]
+    cur_path = task.get("path", "current_file")
+    comment_label = "#" if lang == "python" else "//"
+    
+    left_all_ids = tok.encode(left_context)
+    path_ids = tok.encode(f"{comment_label} file path: {cur_path}\n")
+    
+    raw_candidates = tr.get("aligncoder_top10") or tr.get("spc_chunks") or tr.get("retrieved_chunks") or []
+    
+    ordered_chunks = list(raw_candidates)
+    if extra_callee:
+        promoted = []
+        rest = []
+        for ch in ordered_chunks:
+            c = ch.get("text") or ch.get("code", "")
+            if extra_callee in c:
+                promoted.append(ch)
+            else:
+                rest.append(ch)
+        if not promoted:
+            for pf in pool_files:
+                if extra_callee in pf["text"]:
+                    promoted.append({"file_path": pf["path"], "text": pf["text"][:1200]})
+                    break
+        ordered_chunks = promoted + rest
 
-    if arm == "aircoder_r":
-        # Baseline AIRCoder 800 SPC
-        blocks = format_aircoder_exact(top10, lang)
-        # ascending order
-        if lang == "python":
-            rag_open = "'''\n"
-            rag_close = "\n'''\n\n"
+    chunks_by_file: dict[str, list[str]] = defaultdict(list)
+    for ch in ordered_chunks:
+        fp = ch.get("file_path") or ch.get("path", "")
+        c = ch.get("text") or ch.get("code", "")
+        if fp and c.strip():
+            chunks_by_file[fp].append(c)
+
+    exemplar_ids: list[int] = []
+    max_exemplar_tokens = 3200
+    for fp, code_list in chunks_by_file.items():
+        coalesced = "\n...\n".join(code_list)
+        block = f"{comment_label} file path: {fp}\n{coalesced}\n\n"
+        b_ids = tok.encode(block)
+        if len(exemplar_ids) + len(b_ids) > max_exemplar_tokens:
+            break
+        exemplar_ids.extend(b_ids)
+
+    contract_ids: list[int] = []
+    if use_callsite:
+        callees, receivers = extract_cursor_triggers(left_context)
+        if extra_callee and extra_callee not in callees:
+            callees.insert(0, extra_callee)
+        sources = [(pf["path"], pf["text"]) for pf in pool_files] + [(ch.get("file_path", "chunk"), ch.get("text") or ch.get("code", "")) for ch in raw_candidates]
+        callsite_text = extract_callsite_usages(callees, receivers, sources, lang, max_lines=3)
+        if callsite_text:
+            contract_ids = tok.encode(callsite_text)[:120]
+
+    cross_ids = exemplar_ids + contract_ids
+    allowed_left = max(0, 8000 - len(cross_ids) - len(path_ids))
+    left_ids = left_all_ids[-allowed_left:] if allowed_left else []
+    return (cross_ids + path_ids + left_ids)[-8000:]
+
+# 6. Evaluation Logic
+def evaluate_records(records: list[dict[str, Any]], pred_key: str) -> dict[str, Any]:
+    by_bench = defaultdict(list)
+    for r in records:
+        bm = r["benchmark"]
+        gt = r["groundtruth"]
+        raw = clean_bpe_text(r[pred_key])
+        
+        gt_no_comment = remove_comments(gt)
+        raw_no_comment = remove_comments(raw)
+        
+        gt_lines = [l.strip() for l in gt_no_comment.splitlines() if l.strip()]
+        n_target = max(1, len(gt_lines))
+        
+        pred_lines = [l.strip() for l in raw_no_comment.splitlines() if l.strip()][:n_target]
+        
+        gt_flat = "".join("".join(gt_lines).split())
+        pred_flat = "".join("".join(pred_lines).split())
+        
+        prefix_match = int(pred_flat[:len(gt_flat)] == gt_flat and len(gt_flat) > 0)
+        
+        if bm == "cceval_java":
+            gt_br = "".join(get_bracket_stmt(gt_no_comment).split())
+            pred_br = "".join(get_bracket_stmt(raw_no_comment).split())
+            stmt_match = int(pred_br[:len(gt_br)] == gt_br and len(gt_br) > 0)
         else:
-            rag_open = "/*\n"
-            rag_close = "\n*/\n\n"
-        body = "\n\n".join(blocks[::-1])
-        cross_text = rag_open + body.strip() + rag_close if body.strip() else ""
-        cross_ids = tok.encode(cross_text, add_special_tokens=False)[:800]
-        allowed_left = max(0, 8000 - len(cross_ids) - len(path_ids))
-        left_ids = left_all_ids[-allowed_left:] if allowed_left else []
-        prompt_ids = (cross_ids + path_ids + left_ids)[-8000:]
-        return prompt_ids, len(prompt_ids), len(cross_ids)
-
-    elif arm == "cadre_v1_raw":
-        # What ran in full benchmark: raw code, no line comments
-        chunks_by_file = defaultdict(list)
-        for ch in top10:
-            fp = ch.get("path", "")
-            c = ch.get("code", "")
-            if fp and c.strip(): chunks_by_file[fp].append(c)
-        comment_label = "#" if lang == "python" else "//"
-        exemplar_ids = []
-        for fp, code_list in chunks_by_file.items():
-            coalesced = "\n...\n".join(code_list)
-            block = f"{comment_label} file path: {fp}\n{coalesced}\n\n"
-            b_ids = tok.encode(block, add_special_tokens=False)
-            if len(exemplar_ids) + len(b_ids) > 3200: break
-            exemplar_ids.extend(b_ids)
-        cssi_contract = extract_cssi_contract(symbols, pool_files, lang, max_tokens=300, tok=tok)
-        cssi_ids = tok.encode("\n\n" + cssi_contract, add_special_tokens=False)[:384] if cssi_contract else []
-        cross_ids = exemplar_ids + cssi_ids
-        allowed_left = max(0, 8000 - len(cross_ids) - len(path_ids))
-        left_ids = left_all_ids[-allowed_left:] if allowed_left else []
-        prompt_ids = (cross_ids + path_ids + left_ids)[-8000:]
-        return prompt_ids, len(prompt_ids), len(cross_ids)
-
-    elif arm == "cadre_plus_commented":
-        # Full CADRE+: Line-Commented Coalescing + Param-Aligned CSSI
-        cssi_contract = extract_cssi_contract(symbols, pool_files, lang, max_tokens=300, tok=tok)
-        cssi_ids = tok.encode("\n\n" + cssi_contract, add_special_tokens=False) if cssi_contract else []
+            stmt_match = prefix_match
+            
+        es = cal_edit_sim(raw_no_comment, gt_no_comment)
+        repo = r["task_id"].split("/")[0]
+        by_bench[bm].append({"repo": repo, "em": stmt_match, "es": es})
         
-        rem_cross = max(0, 3584 - len(cssi_ids))
-        blocks = coalesce_commented_chunks(top10, lang)
-        exemplar_text = "\n\n".join(blocks)
-        exemplar_ids = tok.encode(exemplar_text, add_special_tokens=False)[:rem_cross]
+    summary = {}
+    macro_em, macro_es = [], []
+    for bm in ["cceval_python", "cceval_java", "repoeval_api", "repoeval_line"]:
+        items = by_bench[bm]
+        n = len(items)
+        if bm.startswith("repoeval"):
+            repo_map = defaultdict(list)
+            for it in items:
+                repo_map[it["repo"]].append(it["em"])
+            b_em = sum(sum(v)/len(v) for v in repo_map.values()) / len(repo_map) * 100.0
+            
+            repo_es = defaultdict(list)
+            for it in items:
+                repo_es[it["repo"]].append(it["es"])
+            b_es = sum(sum(v)/len(v) for v in repo_es.values()) / len(repo_es) * 100.0
+        else:
+            b_em = sum(it["em"] for it in items) / n * 100.0
+            b_es = sum(it["es"] for it in items) / n * 100.0
+            
+        summary[bm] = {"em": round(b_em, 2), "es": round(b_es, 2), "count": n}
+        macro_em.append(b_em)
+        macro_es.append(b_es)
         
-        cross_ids = exemplar_ids + cssi_ids
-        allowed_left = max(0, 8000 - len(cross_ids) - len(path_ids))
-        left_ids = left_all_ids[-allowed_left:] if allowed_left else []
-        prompt_ids = (cross_ids + path_ids + left_ids)[-8000:]
-        return prompt_ids, len(prompt_ids), len(cross_ids)
+    summary["macro_mean"] = {
+        "em": round(sum(macro_em) / 4.0, 2),
+        "es": round(sum(macro_es) / 4.0, 2),
+    }
+    return summary
 
-    else:
-        raise ValueError(f"Unknown arm: {arm}")
+# 7. Main Pipeline
+def main():
+    print(f"\n=== INITIALIZING VLLM ENGINE: {GENERATOR} (8k context) ===", flush=True)
+    llm = LLM(
+        model=GENERATOR,
+        tokenizer=GENERATOR,
+        revision=GENERATOR_REVISION,
+        tokenizer_revision=GENERATOR_REVISION,
+        dtype="float16",
+        max_model_len=8192,
+        max_num_seqs=128,
+        max_num_batched_tokens=16384,
+        gpu_memory_utilization=0.85,
+        seed=SEED,
+        enforce_eager=True,
+        disable_log_stats=True,
+    )
+    sp = SamplingParams(max_tokens=48, temperature=0.0)
 
+    task_pool_files = []
+    for t in tasks:
+        if "file_ids_by_path" in t:
+            pf = [files[f] for f in t["file_ids_by_path"].values() if f in files]
+        else:
+            pf = [files[f] for f in pools.get(t.get("pool_id"), []) if f in files]
+        task_pool_files.append(pf)
+        
+    task_trs = [traces.get((t["benchmark"], t["task_id"]), {}) for t in tasks]
 
-def run_evaluation(state_ns: dict[str, Any], tag: str = "cadre_plus_pilot_256") -> dict[str, Any]:
-    mb_data = state_ns.get("MB_DATA") or {}
-    engine = state_ns.get("VLLM_ENGINE")
-    if not engine or not mb_data:
-        raise RuntimeError("VLLM_ENGINE or MB_DATA not found in state_ns!")
-
-    tasks: list[dict[str, Any]] = mb_data["tasks"]
-    traces: dict[Any, dict[str, Any]] = mb_data["traces"]
-    files: dict[str, dict[str, Any]] = mb_data["files"]
-    pools: dict[str, list[str]] = mb_data["pools"]
-    tok: Any = mb_data["tokenizer"]
-
-    from vllm import SamplingParams
-    # 64 max tokens to avoid premature cutoff of long statements
-    sp = SamplingParams(temperature=0.0, max_tokens=64)
-
-    arms = ["aircoder_r", "cadre_v1_raw", "cadre_plus_commented"]
-    print(f"Starting CADRE+ Evaluation: {len(tasks)} tasks across {len(arms)} arms (max_tokens=64)...", flush=True)
-
-    batch_prompts: list[list[int]] = []
-    meta: list[tuple[str, dict[str, Any], int, int]] = []
-
-    for task in tasks:
-        key = (task["benchmark"], task["task_id"])
-        tr = traces.get(key) or traces.get(task["task_id"])
-        if not tr: continue
-
-        pool_files = []
-        if "file_ids_by_path" in task:
-            pool_files = [files[fid] for fid in task["file_ids_by_path"].values() if fid in files]
-        elif task.get("pool_id"):
-            f_ids = pools.get(task["pool_id"], [])
-            pool_files = [files[fid] for fid in f_ids if fid in files]
-
-        for arm in arms:
-            p_ids, p_len, c_len = build_plus_prompt(arm, task, tr, pool_files, tok)
-            batch_prompts.append(p_ids)
-            meta.append((arm, task, p_len, c_len))
-
-    t_gen = time.time()
-    prompts_payload = [{"prompt_token_ids": p_ids} for p_ids in batch_prompts]
-    outputs = engine.generate(prompts_payload, sampling_params=sp)
-    gen_dur = time.time() - t_gen
-    print(f"Generated {len(outputs)} completions in {gen_dur:.1f}s ({len(outputs)/max(0.01, gen_dur):.1f} req/s)!", flush=True)
-
-    results_rows: list[dict[str, Any]] = []
-    for (arm, task, p_len, c_len), out in zip(meta, outputs):
-        token_ids = list(out.outputs[0].token_ids)
-        raw_pred = tok.decode(token_ids, skip_special_tokens=True)
-        results_rows.append({
-            "task_id": task["task_id"],
-            "benchmark": task["benchmark"],
-            "language": task["language"],
-            "arm": arm,
-            "raw_prediction": raw_pred,
-            "groundtruth": task.get("target") or task.get("groundtruth", ""),
-            "prompt_tokens": p_len,
-            "crossfile_tokens": c_len,
-            "left_context": task["left_context"],
+    all_predictions = []
+    for t in tasks:
+        all_predictions.append({
+            "task_id": t["task_id"],
+            "benchmark": t["benchmark"],
+            "language": t["language"],
+            "groundtruth": t["groundtruth"],
         })
 
-    out_dir = ROOT_DIR / "outputs"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    preds_path = out_dir / f"{tag}_predictions.jsonl.gz"
-    with gzip.open(preds_path, "wt", encoding="utf-8") as f:
-        for r in results_rows:
-            f.write(json.dumps(r) + "\n")
-    print(f"Saved {len(results_rows)} predictions to {preds_path}", flush=True)
+    # -------------------------------------------------------------
+    # Arm 0: Baseline CADRE v3 (Reference Baseline)
+    # -------------------------------------------------------------
+    print("\n[Arm 0] Running Baseline CADRE v3...", flush=True)
+    p0_ids = [build_prompt_raw_chunks(t, tr, pf, use_callsite=False) for t, tr, pf in zip(tasks, task_trs, task_pool_files)]
+    out0 = llm.generate([{"prompt_token_ids": p} for p in p0_ids], sampling_params=sp)
+    preds_arm0 = [o.outputs[0].text for o in out0]
+    for i, p in enumerate(preds_arm0):
+        all_predictions[i]["arm0"] = p
+    stats0 = evaluate_records(all_predictions, "arm0")
+    print("  ✓ Arm 0 Macro EM:", stats0["macro_mean"]["em"], "% | Macro ES:", stats0["macro_mean"]["es"], "%", flush=True)
 
-    return {"status": "ok", "count": len(results_rows)}
+    # -------------------------------------------------------------
+    # Arm 1: CADRE + Call-Site Usage Injection (Ablation)
+    # -------------------------------------------------------------
+    print("\n[Arm 1] Running CADRE + Call-Site Usage Injection...", flush=True)
+    p1_ids = [build_prompt_raw_chunks(t, tr, pf, use_callsite=True) for t, tr, pf in zip(tasks, task_trs, task_pool_files)]
+    out1 = llm.generate([{"prompt_token_ids": p} for p in p1_ids], sampling_params=sp)
+    preds_arm1 = [o.outputs[0].text for o in out1]
+    for i, p in enumerate(preds_arm1):
+        all_predictions[i]["arm1"] = p
+    stats1 = evaluate_records(all_predictions, "arm1")
+    print("  ✓ Arm 1 Macro EM:", stats1["macro_mean"]["em"], "% | Macro ES:", stats1["macro_mean"]["es"], "%", flush=True)
 
+    # -------------------------------------------------------------
+    # Arm 2: Full CADRE-Plus (Raw Chunks + Call-Sites + Targeted IDGR for Python)
+    # -------------------------------------------------------------
+    print("\n[Arm 2] Running CADRE-Plus (Targeted IDGR for Python)...", flush=True)
+    p2_ids = []
+    py_gated_count = 0
+    for i, (t, tr, pf, raw_draft) in enumerate(zip(tasks, task_trs, task_pool_files, preds_arm1)):
+        bm = t["benchmark"]
+        if bm == "cceval_python":
+            left_ctx = t["left_context"]
+            clean_draft = clean_bpe_text(raw_draft)
+            draft_lines = [l.strip() for l in clean_draft.splitlines() if l.strip()]
+            first_line = draft_lines[0] if draft_lines else ""
+            draft_callees = [m.group(1).split(".")[-1] for m in CALL_RE.finditer(first_line)]
+            top_callee = None
+            for c in draft_callees:
+                if c not in STOP_WORDS and len(c) > 2 and c not in left_ctx:
+                    top_callee = c
+                    break
+            if top_callee:
+                py_gated_count += 1
+                p2_ids.append(build_prompt_raw_chunks(t, tr, pf, use_callsite=True, extra_callee=top_callee))
+            else:
+                p2_ids.append(p1_ids[i])
+        else:
+            # Java and RepoEval use Arm 1 (Full Context + Call-sites)
+            p2_ids.append(p1_ids[i])
+
+    print(f"  -> Targeted IDGR triggered for {py_gated_count}/100 Python tasks.", flush=True)
+    out2 = llm.generate([{"prompt_token_ids": p} for p in p2_ids], sampling_params=sp)
+    preds_arm2 = [o.outputs[0].text for o in out2]
+    for i, p in enumerate(preds_arm2):
+        all_predictions[i]["arm2"] = p
+    stats2 = evaluate_records(all_predictions, "arm2")
+    print("  ✓ Arm 2 (CADRE-Plus) Macro EM:", stats2["macro_mean"]["em"], "% | Macro ES:", stats2["macro_mean"]["es"], "%", flush=True)
+
+    # -------------------------------------------------------------
+    # Summary Table
+    # -------------------------------------------------------------
+    arms = [
+        ("Arm 0: Baseline CADRE v3 (Reference)", stats0),
+        ("Arm 1: CADRE + Call-Site Usage Injection", stats1),
+        ("Arm 2: CADRE-Plus (Raw Chunks + Call-Sites + Targeted IDGR)", stats2),
+    ]
+
+    print("\n" + "=" * 125, flush=True)
+    print(f"{'ARM':<60} | {'cceval_py':<10} | {'cceval_ja':<10} | {'repo_api':<10} | {'repo_line':<10} | {'MACRO EM':<10} | {'MACRO ES':<10}", flush=True)
+    print("=" * 125, flush=True)
+    for name, st in arms:
+        print(f"{name:<60} | {st['cceval_python']['em']:>8.2f}% | {st['cceval_java']['em']:>8.2f}% | {st['repoeval_api']['em']:>8.2f}% | {st['repoeval_line']['em']:>8.2f}% | {st['macro_mean']['em']:>8.2f}% | {st['macro_mean']['es']:>8.2f}%", flush=True)
+    print("=" * 125, flush=True)
+
+    # Save outputs
+    out_metrics = OUTPUT_DIR / "cadre_plus_pilot_metrics.json"
+    with open(out_metrics, "w") as f:
+        json.dump({name: st for name, st in arms}, f, indent=2)
+    print(f"✓ Saved full metrics to {out_metrics}", flush=True)
+
+    out_preds = OUTPUT_DIR / "cadre_plus_pilot_predictions.jsonl.gz"
+    with gzip.open(out_preds, "wt") as f:
+        for p in all_predictions:
+            f.write(json.dumps(p) + "\n")
+    print(f"✓ Saved all predictions to {out_preds}", flush=True)
 
 if __name__ == "__main__":
-    import runpy
-    print("Initializing environment via colab_init_engine.py...", flush=True)
-    init_mod = runpy.run_path("/content/colab_init_engine.py", run_name="__main__")
-    state = {
-        "VLLM_ENGINE": init_mod.get("VLLM_ENGINE") or init_mod.get("global_ns", {}).get("VLLM_ENGINE"),
-        "MB_DATA": init_mod.get("MB_DATA") or init_mod.get("global_ns", {}).get("MB_DATA"),
-    }
-    run_evaluation(state)
+    main()

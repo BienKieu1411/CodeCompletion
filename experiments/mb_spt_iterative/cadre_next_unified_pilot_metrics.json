@@ -1,0 +1,132 @@
+{
+  "Arm 0: Baseline CADRE v3": {
+    "cceval_python": {
+      "count": 100,
+      "em": 0.0,
+      "es": 36.39
+    },
+    "cceval_java": {
+      "count": 100,
+      "em": 4.0,
+      "es": 68.09
+    },
+    "repoeval_api": {
+      "count": 100,
+      "em": 0.0,
+      "es": 33.32
+    },
+    "repoeval_line": {
+      "count": 100,
+      "em": 0.0,
+      "es": 18.89
+    },
+    "macro_mean": {
+      "em": 1.0,
+      "es": 39.17
+    }
+  },
+  "Arm 1: Asymmetric Budgeting": {
+    "cceval_python": {
+      "count": 100,
+      "em": 0.0,
+      "es": 35.99
+    },
+    "cceval_java": {
+      "count": 100,
+      "em": 4.0,
+      "es": 64.56
+    },
+    "repoeval_api": {
+      "count": 100,
+      "em": 0.0,
+      "es": 30.71
+    },
+    "repoeval_line": {
+      "count": 100,
+      "em": 0.0,
+      "es": 18.19
+    },
+    "macro_mean": {
+      "em": 1.0,
+      "es": 37.36
+    }
+  },
+  "Arm 2: RFSC + L_stub": {
+    "cceval_python": {
+      "count": 100,
+      "em": 0.0,
+      "es": 35.75
+    },
+    "cceval_java": {
+      "count": 100,
+      "em": 4.0,
+      "es": 64.88
+    },
+    "repoeval_api": {
+      "count": 100,
+      "em": 0.0,
+      "es": 32.31
+    },
+    "repoeval_line": {
+      "count": 100,
+      "em": 0.0,
+      "es": 18.56
+    },
+    "macro_mean": {
+      "em": 1.0,
+      "es": 37.88
+    }
+  },
+  "Arm 3: Unified CADRE-Next": {
+    "cceval_python": {
+      "count": 100,
+      "em": 0.0,
+      "es": 35.75
+    },
+    "cceval_java": {
+      "count": 100,
+      "em": 4.0,
+      "es": 64.88
+    },
+    "repoeval_api": {
+      "count": 100,
+      "em": 0.0,
+      "es": 30.88
+    },
+    "repoeval_line": {
+      "count": 100,
+      "em": 0.0,
+      "es": 18.04
+    },
+    "macro_mean": {
+      "em": 1.0,
+      "es": 37.39
+    }
+  },
+  "Arm 4: CADRE-Next + 2-Pass IDGR": {
+    "cceval_python": {
+      "count": 100,
+      "em": 0.0,
+      "es": 36.22
+    },
+    "cceval_java": {
+      "count": 100,
+      "em": 4.0,
+      "es": 63.67
+    },
+    "repoeval_api": {
+      "count": 100,
+      "em": 0.0,
+      "es": 30.62
+    },
+    "repoeval_line": {
+      "count": 100,
+      "em": 0.0,
+      "es": 17.79
+    },
+    "macro_mean": {
+      "em": 1.0,
+      "es": 37.08
+    }
+  }
+}

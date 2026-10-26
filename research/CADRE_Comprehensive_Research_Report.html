@@ -618,6 +618,92 @@
       </div>
     </section>
 
+    <!-- SECTION 9: 4K ABLATION EVALUATION -->
+    <section class="card mb-12 p-8 border border-indigo-500/30">
+      <div class="flex items-center gap-3 mb-6">
+        <span class="badge badge-indigo">ABLATION STUDY</span>
+        <h2 class="text-2xl font-bold text-white tracking-tight">Thực Nghiệm Tách Biệt Tác Động: CSSI Prompt vs CSSI Retrieval (Ngân Sách 4.096 Tokens)</h2>
+      </div>
+
+      <p class="text-slate-300 leading-relaxed mb-6">
+        Đánh giá độc lập 3 nhánh (3-Arm Head-to-Head) trên toàn bộ <strong>8.004 bài toán</strong> với ngân sách co hẹp về <strong>4.096 tokens</strong> (cross-file trần 1.280 tokens, CSSI 512 tokens, local left context $\ge 2.800$ tokens) để phân lập chính xác nguồn gốc sức mạnh của CSSI:
+      </p>
+
+      <div class="overflow-x-auto mb-6">
+        <table class="w-full text-left text-sm border-collapse">
+          <thead>
+            <tr class="border-b border-slate-800 text-xs font-mono uppercase text-slate-400 bg-slate-900/60">
+              <th class="py-3 px-4">Tập Dữ Liệu</th>
+              <th class="py-3 px-4 text-center">Quy Mô</th>
+              <th class="py-3 px-4 text-center">Arm 1: RLCoder Base 4k</th>
+              <th class="py-3 px-4 text-center">Arm 2: CADRE Post-CSSI</th>
+              <th class="py-3 px-4 text-center">Arm 3: CADRE Pre+Post</th>
+              <th class="py-3 px-4 text-center text-emerald-400">Prompt CSSI &Delta;</th>
+              <th class="py-3 px-4 text-center text-indigo-400">Retrieval CSSI &Delta;</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/60 text-slate-300">
+            <tr>
+              <td class="py-3 px-4 font-mono font-bold text-white">CCEval-Python</td>
+              <td class="py-3 px-4 text-center text-slate-400">2.665</td>
+              <td class="py-3 px-4 text-center">15.08%</td>
+              <td class="py-3 px-4 text-center font-bold text-white">16.10%</td>
+              <td class="py-3 px-4 text-center font-bold text-indigo-300">16.14%</td>
+              <td class="py-3 px-4 text-center text-emerald-400 font-bold">+1.02 pp</td>
+              <td class="py-3 px-4 text-center text-indigo-400 font-bold">+0.04 pp</td>
+            </tr>
+            <tr>
+              <td class="py-3 px-4 font-mono font-bold text-white">CCEval-Java</td>
+              <td class="py-3 px-4 text-center text-slate-400">2.139</td>
+              <td class="py-3 px-4 text-center">17.16%</td>
+              <td class="py-3 px-4 text-center font-bold text-white">18.23%</td>
+              <td class="py-3 px-4 text-center font-bold text-indigo-300">18.23%</td>
+              <td class="py-3 px-4 text-center text-emerald-400 font-bold">+1.07 pp</td>
+              <td class="py-3 px-4 text-center text-slate-400 font-bold">0.00 pp</td>
+            </tr>
+            <tr>
+              <td class="py-3 px-4 font-mono font-bold text-white">RepoEval-API</td>
+              <td class="py-3 px-4 text-center text-slate-400">1.600</td>
+              <td class="py-3 px-4 text-center">28.38%</td>
+              <td class="py-3 px-4 text-center font-bold text-emerald-400">30.81%</td>
+              <td class="py-3 px-4 text-center font-bold text-white">30.69%</td>
+              <td class="py-3 px-4 text-center text-emerald-400 font-bold">+2.43 pp</td>
+              <td class="py-3 px-4 text-center text-rose-400 font-bold">-0.12 pp</td>
+            </tr>
+            <tr>
+              <td class="py-3 px-4 font-mono font-bold text-white">RepoEval-Line</td>
+              <td class="py-3 px-4 text-center text-slate-400">1.600</td>
+              <td class="py-3 px-4 text-center">34.31%</td>
+              <td class="py-3 px-4 text-center font-bold text-white">38.25%</td>
+              <td class="py-3 px-4 text-center font-bold text-indigo-300">38.44%</td>
+              <td class="py-3 px-4 text-center text-emerald-400 font-bold">+3.94 pp</td>
+              <td class="py-3 px-4 text-center text-indigo-400 font-bold">+0.19 pp</td>
+            </tr>
+            <tr class="bg-indigo-950/30 font-bold">
+              <td class="py-3.5 px-4 font-mono text-white">Macro Mean</td>
+              <td class="py-3.5 px-4 text-center text-slate-300">8.004</td>
+              <td class="py-3.5 px-4 text-center text-slate-300">23.73%</td>
+              <td class="py-3.5 px-4 text-center text-emerald-400 text-base">25.85%</td>
+              <td class="py-3.5 px-4 text-center text-indigo-300 text-base">25.87%</td>
+              <td class="py-3.5 px-4 text-center text-emerald-400 text-base font-extrabold">+2.12 pp (+8.9%)</td>
+              <td class="py-3.5 px-4 text-center text-indigo-400 text-base font-extrabold">+0.02 pp</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+        <div class="bg-slate-900/80 p-4 rounded-lg border border-emerald-500/30">
+          <div class="text-emerald-400 font-bold mb-1">// KẾT LUẬN 1: TÁC ĐỘNG IN-PROMPT CSSI</div>
+          <p class="text-slate-300">Việc chèn hợp đồng CSSI vào prompt mang lại bước nhảy vọt +2.12 pp toàn cục (+3.94 pp Repo-Line, +2.43 pp Repo-API). Đây là nguồn giá trị cốt lõi giải quyết hiện tượng đứt gãy hợp đồng gọi hàm.</p>
+        </div>
+        <div class="bg-slate-900/80 p-4 rounded-lg border border-indigo-500/30">
+          <div class="text-indigo-400 font-bold mb-1">// KẾT LUẬN 2: TÁC ĐỘNG PRE-RETRIEVAL QUERY</div>
+          <p class="text-slate-300">Khi truy hồi đã dùng Full Left Context, việc thêm CSSI vào query mang lại mức tăng nhẹ (+0.19 pp Line), hiệu năng tổng tương đương (25.87% vs 25.85%). Giúp triển khai thực tế cực nhẹ: không cần huấn luyện lại retriever.</p>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- FOOTER -->

@@ -1,0 +1,172 @@
+{
+  "metadata": {
+    "timestamp": "2026-10-26 07:51:43",
+    "generator": "deepseek-ai/deepseek-coder-1.3b-base",
+    "retriever": "nov3630/RLCoder",
+    "total_tasks": 8004,
+    "max_tokens": 64,
+    "context_tokens": 8000,
+    "duration_sec": 805.8
+  },
+  "arms": {
+    "rlcoder_raw_8004": {
+      "cceval_python": {
+        "count": 2665,
+        "aligncoder_ast_em": 0.0,
+        "aircoder_prefix_em": 17.71,
+        "exact_uncut_em": 0.0,
+        "edit_sim": 27.71,
+        "id_em": 0.04,
+        "id_f1": 24.9
+      },
+      "cceval_java": {
+        "count": 2139,
+        "aligncoder_ast_em": 9.3,
+        "aircoder_prefix_em": 20.76,
+        "exact_uncut_em": 0.0,
+        "edit_sim": 31.8,
+        "id_em": 0.23,
+        "id_f1": 30.43
+      },
+      "repoeval_api": {
+        "count": 1600,
+        "aligncoder_ast_em": 0.0,
+        "aircoder_prefix_em": 34.31,
+        "exact_uncut_em": 0.0,
+        "edit_sim": 40.22,
+        "id_em": 0.38,
+        "id_f1": 42.51
+      },
+      "repoeval_line": {
+        "count": 1600,
+        "aligncoder_ast_em": 0.0,
+        "aircoder_prefix_em": 37.56,
+        "exact_uncut_em": 0.0,
+        "edit_sim": 26.89,
+        "id_em": 0.31,
+        "id_f1": 22.08
+      },
+      "micro_mean": {
+        "count": 8004,
+        "aligncoder_ast_em": 2.49,
+        "aircoder_prefix_em": 25.81,
+        "exact_uncut_em": 0.0,
+        "edit_sim": 31.14,
+        "id_em": 0.21,
+        "id_f1": 29.33
+      },
+      "macro_mean": {
+        "aligncoder_ast_em": 2.33,
+        "aircoder_prefix_em": 27.59,
+        "edit_sim": 31.65,
+        "id_f1": 29.98
+      }
+    },
+    "rlcoder_cadre_standard_8004": {
+      "cceval_python": {
+        "count": 2665,
+        "aligncoder_ast_em": 0.0,
+        "aircoder_prefix_em": 18.31,
+        "exact_uncut_em": 0.0,
+        "edit_sim": 27.44,
+        "id_em": 0.04,
+        "id_f1": 24.96
+      },
+      "cceval_java": {
+        "count": 2139,
+        "aligncoder_ast_em": 9.63,
+        "aircoder_prefix_em": 21.74,
+        "exact_uncut_em": 0.0,
+        "edit_sim": 31.53,
+        "id_em": 0.09,
+        "id_f1": 30.09
+      },
+      "repoeval_api": {
+        "count": 1600,
+        "aligncoder_ast_em": 0.0,
+        "aircoder_prefix_em": 39.75,
+        "exact_uncut_em": 0.0,
+        "edit_sim": 40.25,
+        "id_em": 0.38,
+        "id_f1": 42.46
+      },
+      "repoeval_line": {
+        "count": 1600,
+        "aligncoder_ast_em": 0.0,
+        "aircoder_prefix_em": 42.88,
+        "exact_uncut_em": 0.0,
+        "edit_sim": 26.47,
+        "id_em": 0.31,
+        "id_f1": 21.21
+      },
+      "micro_mean": {
+        "count": 8004,
+        "aligncoder_ast_em": 2.57,
+        "aircoder_prefix_em": 28.42,
+        "exact_uncut_em": 0.0,
+        "edit_sim": 30.9,
+        "id_em": 0.17,
+        "id_f1": 29.08
+      },
+      "macro_mean": {
+        "aligncoder_ast_em": 2.41,
+        "aircoder_prefix_em": 30.67,
+        "edit_sim": 31.42,
+        "id_f1": 29.68
+      }
+    },
+    "rlcoder_cadre_plus_8004": {
+      "cceval_python": {
+        "count": 2665,
+        "aligncoder_ast_em": 0.0,
+        "aircoder_prefix_em": 18.87,
+        "exact_uncut_em": 0.0,
+        "edit_sim": 27.85,
+        "id_em": 0.0,
+        "id_f1": 25.41
+      },
+      "cceval_java": {
+        "count": 2139,
+        "aligncoder_ast_em": 9.91,
+        "aircoder_prefix_em": 21.55,
+        "exact_uncut_em": 0.0,
+        "edit_sim": 31.91,
+        "id_em": 0.14,
+        "id_f1": 31.02
+      },
+      "repoeval_api": {
+        "count": 1600,
+        "aligncoder_ast_em": 0.0,
+        "aircoder_prefix_em": 35.5,
+        "exact_uncut_em": 0.0,
+        "edit_sim": 40.41,
+        "id_em": 0.25,
+        "id_f1": 42.7
+      },
+      "repoeval_line": {
+        "count": 1600,
+        "aligncoder_ast_em": 0.0,
+        "aircoder_prefix_em": 37.81,
+        "exact_uncut_em": 0.0,
+        "edit_sim": 26.94,
+        "id_em": 0.31,
+        "id_f1": 22.06
+      },
+      "micro_mean": {
+        "count": 8004,
+        "aligncoder_ast_em": 2.65,
+        "aircoder_prefix_em": 26.7,
+        "exact_uncut_em": 0.0,
+        "edit_sim": 31.26,
+        "id_em": 0.15,
+        "id_f1": 29.7
+      },
+      "macro_mean": {
+        "aligncoder_ast_em": 2.48,
+        "aircoder_prefix_em": 28.43,
+        "edit_sim": 31.78,
+        "id_f1": 30.3
+      }
+    }
+  }
+}
