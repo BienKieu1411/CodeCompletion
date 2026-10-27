@@ -18,7 +18,7 @@ Cô hướng dẫn yêu cầu chỉ ra pain point bằng số liệu, gồm hai 
 - Máy local không có pyarrow, nên phần đọc parquet chạy trên Kaggle. Tiến trình chạy nền ở local bị dừng khi lệnh trả về, nên mỗi lệnh phải xong dưới 3 phút.
   - Phân tích CPU trên các file prediction đã tải về thì chạy local được (`dep_oracle.simple_score` không cần pyarrow).
 - KHÔNG chạy lại retriever AlignCoder (rất chậm). Dùng lại candidates đã lưu:
-  - RepoEval API: `prediction_with_candidates.jsonl`
+  - RepoEval API: `prediction_with_candidates.jsonl` (lấy từ lần chạy AlignCoder của partner ngày 2026-10-06, `RepoClone/AlignCoder/results/repoeval_api/` trên branch BienKieu, KHÔNG phải RQ1; cột `pred` trong file này không phải baseline chuẩn, xem mục 28)
   - CCEval Python: `cceval_python_prediction_with_candidates.jsonl` (lấy từ log RQ1 trong `aligncoder-rq1-deepseek13b-20261013-225803.zip`)
 - Prompt giống `construct_prompts` của AlignCoder:
   - Tổng 2048 token, mặc định 1536 cho cross-file (`MAX_CTX`, `MAX_CROSS` trong `dep_oracle.py`).
@@ -409,6 +409,101 @@ Cô hướng dẫn yêu cầu chỉ ra pain point bằng số liệu, gồm hai 
     - Gộp hai bộ (6.7b): learned3 58 thắng / 36 thua (p=0.030); conf3 60 / 36 (p=0.018). Từng bộ riêng chưa có ý nghĩa ở n=1000.
     - Đọc kết quả: **hình dạng giữ nguyên khi tăng 5× tham số.** RepoEval vẫn tốt nhất ở 512, và 1536 (cấu hình AlignCoder) vẫn kém 3.6 EM: model lớn không bù được phần in-file bị lấn chỗ. CCEval vẫn tăng đều tới 1536. Dư địa oracle không co lại (5.6 / 4.4 so với 5.6 / 4.1). Mức tăng của bộ chọn nhỏ hơn với 6.7b (+1.5 / +0.7 so với +1.9 / +1.5), nhất là CCEval; conf3 không học còn nhỉnh hơn learned3 trên CCEval. Cần xác nhận trên hold-out nếu đưa 6.7b vào bảng chính (~6 giờ L4 cho 4 ngân sách, hoặc 3 ngân sách 256/1024/1536 ~4.5 giờ).
     - Vận hành: hai lần OOM ở batch 4 (đã ghi ở `HANDOFF_COLAB.md` 3.3); hai lần MCP gắn nhầm vào runtime CPU khác và Drive ở đó hiện trạng thái cũ, khiến tưởng mất VM. VM L4 thực tế chạy liên tục ~8.8 giờ.
+28. **Vì sao align1536 của mình lệch file dự đoán "chính thức" của AlignCoder trên RepoEval API** (2026-10-26, CPU + RTX 4060 local trong `.venv-gpu`, `repro_official.py` `9c7c5fdc`, `repro_official_ctx.py` `77ad01c8`, `modal_out/repro_official_summary.json`). Cùng scorer (`simple_score`): cột `pred` trong `prediction_with_candidates.jsonl` đạt 41.75 (bản truncated 41.25), align1536 của mình 36.81; dòng đầu chỉ trùng 61.8%, 106 mẫu chỉ bản kia đúng so với 35 mẫu chỉ mình đúng.
+    - **Đã loại trừ (đều giống nhau hoặc không giải thích được):**
+      - Candidates 1600/1600 giống hệt; GT 1600/1600; cột `input` = 512 ký tự cuối left context, khớp 1600/1600.
+      - Dữ liệu: sha256 của `test-0/1.parquet` local = `test_0/1.parquet` trên HF; Data4AlignCoder chỉ có một revision (`ce72fe3`).
+      - Code: `construct_prompts` = `D.build_prompt`, `CodeBlock.__str__` = `D.block_str`; `HF_Generator` greedy fp16, 64 token; `generation_config.json` không bật sampling.
+      - Cách sinh: 48 mẫu sinh lại ở batch 1 không pad, pad cố định 2048, batch 4 → cả ba tái tạo sweep của mình (31/32 dòng đầu ở nhóm lệch), 0/32 trùng bản kia. Cửa sổ 3072 / 4096 / 8192 với cross 1536: 1–2/32. Ngân sách khác (b0–b1536 đã có): tối đa 61.8%.
+    - **Nguyên nhân: file RepoEval này đến từ một lần chạy không chuẩn.**
+      - Thư mục `RepoClone/AlignCoder/results/` (commit `ab08085`, 2026-10-06) của partner. Trên CCEval-py, lần chạy đó cho **34.15 EM**, so với paper AlignCoder 28.37 và lần chạy RQ1 (có manifest, đúng giao thức) 28.74. Candidates CCEval của nó khác RQ1 (257/2665 danh sách trùng, trung bình 7.63/10 chunk chung), dự đoán chỉ 220/2665 trùng.
+      - Pipeline của mình tái tạo RQ1 trên CCEval: dòng đầu trùng 97.7%, văn bản trùng 90.7%, EM 28.86 so với 28.74.
+      - Cấu hình của lần chạy 6/10 không được ghi lại (manifest RQ1 báo `failed_or_timed_out` và không có RepoEval). Không tái tạo được bước sinh của nó bằng cùng candidates, nên khác biệt nằm ở cấu hình sinh (generator / prompt) mà ta không biết.
+    - **Hệ quả:**
+      - align1536 = 36.81 của mình là baseline AlignCoder tái tạo được từ code và dữ liệu công khai, gần với paper (37.25). Mức tăng của E2 (+6.31 trên toàn bộ test) so với baseline này vẫn giữ.
+      - Cột `pred` / file `prediction.jsonl` RepoEval của lần chạy 6/10 (41.25–41.75) **không dùng làm baseline AlignCoder**. So với nó E2 chỉ còn +1.9, nhưng so sánh đó không hợp lệ.
+      - Các phép so CADRE / MB-SPT trên branch BienKieu dùng chính file này làm `aligncoder_2k` cho RepoEval (CCEval thì dùng bản RQ1). So với baseline tái tạo, CADRE RepoEval-API là 42.19 so với 36.81, không phải +0.94 như đã ghi ở REPORT / chat trước. So E2 với CADRE không bị ảnh hưởng.
+      - Candidates RepoEval cũng đến từ lần chạy 6/10. Trên CCEval, retrieval của lần chạy đó khác RQ1, nên candidates RepoEval có thể không phải đầu ra chuẩn của AlignCoder. Muốn chắc chắn phải chạy lại retriever theo giao thức RQ1 cho RepoEval (chậm; trước đây đã quyết định không chạy lại).
+      - Hai cách chấm EM RepoEval: `em` của BienKieu và số đầu trong `results.json` (28.75) là so trọn câu lệnh; `em_repoeval` / số trong ngoặc (41.31) là so k dòng đầu, giống `simple_score`.
+    - Cần hỏi partner: cấu hình của lần chạy 6/10 (generator, độ dài context, retriever, có sửa code không).
+
+29. **Kiểm tra một nhận xét bên ngoài về vì sao E8 (CAD) FAIL** (2026-10-27, CPU, `e8_critique_check.py` `d364b0c5`, chỉ đọc `modal_out/e8_{repoeval,cceval}/items_*.jsonl`). Với mỗi mẫu CAD làm đổi đúng/sai so với alpha 0 cùng ngân sách: từ đầu tiên khác nhau nằm ở đâu (in-file / cross-file / cả hai), dòng đầu của CAD có chép nguyên một dòng prompt không, có token p_with < 0.05 không.
+    - Bảng số và changes_by_class trong nhận xét khớp `e8_cad_summary.json` (gộp 8 thắng / 19 thua, p = 0.052).
+    - "Phạt biến cục bộ chỉ có trong file" hiếm: từ đúng của alpha 0 chỉ nằm ở in-file trong 0/9 ca hỏng RepoEval (B=512, α=0.5) và 2/10 ca CCEval (B=1536). Phần lớn từ bị đổi có mặt ở cả hai phần. Về công thức, CAD chỉ phạt token có log p giảm khi thêm cross-file (lw < lo), không phạt token chỉ vì lo cao.
+    - Xu hướng chung "kéo về identifier chỉ có ở cross-file" có thật: 4/9 (RepoEval) và 3/10 (CCEval) ca hỏng đổi từ một từ có ở cả hai phần sang từ chỉ có ở cross-file.
+    - "Khuếch đại chép nguyên dòng" chỉ đúng một phần: 4/9 ca hỏng RepoEval là dòng chép nguyên từ prompt, CCEval 0/10. Số 37.5% của E7b là chép từ bất kỳ đâu trong prompt (kể cả in-file), không riêng cross-file, và CCEval là 0%.
+    - "Lỗi 3" (nhánh without cắt in-file bằng nhánh with, lệch position_ids) không phải lỗi: giữ cùng phần in-file là thiết kế có chủ đích để tách riêng đóng góp của cross-file; position_ids tính từ attention mask nên left-pad đúng, và RoPE chỉ phụ thuộc vị trí tương đối.
+    - Nguyên nhân nhận xét bỏ sót: `e8_cad.py` không có ràng buộc plausibility (chỉ xét token có p_with ≥ β·max), nên α lớn chọn token mà prompt có cross-file cho xác suất thấp. Ở α=1, 12/22 ca hỏng RepoEval và 6/18 ca CCEval có token p_with < 0.05. Ở α=0.5 chỉ 3/9 và 1/10, nên đây không phải nguyên nhân duy nhất. Không chạy lại CAD (đã đóng).
+
+30. **H1: đổi ngân sách giữa lúc sinh tại `.` / `(` khi không chắc — FAIL** (2026-10-27, RTX 4060 local `.venv-gpu`, `h1_switch.py` `817fd37e`, `modal_out/h1_{repoeval,cceval}/{plan.json,cont.jsonl,anchor.jsonl}`, `modal_out/h1_switch_summary.json`, ~35 phút). Bắt đầu greedy ở b_s (lấy từ sweep Kaggle có sẵn), lần đầu văn bản kết thúc bằng `.` sau identifier hoặc `(` mà p(token greedy kế tiếp) < τ thì dựng lại prompt ở b_l, nối prefix đã sinh và sinh tiếp tới 64 token. Mốc: đổi ở bước 0 khớp sweep 1536 (EM 32/32). Ngưỡng chốt trước: PRIMARY (512→1536, τ=0.5) ≥ E2 conf3 + 1 EM trên cả hai bộ; dev 1000/bộ.
+    | | RepoEval | CCEval |
+    |---|---|---|
+    | Cố định tốt nhất | 40.5 (512) | 28.5 (1536) |
+    | E2 conf3 (~192 token/mẫu) | 41.8 | 29.2 |
+    | **H1 512→1536 @0.5** (~74 token/mẫu) | **41.0** (vs conf3 29 / 37) | **25.7** (vs conf3 14 / 49) |
+    | H1 @0.3 / 0.7 / 0.9 (khám phá) | 40.7 / 40.9 / 40.7 | 23.9 / 26.9 / 27.7 |
+    - Gộp so với conf3: 43 thắng / 86 thua, p = 0.0002. **FAIL.**
+    - RepoEval: 245 mẫu đổi giữa chừng nhưng chỉ 5 mẫu đổi kết quả (5 thắng / 0 thua so với 512). Khi prefix đã sinh tới điểm rẽ nhánh, thêm cross-file hầu như không đổi phần sinh tiếp: lựa chọn sai đã nằm trong prefix hoặc không phụ thuộc ngân sách.
+    - CCEval: bắt đầu ở 512 làm mất phần lớn lợi ích của 1536; τ cao hơn tiến gần 1536 cố định nhưng vẫn kém.
+    - Hệ quả: tín hiệu ngân sách của E2 nằm ở **toàn bộ lần sinh** (bao gồm cả prefix), không phải ở điểm rẽ nhánh. Không chạy các cấu hình khám phá còn lại (b_s 256, b_l 1024).
+31. **X4: calibration / MBR / thu thập view tuần tự trên 4 view của X3 — FAIL cả ba** (2026-10-27, CPU local ~5 phút, `x4_arbiter.py` `d78c4354`, `x4_out/x4_summary.json`; không sinh mới). Cross-fit dev ↔ hold-out như X3, calibrator theo (view, bộ). Mốc: C0 conf argmax 48.00 / 34.15, X3 PRIMARY 48.62 / 34.11 (khớp).
+
+    | Chính sách | RepoEval | CCEval | vs C0 gộp W/L/p |
+    |---|---|---|---|
+    | C0 conf argmax 4 view | 48.00 | 34.15 | – |
+    | P1 isotonic (PRIMARY) | 47.56 | 33.88 | 27/41, 0.11 |
+    | P1 Platt | 48.06 | 34.26 | 23/19, 0.64 |
+    | P2 MBR edit-sim × p_iso (PRIMARY) | 46.19 | 33.25 | 45/98, <0.001 |
+    | P2 vote exact × p_iso / không trọng số | 46.38 / 45.00 | 33.25 / 30.51 | thua |
+    | P2 learned + đặc trưng đồng thuận | 47.69 | 33.77 | 49/64, 0.19 |
+    | P3 tuần tự 1024→8k→1536→256, τ chọn trên train (τ=0.05) | 43.50 (1.38 lần sinh) | 29.72 (1.48) | giữ −84% / 12% mức tăng |
+
+    - P1: độ tự tin thô giữa prompt 2k và 8k đã gần như calibrated theo thứ hạng; map lại không thêm gì.
+    - P2: đồng thuận giữa các view **hại** (thua 98 vs thắng 45): lỗi giữa các view tương quan (các view cùng chép một dòng sai), còn đáp án đúng thường thuộc một view thiểu số tự tin. Đây là bằng chứng ngược với self-consistency kiểu "đa số đúng".
+    - P3: dừng theo P(đúng) đã calibrate quá sớm (calibrated p của view rẻ nhất thường thấp nhưng chưa đủ biết view nào tốt hơn); đường τ đầy đủ ở summary. Ở ~2 lần sinh, chính sách cố định {1024, 8k} của X3 (48.50 / 33.28) trội hơn mọi điểm trên đường tuần tự (τ=0.3: 45.75 / 2.0 gens, 33.51 / 2.6 gens).
+    - Hệ quả: bộ chọn conf argmax của X3 đã là điểm mạnh nhất trong họ chọn-sau-khi-sinh chỉ dùng prefix; phần "fancy" không nên nằm ở bộ chọn. Pilot dự định chạy trên Kaggle nhưng chạy CPU local vì chỉ mất 5 phút và tất định.
+    - Người dùng (2026-10-27) không dùng X3 làm phương pháp vì nó chọn giữa output của hệ từ bài khác (AlignCoder, AIRCoder); chỉ các view tự dựng từ một pool (như E2) là hợp lệ.
+32. **X4 trên riêng 3 view của E2 (256/1024/1536) — FAIL cả ba** (2026-10-27, CPU local, `x4_arbiter.py --views e2` `3efda9ae`, `x4_out/x4_e2_summary.json`; nhãn "oracle 4 views" trong output thực ra là oracle 3 view). Mốc khớp: C0 conf3 43.06 / 29.72, learned 43.12 / 29.83.
+    - P1 isotonic 43.12 / 29.83 (28/24), Platt 42.75 / 30.02 (24/21): ngang C0. P2 MBR 42.69 / 29.49 (49/61), vote không trọng số 42.19 / 29.01 (43/76, p=0.003), learned + đồng thuận 42.38 / 28.97 (45/76). P3 tuần tự 1024→1536→256 ~1.5 lần sinh: 42.12 / 28.52, giữ 54% / −40% mức tăng.
+    - Kết luận như mục 31, nay trên đúng tập view hợp lệ: conf argmax là bộ chọn tốt nhất; đồng thuận giữa view hại.
+33. **S1: đoán budget một lần sinh với nhãn mềm / budget liên tục — FAIL** (2026-10-27, CPU local, `s1_smooth_budget.py` `3fc2cd65`, `modal_out/s1_smooth_summary.json`). Feature như E4 (9 static + next-token + hidden B=1024 PCA 64), cross-fit dev ↔ hold-out, u_b = EM_b + ES_b. Ngưỡng chốt trước: S1 ≥ best fixed (41.38 / 28.86) + 1 EM cả hai bộ, gộp p < 0.05.
+
+    | 1 lần sinh | RepoEval | CCEval | gộp vs best fixed W/L/p |
+    |---|---|---|---|
+    | HARD (logistic từng budget, cùng feature) | 41.38 | 28.18 | 72/90, 0.18 |
+    | **S1 soft-listwise q_b ∝ exp(u_b/0.25)** (PRIMARY) | 40.25 | 27.54 | 68/121, <0.001 |
+    | S2 hồi quy u(x, log2 b) bằng GBM | 42.50 | 27.20 | 121/147, 0.13 |
+    | Tham chiếu: E4 probe / E2 3 lần sinh | 42.50 / 43.12 | 28.63 / 29.83 | |
+
+    - Nhãn mềm làm tệ hơn nhãn cứng (S1 vs HARD 59/94, p=0.006): utility mềm phần lớn đến từ ES, mà ES gần như phẳng theo budget nên đẩy bộ đoán về phía nhiễu. S2 thắng trên RepoEval (bằng E4) nhưng thua CCEval vì gần như không bao giờ chọn 1536; b* trên lưới mịn chỉ rơi vào 4 giá trị (cây chỉ tách giữa các budget đã có), nên "liên tục" chỉ là hình thức nếu không sinh thêm budget trung gian.
+    - Xác nhận lại E4: trước khi sinh, feature không đủ để đoán budget, dù đổi cách gán nhãn. Hướng một lần sinh cho trục budget coi như đóng.
+
+34. **E9-pre: trục "biến thể" của CADRE v2.8 gần như không có độ đa dạng** (2026-10-27, CPU, `e9_cadre_variant_oracle.py` `32dbe5c8`, input `data_in/cadre_v28/` = `cadre_v28_8004.tar` của partner, BienKieu `ba5983c`). CADRE v2.8: cửa sổ 2560, chunk RLCoder top-10 (trace `experiments/mb_spt_iterative/rlcoder_full_8004_retrieval_trace.jsonl.gz` có sẵn, không cần chạy lại retrieval), cross-file trần 1536 nhưng bị kẹp bởi min_left 1024 → thực tế ~1.3–1.4k cố định. Chỉ mô tả, không có ngưỡng.
+
+    | simple_score EM | raw | +tree | +tree+spec (=final) | oracle 3 biến thể | gap | khác nhau raw vs final |
+    |---|---|---|---|---|---|---|
+    | CCEval-py | 22.74 | 23.90 | 24.54 | 26.12 | 1.58 | 4.6% |
+    | RepoEval-API | 41.44 | 41.50 | 40.81 | 42.25 | 0.75 | 1.9% |
+    | CCEval-java / RepoEval-line | 23.28 / 49.00 | 23.28 / 49.19 | 23.70 / 49.31 | 24.50 / 49.50 | 0.8 / 0.2 | |
+
+    - So với trục budget trên AlignCoder (oracle gap 5.5 / 4.7): biến thể CADRE chỉ đổi đầu ra ở 1–5% mẫu → lưới "biến thể × budget" thực chất chỉ có một trục đa dạng là budget.
+    - CADRE thua chính pass1_raw trên RepoEval-API (40.81 vs 41.44); phần thắng chỉ ở CCEval.
+    - Đề xuất (chưa chạy): E9 = prompt CADRE final ở 3 trần cross-file, chọn conf3; xem brief mục 4.
+
+35. **E9: E2 (chọn budget theo conf3) bên trong CADRE v2.8 — FAIL theo ngưỡng chốt trước; thắng mạnh ở RepoEval, không thắng ở CCEval** (2026-10-27, Colab A100 40GB, vLLM 0.32 / transformers 5.19, `e9_cadre_budget.py` `3a52c1ba` (run ~40 phút), copy nguyên script partner `cadre_v28_unified.py` `3f6b6907`, package `cadre_official.tar.gz` (BienKieu `7ac4179`); output `MyDrive/dep_oracle/runs/e9_w3072/{b256,b1024,b1536}.jsonl.gz, e9_summary.json`). Tree + spec dựng một lần (spec từ bản nháp tree ở budget mặc định, kích hoạt 4526/8004), chỉ đổi trần cross-file `max_exemplar_tokens` ∈ {256, 1024, 1536}; 1536 = CADRE mặc định.
+    - **Phát hiện khi tái lập mốc:** dự đoán của partner (`cadre_v28_8004_predictions`) được sinh ở **cửa sổ 3072**, không phải 2560 như CLI/metrics ghi. Probe 400 mẫu: pass1_raw trùng nguyên văn 285/400 ở 2560, **397/400 ở 3072**, 323/400 ở 4096. Tokenizer (Hub vs bản vá PreTrainedTokenizerFast) giống hệt nhau trên 400/400 left context. Lần chạy đầu ở 2560 giữ ở `runs/e9_w2560/` (mốc lệch ~1.5 EM; ở đó conf3 cũng thắng b1536 gộp 89/44, p=0.0001, CCEval-py 23.38 vs 23.08).
+    - Mốc ở 3072: EM chính thức b1536 vs partner: CCEval-py 25.48 vs 24.95 (lệch 0.53, quá ngưỡng 0.5 chút), Java 26.23 = 26.23, API 40.62 vs 40.50, line 49.06 = 49.06; trùng nguyên văn 89.5 / 97.7 / 96.4 / 97.1% (ngưỡng 98% không đạt; khác chủ yếu ở token cuối, do khác phiên bản vLLM/batch). Coi như tái lập được ở mức EM.
+
+    | EM (simple / CADRE official) | b256 | b1024 | b1536 (=CADRE) | **conf3** | oracle3 (simple) | conf3 vs b1536 W/L, p |
+    |---|---|---|---|---|---|---|
+    | RepoEval-API | 32.44 / 32.31 | 39.88 / 39.69 | 40.94 / 40.62 | **43.00 / 42.88** | 45.12 | 53/17, <0.001 |
+    | CCEval-py | 14.03 / 14.26 | 22.21 / 22.59 | 25.07 / 25.48 | 25.07 / 25.44 | 27.65 | 33/34, 1.0 |
+    | RepoEval-line (phụ) | 38.62 / 38.38 | 47.44 / 47.12 | 49.31 / 49.06 | 50.06 / 49.81 | 52.69 | 36/24, 0.16 |
+    | CCEval-java (phụ) | 13.60 / 15.33 | 21.41 / 23.75 | 23.70 / 26.23 | 23.66 / 26.04 | 25.85 | 26/30, 0.69 |
+
+    - ES chính thức của conf3 ≥ b1536 trên cả 4 bộ (API 69.28 vs 67.28). Gộp 2 bộ chính conf3 vs b1536: 86/51, p=0.0035.
+    - **E9a FAIL** (oracle gap 4.18 / 2.58; CCEval < 3). **E9b FAIL**: đạt ở RepoEval-API với cả hai scorer, nhưng CCEval-py hòa (simple 25.07 = 25.07, official 25.44 < 25.48).
+    - Diễn giải: lặp lại đúng giới hạn E5. Trục budget mạnh khi có lấn chỗ (RepoEval, file dài), gần như bằng 0 ở CCEval (file ngắn, cửa sổ 3072 hầu như không bị cắt; b1536 tốt nhất hẳn). Trên CADRE, E2 thêm +2.3 EM ở RepoEval-API, nâng CADRE từ 40.6 lên 42.9.
 
 ## Bước tiếp theo
 **Chuyển sang Colab (2026-10-25):** Modal gần hết credit. Session mới đọc `HANDOFF_COLAB.md` trước: cách chạy trên Colab (`colab_runner.ipynb`, `colab_bundle.zip`, tạo lại bằng `make_colab_bundle.py`) và danh sách việc tiếp theo theo thứ tự ưu tiên.
