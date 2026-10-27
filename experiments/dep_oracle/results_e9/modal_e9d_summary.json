@@ -1,0 +1,251 @@
+{
+ "cceval_python": {
+  "n": 2665,
+  "simple": {
+   "b384": 15.2,
+   "b1536": 24.73,
+   "b2304": 26.23,
+   "conf3": 26.53,
+   "conf6": 26.49
+  },
+  "official": {
+   "b384": 15.46,
+   "b1536": 25.14,
+   "b2304": 26.72,
+   "conf3": 26.98,
+   "conf6": 26.98
+  },
+  "es_official": {
+   "b384": 64.64,
+   "b1536": 70.91,
+   "b2304": 71.93,
+   "conf3": 72.08,
+   "conf6": 72.08
+  },
+  "best_fixed_simple": 2304,
+  "best_fixed_official": 2304,
+  "oracle3_simple": 29.27,
+  "oracle_gap_simple": 3.04,
+  "conf3_vs_b1536_official": [
+   86,
+   37,
+   0.0
+  ],
+  "conf3_mix": {
+   "1536": 934,
+   "2304": 1012,
+   "384": 719
+  },
+  "gate_copy_pct_b1536": 0.41,
+  "pass_simple": true,
+  "pass_official": true,
+  "oracle6_simple": 30.58,
+  "conf6_vs_conf3_official": [
+   18,
+   18,
+   1.0
+  ],
+  "conf6_mix": {
+   "1536m": 468,
+   "2304m": 528,
+   "384r": 304,
+   "2304r": 501,
+   "1536r": 454,
+   "384m": 410
+  },
+  "pass6": false,
+  "anchor_ref_official_em": 24.95,
+  "anchor_pred_agree_pct": 88.44,
+  "anchor_ok": false
+ },
+ "cceval_java": {
+  "n": 2139,
+  "simple": {
+   "b384": 15.57,
+   "b1536": 23.7,
+   "b2304": 24.59,
+   "conf3": 24.68,
+   "conf6": 25.01
+  },
+  "official": {
+   "b384": 17.44,
+   "b1536": 26.23,
+   "b2304": 27.3,
+   "conf3": 27.12,
+   "conf6": 27.26
+  },
+  "es_official": {
+   "b384": 63.94,
+   "b1536": 66.67,
+   "b2304": 67.41,
+   "conf3": 67.83,
+   "conf6": 68.06
+  },
+  "best_fixed_simple": 2304,
+  "best_fixed_official": 2304,
+  "oracle3_simple": 26.69,
+  "oracle_gap_simple": 2.1,
+  "conf3_vs_b1536_official": [
+   44,
+   25,
+   0.0295
+  ],
+  "conf3_mix": {
+   "1536": 688,
+   "384": 754,
+   "2304": 697
+  },
+  "gate_copy_pct_b1536": 1.59,
+  "pass_simple": true,
+  "pass_official": false,
+  "oracle6_simple": 27.96,
+  "conf6_vs_conf3_official": [
+   19,
+   16,
+   0.7359
+  ],
+  "conf6_mix": {
+   "1536m": 345,
+   "384m": 337,
+   "2304r": 332,
+   "2304m": 337,
+   "384r": 424,
+   "1536r": 364
+  },
+  "pass6": true,
+  "anchor_ref_official_em": 26.23,
+  "anchor_pred_agree_pct": 96.91,
+  "anchor_ok": false
+ },
+ "repoeval_api": {
+  "n": 1600,
+  "simple": {
+   "b384": 34.5,
+   "b1536": 40.88,
+   "b2304": 40.94,
+   "conf3": 44.12,
+   "conf6": 44.75
+  },
+  "official": {
+   "b384": 34.38,
+   "b1536": 40.56,
+   "b2304": 40.75,
+   "conf3": 44.0,
+   "conf6": 44.62
+  },
+  "es_official": {
+   "b384": 62.53,
+   "b1536": 67.36,
+   "b2304": 67.63,
+   "conf3": 70.16,
+   "conf6": 70.58
+  },
+  "best_fixed_simple": 2304,
+  "best_fixed_official": 2304,
+  "oracle3_simple": 46.94,
+  "oracle_gap_simple": 6.0,
+  "conf3_vs_b1536_official": [
+   73,
+   18,
+   0.0
+  ],
+  "conf3_mix": {
+   "1536": 475,
+   "384": 583,
+   "2304": 542
+  },
+  "gate_copy_pct_b1536": 2.12,
+  "pass_simple": true,
+  "pass_official": true,
+  "oracle6_simple": 48.25,
+  "conf6_vs_conf3_official": [
+   16,
+   6,
+   0.0525
+  ],
+  "conf6_mix": {
+   "1536r": 271,
+   "384r": 325,
+   "1536m": 196,
+   "2304r": 274,
+   "2304m": 278,
+   "384m": 256
+  },
+  "pass6": true,
+  "anchor_ref_official_em": 40.5,
+  "anchor_pred_agree_pct": 96.06,
+  "anchor_ok": false
+ },
+ "repoeval_line": {
+  "n": 1600,
+  "simple": {
+   "b384": 40.88,
+   "b1536": 49.19,
+   "b2304": 49.44,
+   "conf3": 51.31,
+   "conf6": 51.38
+  },
+  "official": {
+   "b384": 40.62,
+   "b1536": 48.94,
+   "b2304": 49.19,
+   "conf3": 51.12,
+   "conf6": 51.19
+  },
+  "es_official": {
+   "b384": 63.86,
+   "b1536": 69.77,
+   "b2304": 70.14,
+   "conf3": 71.31,
+   "conf6": 71.37
+  },
+  "best_fixed_simple": 2304,
+  "best_fixed_official": 2304,
+  "oracle3_simple": 54.38,
+  "oracle_gap_simple": 4.94,
+  "conf3_vs_b1536_official": [
+   57,
+   22,
+   0.0001
+  ],
+  "conf3_mix": {
+   "1536": 495,
+   "384": 594,
+   "2304": 511
+  },
+  "gate_copy_pct_b1536": 0.12,
+  "pass_simple": true,
+  "pass_official": true,
+  "oracle6_simple": 54.75,
+  "conf6_vs_conf3_official": [
+   5,
+   4,
+   1.0
+  ],
+  "conf6_mix": {
+   "1536m": 235,
+   "384r": 317,
+   "2304r": 280,
+   "2304m": 237,
+   "1536r": 257,
+   "384m": 274
+  },
+  "pass6": true,
+  "anchor_ref_official_em": 49.06,
+  "anchor_pred_agree_pct": 96.38,
+  "anchor_ok": false
+ },
+ "pooled_primary_conf3_vs_b1536": [
+  159,
+  55,
+  0.0
+ ],
+ "E9a": "PASS",
+ "E9b_primary": "PASS",
+ "pooled_primary_conf6_vs_conf3": [
+  34,
+  24,
+  0.2371
+ ],
+ "E9d": "FAIL"
+}

@@ -520,6 +520,18 @@ Cô hướng dẫn yêu cầu chỉ ra pain point bằng số liệu, gồm hai 
     - So với E9 (dải {256, 1024, 1536}): CCEval từ hòa thành thắng, nhờ trên dải có một budget lớn hơn mặc định. Trục budget cần phủ cả hai phía của mức mặc định.
     - E9d (conf6 trên {raw, main} × budget, chốt trước 2026-10-28) đang chạy trên Modal L4 (`modal_e9.py`, fc-01M5Z5AED40WQ08M27AZWQBQWG → volume `dep-oracle-probe/e9d`); lượt này cũng tái lập E9c.
 
+37. **E9d: conf6 trên {raw, main} × budget thay cổng copy — FAIL; đồng thời tái lập E9c trên Modal L4** (2026-10-28, Modal L4 ~2h40, `modal_e9.py` + `e9_cadre_budget.py` `373f71d6`, vLLM 0.32.0; output `modal_out/e9d/` + volume `dep-oracle-probe/e9d`, summary `results_e9/modal_e9d_summary.json`).
+
+    | EM (simple / official) | b1536 (=CADRE) | b2304 | conf3 (E9c) | conf6 (E9d) | oracle3 / oracle6 | conf6 vs conf3 W/L, p |
+    |---|---|---|---|---|---|---|
+    | RepoEval-API | 40.88 / 40.56 | 40.94 / 40.75 | 44.12 / 44.00 | 44.75 / 44.62 | 46.94 / 48.25 | 16/6, 0.053 |
+    | CCEval-py | 24.73 / 25.14 | 26.23 / 26.72 | 26.53 / 26.98 | 26.49 / 26.98 | 29.27 / 30.58 | 18/18, 1.0 |
+    | RepoEval-line | 49.19 / 48.94 | 49.44 / 49.19 | 51.31 / 51.12 | 51.38 / 51.19 | 54.38 / 54.75 | 5/4 |
+    | CCEval-java | 23.70 / 26.23 | 24.59 / 27.30 | 24.68 / 27.12 | 25.01 / 27.26 | 26.69 / 27.96 | 19/16 |
+
+    - **E9d FAIL** (CCEval-py hòa; gộp 34/24, p=0.24). Trục nội dung (raw so với tree/spec) gần như không thêm gì khi đã có trục budget, khớp với E9-pre (mục 34).
+    - **E9c tái lập trên L4:** conf3 vs CADRE gộp 159/55, p<1e-4; E9a, E9b PASS lần nữa. Lệch so với Colab A100 ≤0.3 EM (API 44.12 vs 44.44 simple, CCEval 26.53 vs 26.42). Kết luận E9c vững qua hai GPU / hai lần chạy.
+
 ## Bước tiếp theo
 **Chuyển sang Colab (2026-10-25):** Modal gần hết credit. Session mới đọc `HANDOFF_COLAB.md` trước: cách chạy trên Colab (`colab_runner.ipynb`, `colab_bundle.zip`, tạo lại bằng `make_colab_bundle.py`) và danh sách việc tiếp theo theo thứ tự ưu tiên.
 
