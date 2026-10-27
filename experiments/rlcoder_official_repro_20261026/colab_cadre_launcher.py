@@ -24,6 +24,7 @@ TRACE_PATH = PROJECT_ROOT / "experiments/mb_spt_iterative/rlcoder_full_8004_retr
 RUN_SCRIPT = CURRENT_DIR / "run_cadre_consolidated_full_8004.py"
 RUN_SCRIPT_V27 = CURRENT_DIR / "run_cadre_v27_optimized.py"
 RUN_SCRIPT_V28 = CURRENT_DIR / "run_cadre_v28_unified.py"
+RUN_SCRIPT_V29 = CURRENT_DIR / "run_cadre_v29_adaptive_slack.py"
 SETUP_SCRIPT = CURRENT_DIR / "colab_cadre_setup.py"
 CADRE_PKG = PROJECT_ROOT / "cadre_official"
 
@@ -73,7 +74,8 @@ def main() -> None:
     parser.add_argument("--smoke", action="store_true", help="Run 50 tasks per benchmark smoke test")
     parser.add_argument("--benchmarks", default="cceval_python,cceval_java,repoeval_line,repoeval_api")
     parser.add_argument("--v27", action="store_true", help="Run CADRE v2.7 Optimized (Comment-shielded + Dynamic Left Context)")
-    parser.add_argument("--v28", action="store_true", default=True, help="Run CADRE v2.8 Unified Harmony (Raw chunks 1.5k + Dynamic Left Context up to 3k)")
+    parser.add_argument("--v28", action="store_true", help="Run CADRE v2.8 Unified Harmony (Raw chunks 1.5k + Dynamic Left Context up to 3k)")
+    parser.add_argument("--v29", action="store_true", default=True, help="Run CADRE v2.9 Slack-Gated Adaptive Context Budgeting")
     parser.add_argument("--consolidated", action="store_true", help="Run CADRE v2.6 Consolidated")
     args = parser.parse_args()
 
@@ -89,11 +91,17 @@ def main() -> None:
         res_dir_name = "cadre_v27_8004"
         local_out = CURRENT_DIR / "results_cadre_v27"
         max_len_str = "2560"
-    else:
+    elif args.v28:
         active_script = RUN_SCRIPT_V28
         target_remote_script = "/content/run_cadre_v28_unified.py"
         res_dir_name = "cadre_v28_8004"
         local_out = CURRENT_DIR / "results_cadre_v28"
+        max_len_str = "3072"
+    else:
+        active_script = RUN_SCRIPT_V29
+        target_remote_script = "/content/run_cadre_v29_adaptive_slack.py"
+        res_dir_name = "cadre_v29_slack"
+        local_out = CURRENT_DIR / "results_cadre_v29"
         max_len_str = "3072"
 
     local_out.mkdir(parents=True, exist_ok=True)
@@ -171,7 +179,7 @@ cmd = [
     "--output-dir", "/content/cadre-results/{res_dir_name}",
     "--benchmarks", "{args.benchmarks}",
     "--generator-batch-size", "128",
-    "--gpu-memory-utilization", "0.85",
+    "--gpu-memory-utilization", "0.80",
     "--max-model-len", "{max_len_str}",
 ]
 limit_val = "{limit_str}".strip()
