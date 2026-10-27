@@ -1,0 +1,106 @@
+{
+  "pass1_raw": {
+    "cceval_python": {
+      "em": 23.15,
+      "es": 70.04,
+      "count": 2665
+    },
+    "cceval_java": {
+      "em": 25.71,
+      "es": 67.02,
+      "count": 2139
+    },
+    "repoeval_api": {
+      "em": 41.12,
+      "es": 67.53,
+      "count": 1600
+    },
+    "repoeval_line": {
+      "em": 48.75,
+      "es": 69.81,
+      "count": 1600
+    },
+    "macro_mean": {
+      "em": 34.68,
+      "es": 68.6
+    }
+  },
+  "pass1_tree_cssi": {
+    "cceval_python": {
+      "em": 24.32,
+      "es": 70.63,
+      "count": 2665
+    },
+    "cceval_java": {
+      "em": 25.71,
+      "es": 66.94,
+      "count": 2139
+    },
+    "repoeval_api": {
+      "em": 41.19,
+      "es": 67.7,
+      "count": 1600
+    },
+    "repoeval_line": {
+      "em": 48.94,
+      "es": 69.89,
+      "count": 1600
+    },
+    "macro_mean": {
+      "em": 35.04,
+      "es": 68.79
+    }
+  },
+  "cadre_tree_spec_raw": {
+    "cceval_python": {
+      "em": 24.95,
+      "es": 70.78,
+      "count": 2665
+    },
+    "cceval_java": {
+      "em": 26.23,
+      "es": 66.75,
+      "count": 2139
+    },
+    "repoeval_api": {
+      "em": 40.5,
+      "es": 67.37,
+      "count": 1600
+    },
+    "repoeval_line": {
+      "em": 49.06,
+      "es": 69.95,
+      "count": 1600
+    },
+    "macro_mean": {
+      "em": 35.19,
+      "es": 68.71
+    }
+  },
+  "cadre_v28_final": {
+    "cceval_python": {
+      "em": 24.95,
+      "es": 70.8,
+      "count": 2665
+    },
+    "cceval_java": {
+      "em": 26.23,
+      "es": 66.75,
+      "count": 2139
+    },
+    "repoeval_api": {
+      "em": 40.5,
+      "es": 67.37,
+      "count": 1600
+    },
+    "repoeval_line": {
+      "em": 49.06,
+      "es": 69.95,
+      "count": 1600
+    },
+    "macro_mean": {
+      "em": 35.19,
+      "es": 68.72
+    }
+  }
+}
