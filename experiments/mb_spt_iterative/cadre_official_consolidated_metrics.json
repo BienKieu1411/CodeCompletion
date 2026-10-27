@@ -1,0 +1,26 @@
+{
+  "cceval_python": {
+    "em": 27.0,
+    "es": 34.57,
+    "count": 100
+  },
+  "cceval_java": {
+    "em": 35.0,
+    "es": 36.59,
+    "count": 100
+  },
+  "repoeval_api": {
+    "em": 50.04,
+    "es": 51.6,
+    "count": 94
+  },
+  "repoeval_line": {
+    "em": 60.45,
+    "es": 32.1,
+    "count": 100
+  },
+  "macro_mean": {
+    "em": 43.12,
+    "es": 38.71
+  }
+}

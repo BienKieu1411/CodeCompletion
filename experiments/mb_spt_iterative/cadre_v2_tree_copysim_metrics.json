@@ -1,0 +1,4889 @@
+{
+  "pass1_baseline": {
+    "cceval_python": {
+      "em": 22.0,
+      "es": 3574.0,
+      "count": 100,
+      "details": [
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 14.0,
+          "task_id": "project_cc_python/160"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 30.0,
+          "task_id": "project_cc_python/199"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 57.0,
+          "task_id": "project_cc_python/207"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 51.0,
+          "task_id": "project_cc_python/790"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 32.0,
+          "task_id": "project_cc_python/799"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 28.0,
+          "task_id": "project_cc_python/829"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 99.0,
+          "task_id": "project_cc_python/884"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 34.0,
+          "task_id": "project_cc_python/1074"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 33.0,
+          "task_id": "project_cc_python/1109"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 28.0,
+          "task_id": "project_cc_python/1177"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 34.0,
+          "task_id": "project_cc_python/1190"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 71.0,
+          "task_id": "project_cc_python/1277"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 36.0,
+          "task_id": "project_cc_python/1409"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 54.0,
+          "task_id": "project_cc_python/1519"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 36.0,
+          "task_id": "project_cc_python/1556"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 29.0,
+          "task_id": "project_cc_python/1728"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 17.0,
+          "task_id": "project_cc_python/1715"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 33.0,
+          "task_id": "project_cc_python/2002"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 32.0,
+          "task_id": "project_cc_python/2041"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 36.0,
+          "task_id": "project_cc_python/2049"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 30.0,
+          "task_id": "project_cc_python/2412"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 23.0,
+          "task_id": "project_cc_python/2466"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 29.0,
+          "task_id": "project_cc_python/2526"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 23.0,
+          "task_id": "project_cc_python/2684"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 50.0,
+          "task_id": "project_cc_python/2982"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 20.0,
+          "task_id": "project_cc_python/3103"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 30.0,
+          "task_id": "project_cc_python/3170"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 48.0,
+          "task_id": "project_cc_python/3195"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 66.0,
+          "task_id": "project_cc_python/3347"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 71.0,
+          "task_id": "project_cc_python/3511"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 15.0,
+          "task_id": "project_cc_python/3517"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 33.0,
+          "task_id": "project_cc_python/3555"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 33.0,
+          "task_id": "project_cc_python/3541"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 12.0,
+          "task_id": "project_cc_python/3748"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 14.0,
+          "task_id": "project_cc_python/3958"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 61.0,
+          "task_id": "project_cc_python/4173"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 41.0,
+          "task_id": "project_cc_python/4240"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 19.0,
+          "task_id": "project_cc_python/4339"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 23.0,
+          "task_id": "project_cc_python/4364"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 36.0,
+          "task_id": "project_cc_python/4412"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 18.0,
+          "task_id": "project_cc_python/4563"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 34.0,
+          "task_id": "project_cc_python/4577"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 35.0,
+          "task_id": "project_cc_python/4589"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 61.0,
+          "task_id": "project_cc_python/4802"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 33.0,
+          "task_id": "project_cc_python/4680"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 29.0,
+          "task_id": "project_cc_python/4788"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 34.0,
+          "task_id": "project_cc_python/4882"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 39.0,
+          "task_id": "project_cc_python/4941"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 28.0,
+          "task_id": "project_cc_python/4956"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 35.0,
+          "task_id": "project_cc_python/5073"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 15.0,
+          "task_id": "project_cc_python/5174"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 8.0,
+          "task_id": "project_cc_python/5265"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 20.0,
+          "task_id": "project_cc_python/5393"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 50.0,
+          "task_id": "project_cc_python/5546"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 50.0,
+          "task_id": "project_cc_python/5555"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 62.0,
+          "task_id": "project_cc_python/5658"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 43.0,
+          "task_id": "project_cc_python/5694"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 34.0,
+          "task_id": "project_cc_python/5710"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 18.0,
+          "task_id": "project_cc_python/5706"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 24.0,
+          "task_id": "project_cc_python/5980"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 63.0,
+          "task_id": "project_cc_python/6068"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 61.0,
+          "task_id": "project_cc_python/6070"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 16.0,
+          "task_id": "project_cc_python/6052"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 40.0,
+          "task_id": "project_cc_python/6056"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 40.0,
+          "task_id": "project_cc_python/6217"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 46.0,
+          "task_id": "project_cc_python/6258"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 31.0,
+          "task_id": "project_cc_python/6291"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 21.0,
+          "task_id": "project_cc_python/6344"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 25.0,
+          "task_id": "project_cc_python/6507"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 60.0,
+          "task_id": "project_cc_python/6518"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 30.0,
+          "task_id": "project_cc_python/6650"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 42.0,
+          "task_id": "project_cc_python/6901"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 38.0,
+          "task_id": "project_cc_python/6957"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 31.0,
+          "task_id": "project_cc_python/7127"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 67.0,
+          "task_id": "project_cc_python/7234"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 28.0,
+          "task_id": "project_cc_python/7285"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 47.0,
+          "task_id": "project_cc_python/7395"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 36.0,
+          "task_id": "project_cc_python/7481"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 15.0,
+          "task_id": "project_cc_python/7523"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 35.0,
+          "task_id": "project_cc_python/7532"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 20.0,
+          "task_id": "project_cc_python/7597"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 22.0,
+          "task_id": "project_cc_python/7977"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 33.0,
+          "task_id": "project_cc_python/8023"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 33.0,
+          "task_id": "project_cc_python/8112"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 60.0,
+          "task_id": "project_cc_python/8251"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 36.0,
+          "task_id": "project_cc_python/8347"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 11.0,
+          "task_id": "project_cc_python/8608"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 16.0,
+          "task_id": "project_cc_python/8680"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 31.0,
+          "task_id": "project_cc_python/8674"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 51.0,
+          "task_id": "project_cc_python/8695"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 20.0,
+          "task_id": "project_cc_python/8842"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 30.0,
+          "task_id": "project_cc_python/8935"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 38.0,
+          "task_id": "project_cc_python/9104"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 19.0,
+          "task_id": "project_cc_python/9224"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 55.0,
+          "task_id": "project_cc_python/9353"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 33.0,
+          "task_id": "project_cc_python/9518"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 15.0,
+          "task_id": "project_cc_python/9545"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 27.0,
+          "task_id": "project_cc_python/9797"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 55.0,
+          "task_id": "project_cc_python/9877"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 66.0,
+          "task_id": "project_cc_python/9878"
+        }
+      ]
+    },
+    "cceval_java": {
+      "em": 35.0,
+      "es": 3825.0,
+      "count": 100,
+      "details": [
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 36.0,
+          "task_id": "project_cc_java/113"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 31.0,
+          "task_id": "project_cc_java/94"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 54.0,
+          "task_id": "project_cc_java/210"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 48.0,
+          "task_id": "project_cc_java/156"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 41.0,
+          "task_id": "project_cc_java/286"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 53.0,
+          "task_id": "project_cc_java/279"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 49.0,
+          "task_id": "project_cc_java/517"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 52.0,
+          "task_id": "project_cc_java/526"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 23.0,
+          "task_id": "project_cc_java/540"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 31.0,
+          "task_id": "project_cc_java/826"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 55.0,
+          "task_id": "project_cc_java/847"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 47.0,
+          "task_id": "project_cc_java/819"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 49.0,
+          "task_id": "project_cc_java/867"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 43.0,
+          "task_id": "project_cc_java/923"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 54.0,
+          "task_id": "project_cc_java/1011"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 60.0,
+          "task_id": "project_cc_java/1124"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 15.0,
+          "task_id": "project_cc_java/1152"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 35.0,
+          "task_id": "project_cc_java/1085"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 23.0,
+          "task_id": "project_cc_java/1402"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 37.0,
+          "task_id": "project_cc_java/1503"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 26.0,
+          "task_id": "project_cc_java/1525"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 32.0,
+          "task_id": "project_cc_java/1543"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 35.0,
+          "task_id": "project_cc_java/1643"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 24.0,
+          "task_id": "project_cc_java/1735"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 70.0,
+          "task_id": "project_cc_java/1793"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 33.0,
+          "task_id": "project_cc_java/1797"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 33.0,
+          "task_id": "project_cc_java/1906"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 38.0,
+          "task_id": "project_cc_java/1881"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 40.0,
+          "task_id": "project_cc_java/2033"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 23.0,
+          "task_id": "project_cc_java/2074"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 43.0,
+          "task_id": "project_cc_java/2168"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 26.0,
+          "task_id": "project_cc_java/2261"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 44.0,
+          "task_id": "project_cc_java/2292"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 43.0,
+          "task_id": "project_cc_java/2283"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 22.0,
+          "task_id": "project_cc_java/2220"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 27.0,
+          "task_id": "project_cc_java/2563"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 13.0,
+          "task_id": "project_cc_java/2580"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 20.0,
+          "task_id": "project_cc_java/2583"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 18.0,
+          "task_id": "project_cc_java/2700"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 26.0,
+          "task_id": "project_cc_java/2528"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 28.0,
+          "task_id": "project_cc_java/2981"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 61.0,
+          "task_id": "project_cc_java/3036"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 37.0,
+          "task_id": "project_cc_java/3164"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 26.0,
+          "task_id": "project_cc_java/3304"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 48.0,
+          "task_id": "project_cc_java/3311"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 16.0,
+          "task_id": "project_cc_java/3390"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 32.0,
+          "task_id": "project_cc_java/3491"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 35.0,
+          "task_id": "project_cc_java/3442"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 81.0,
+          "task_id": "project_cc_java/3423"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 44.0,
+          "task_id": "project_cc_java/3510"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 22.0,
+          "task_id": "project_cc_java/3532"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 32.0,
+          "task_id": "project_cc_java/3632"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 50.0,
+          "task_id": "project_cc_java/3550"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 34.0,
+          "task_id": "project_cc_java/3684"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 31.0,
+          "task_id": "project_cc_java/3874"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 61.0,
+          "task_id": "project_cc_java/3859"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 52.0,
+          "task_id": "project_cc_java/3889"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 52.0,
+          "task_id": "project_cc_java/3890"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 29.0,
+          "task_id": "project_cc_java/3992"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 46.0,
+          "task_id": "project_cc_java/3994"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 29.0,
+          "task_id": "project_cc_java/4110"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 32.0,
+          "task_id": "project_cc_java/4112"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 18.0,
+          "task_id": "project_cc_java/4245"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 27.0,
+          "task_id": "project_cc_java/4161"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 34.0,
+          "task_id": "project_cc_java/4163"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 39.0,
+          "task_id": "project_cc_java/4292"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 30.0,
+          "task_id": "project_cc_java/4272"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 52.0,
+          "task_id": "project_cc_java/4211"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 15.0,
+          "task_id": "project_cc_java/4352"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 43.0,
+          "task_id": "project_cc_java/4498"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 30.0,
+          "task_id": "project_cc_java/4507"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 44.0,
+          "task_id": "project_cc_java/4583"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 51.0,
+          "task_id": "project_cc_java/4530"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 40.0,
+          "task_id": "project_cc_java/5147"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 34.0,
+          "task_id": "project_cc_java/5190"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 23.0,
+          "task_id": "project_cc_java/5136"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 32.0,
+          "task_id": "project_cc_java/5280"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 19.0,
+          "task_id": "project_cc_java/5223"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 34.0,
+          "task_id": "project_cc_java/5296"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 68.0,
+          "task_id": "project_cc_java/5327"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 58.0,
+          "task_id": "project_cc_java/5434"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 20.0,
+          "task_id": "project_cc_java/5533"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 17.0,
+          "task_id": "project_cc_java/5589"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 40.0,
+          "task_id": "project_cc_java/5690"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 57.0,
+          "task_id": "project_cc_java/5778"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 31.0,
+          "task_id": "project_cc_java/5711"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 31.0,
+          "task_id": "project_cc_java/5712"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 72.0,
+          "task_id": "project_cc_java/5801"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 29.0,
+          "task_id": "project_cc_java/5798"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 33.0,
+          "task_id": "project_cc_java/5818"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 57.0,
+          "task_id": "project_cc_java/5947"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 61.0,
+          "task_id": "project_cc_java/5943"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 80.0,
+          "task_id": "project_cc_java/6059"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 37.0,
+          "task_id": "project_cc_java/6000"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 17.0,
+          "task_id": "project_cc_java/6214"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 32.0,
+          "task_id": "project_cc_java/6241"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 52.0,
+          "task_id": "project_cc_java/6381"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 41.0,
+          "task_id": "project_cc_java/6554"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 59.0,
+          "task_id": "project_cc_java/6545"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 18.0,
+          "task_id": "project_cc_java/6557"
+        }
+      ]
+    },
+    "repoeval_api": {
+      "em": 48.04,
+      "es": 5479.87,
+      "count": 100,
+      "details": [
+        {
+          "repo": "huggingface_diffusers",
+          "em": 0,
+          "es": 26.0,
+          "task_id": "huggingface_diffusers/4"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 22.0,
+          "task_id": "huggingface_diffusers/20"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 35.0,
+          "task_id": "huggingface_diffusers/58"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 0,
+          "es": 84.0,
+          "task_id": "huggingface_diffusers/62"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 0,
+          "es": 20.0,
+          "task_id": "huggingface_diffusers/89"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 66.0,
+          "task_id": "huggingface_diffusers/119"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 33.0,
+          "task_id": "huggingface_diffusers/125"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 43.0,
+          "task_id": "huggingface_diffusers/131"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 75.0,
+          "task_id": "huggingface_diffusers/134"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 0,
+          "es": 62.0,
+          "task_id": "huggingface_diffusers/146"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 50.0,
+          "task_id": "huggingface_diffusers/150"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 0,
+          "es": 33.0,
+          "task_id": "huggingface_diffusers/157"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 40.0,
+          "task_id": "huggingface_diffusers/164"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 64.0,
+          "task_id": "nerfstudio-project_nerfstudio/9"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 1,
+          "es": 68.0,
+          "task_id": "nerfstudio-project_nerfstudio/10"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 1,
+          "es": 48.0,
+          "task_id": "nerfstudio-project_nerfstudio/11"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 78.0,
+          "task_id": "nerfstudio-project_nerfstudio/98"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 27.0,
+          "task_id": "nerfstudio-project_nerfstudio/105"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 47.0,
+          "task_id": "nerfstudio-project_nerfstudio/115"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 80.0,
+          "task_id": "nerfstudio-project_nerfstudio/123"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 87.0,
+          "task_id": "nerfstudio-project_nerfstudio/169"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 48.0,
+          "task_id": "nerfstudio-project_nerfstudio/175"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 21.0,
+          "task_id": "nerfstudio-project_nerfstudio/185"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 1,
+          "es": 57.0,
+          "task_id": "nerfstudio-project_nerfstudio/196"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 0,
+          "es": 89.0,
+          "task_id": "awslabs_fortuna/44"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 69.0,
+          "task_id": "awslabs_fortuna/91"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 0,
+          "es": 97.0,
+          "task_id": "awslabs_fortuna/96"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 0,
+          "es": 43.0,
+          "task_id": "awslabs_fortuna/107"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 0,
+          "es": 38.0,
+          "task_id": "awslabs_fortuna/110"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 67.0,
+          "task_id": "awslabs_fortuna/144"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 67.0,
+          "task_id": "awslabs_fortuna/162"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 0,
+          "es": 67.0,
+          "task_id": "huggingface_evaluate/60"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 0,
+          "es": 95.0,
+          "task_id": "huggingface_evaluate/69"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 55.0,
+          "task_id": "huggingface_evaluate/78"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 41.0,
+          "task_id": "huggingface_evaluate/81"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 91.0,
+          "task_id": "huggingface_evaluate/84"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 55.0,
+          "task_id": "huggingface_evaluate/105"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 0,
+          "es": 97.0,
+          "task_id": "huggingface_evaluate/114"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 49.0,
+          "task_id": "huggingface_evaluate/171"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 0,
+          "es": 92.0,
+          "task_id": "huggingface_evaluate/181"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 39.0,
+          "task_id": "huggingface_evaluate/191"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 37.0,
+          "task_id": "google_vizier/1"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 41.0,
+          "task_id": "google_vizier/56"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 47.0,
+          "task_id": "google_vizier/74"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 58.0,
+          "task_id": "google_vizier/95"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 64.0,
+          "task_id": "google_vizier/97"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 68.0,
+          "task_id": "google_vizier/108"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 73.0,
+          "task_id": "google_vizier/114"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 70.0,
+          "task_id": "google_vizier/121"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 30.0,
+          "task_id": "google_vizier/124"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 38.0,
+          "task_id": "google_vizier/162"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 46.0,
+          "task_id": "google_vizier/176"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 46.0,
+          "task_id": "google_vizier/182"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 59.0,
+          "task_id": "google_vizier/190"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 70.0,
+          "task_id": "google_vizier/193"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 60.0,
+          "task_id": "alibaba_FederatedScope/11"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 100.0,
+          "task_id": "alibaba_FederatedScope/33"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 94.0,
+          "task_id": "alibaba_FederatedScope/35"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 58.0,
+          "task_id": "alibaba_FederatedScope/67"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 92.0,
+          "task_id": "alibaba_FederatedScope/71"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 92.0,
+          "task_id": "alibaba_FederatedScope/75"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 47.0,
+          "task_id": "alibaba_FederatedScope/104"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 40.0,
+          "task_id": "alibaba_FederatedScope/143"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 95.0,
+          "task_id": "alibaba_FederatedScope/149"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 79.0,
+          "task_id": "alibaba_FederatedScope/153"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 87.0,
+          "task_id": "alibaba_FederatedScope/162"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 42.0,
+          "task_id": "alibaba_FederatedScope/169"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 87.0,
+          "task_id": "alibaba_FederatedScope/179"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 63.0,
+          "task_id": "alibaba_FederatedScope/180"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 59.0,
+          "task_id": "alibaba_FederatedScope/184"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 68.0,
+          "task_id": "alibaba_FederatedScope/198"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 40.0,
+          "task_id": "pytorch_rl/5"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 36.0,
+          "task_id": "pytorch_rl/8"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 38.0,
+          "task_id": "pytorch_rl/13"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 34.0,
+          "task_id": "pytorch_rl/25"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 32.0,
+          "task_id": "pytorch_rl/32"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 39.0,
+          "task_id": "pytorch_rl/73"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 55.0,
+          "task_id": "pytorch_rl/83"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 48.0,
+          "task_id": "pytorch_rl/94"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 44.0,
+          "task_id": "pytorch_rl/111"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 22.0,
+          "task_id": "pytorch_rl/123"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 44.0,
+          "task_id": "pytorch_rl/126"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 24.0,
+          "task_id": "pytorch_rl/166"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 19.0,
+          "task_id": "pytorch_rl/178"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 52.0,
+          "task_id": "pytorch_rl/183"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 79.0,
+          "task_id": "opendilab_ACE/8"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 20.0,
+          "task_id": "opendilab_ACE/21"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 12.0,
+          "task_id": "opendilab_ACE/24"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 37.0,
+          "task_id": "opendilab_ACE/27"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 25.0,
+          "task_id": "opendilab_ACE/28"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 49.0,
+          "task_id": "opendilab_ACE/31"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 32.0,
+          "task_id": "opendilab_ACE/48"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 36.0,
+          "task_id": "opendilab_ACE/56"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 38.0,
+          "task_id": "opendilab_ACE/64"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 49.0,
+          "task_id": "opendilab_ACE/73"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 75.0,
+          "task_id": "opendilab_ACE/92"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 19.0,
+          "task_id": "opendilab_ACE/148"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 16.0,
+          "task_id": "opendilab_ACE/156"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 35.0,
+          "task_id": "opendilab_ACE/176"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 38.0,
+          "task_id": "opendilab_ACE/192"
+        }
+      ]
+    },
+    "repoeval_line": {
+      "em": 60.45,
+      "es": 3333.91,
+      "count": 100,
+      "details": [
+        {
+          "repo": "huggingface_diffusers",
+          "em": 0,
+          "es": 44.0,
+          "task_id": "huggingface_diffusers/17"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 77.0,
+          "task_id": "huggingface_diffusers/34"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 77.0,
+          "task_id": "huggingface_diffusers/41"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 4.0,
+          "task_id": "huggingface_diffusers/63"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 24.0,
+          "task_id": "huggingface_diffusers/75"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 36.0,
+          "task_id": "huggingface_diffusers/98"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 0,
+          "es": 19.0,
+          "task_id": "huggingface_diffusers/112"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 31.0,
+          "task_id": "huggingface_diffusers/148"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 27.0,
+          "task_id": "huggingface_diffusers/180"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 16.0,
+          "task_id": "huggingface_diffusers/193"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 27.0,
+          "task_id": "nerfstudio-project_nerfstudio/15"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 1,
+          "es": 3.0,
+          "task_id": "nerfstudio-project_nerfstudio/16"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 1,
+          "es": 46.0,
+          "task_id": "nerfstudio-project_nerfstudio/47"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 25.0,
+          "task_id": "nerfstudio-project_nerfstudio/67"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 1,
+          "es": 33.0,
+          "task_id": "nerfstudio-project_nerfstudio/92"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 1,
+          "es": 30.0,
+          "task_id": "nerfstudio-project_nerfstudio/115"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 20.0,
+          "task_id": "nerfstudio-project_nerfstudio/120"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 26.0,
+          "task_id": "nerfstudio-project_nerfstudio/127"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 8.0,
+          "task_id": "nerfstudio-project_nerfstudio/142"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 1,
+          "es": 100.0,
+          "task_id": "nerfstudio-project_nerfstudio/148"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 1,
+          "es": 64.0,
+          "task_id": "nerfstudio-project_nerfstudio/156"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 40.0,
+          "task_id": "nerfstudio-project_nerfstudio/159"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 1,
+          "es": 31.0,
+          "task_id": "nerfstudio-project_nerfstudio/160"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 1,
+          "es": 65.0,
+          "task_id": "nerfstudio-project_nerfstudio/199"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 26.0,
+          "task_id": "awslabs_fortuna/8"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 18.0,
+          "task_id": "awslabs_fortuna/14"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 0,
+          "es": 18.0,
+          "task_id": "awslabs_fortuna/35"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 46.0,
+          "task_id": "awslabs_fortuna/85"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 56.0,
+          "task_id": "awslabs_fortuna/89"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 46.0,
+          "task_id": "awslabs_fortuna/100"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 0,
+          "es": 10.0,
+          "task_id": "awslabs_fortuna/140"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 28.0,
+          "task_id": "awslabs_fortuna/152"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 31.0,
+          "task_id": "awslabs_fortuna/167"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 38.0,
+          "task_id": "awslabs_fortuna/175"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 19.0,
+          "task_id": "awslabs_fortuna/187"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 36.0,
+          "task_id": "awslabs_fortuna/195"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 0,
+          "es": 19.0,
+          "task_id": "huggingface_evaluate/43"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 20.0,
+          "task_id": "huggingface_evaluate/45"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 0,
+          "es": 20.0,
+          "task_id": "huggingface_evaluate/60"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 6.0,
+          "task_id": "huggingface_evaluate/85"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 40.0,
+          "task_id": "huggingface_evaluate/108"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 0,
+          "es": 30.0,
+          "task_id": "huggingface_evaluate/125"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 1.0,
+          "task_id": "huggingface_evaluate/134"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 69.0,
+          "task_id": "huggingface_evaluate/135"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 0,
+          "es": 39.0,
+          "task_id": "huggingface_evaluate/136"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 70.0,
+          "task_id": "huggingface_evaluate/152"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 0,
+          "es": 13.0,
+          "task_id": "huggingface_evaluate/179"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 19.0,
+          "task_id": "google_vizier/13"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 45.0,
+          "task_id": "google_vizier/41"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 21.0,
+          "task_id": "google_vizier/43"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 2.0,
+          "task_id": "google_vizier/77"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 58.0,
+          "task_id": "google_vizier/81"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 63.0,
+          "task_id": "google_vizier/90"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 39.0,
+          "task_id": "google_vizier/105"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 27.0,
+          "task_id": "google_vizier/114"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 25.0,
+          "task_id": "google_vizier/142"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 32.0,
+          "task_id": "google_vizier/145"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 11.0,
+          "task_id": "google_vizier/180"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 38.0,
+          "task_id": "google_vizier/191"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 16.0,
+          "task_id": "alibaba_FederatedScope/15"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 34.0,
+          "task_id": "alibaba_FederatedScope/19"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 35.0,
+          "task_id": "alibaba_FederatedScope/37"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 19.0,
+          "task_id": "alibaba_FederatedScope/41"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 35.0,
+          "task_id": "alibaba_FederatedScope/57"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 43.0,
+          "task_id": "alibaba_FederatedScope/75"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 59.0,
+          "task_id": "alibaba_FederatedScope/87"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 7.0,
+          "task_id": "alibaba_FederatedScope/123"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 62.0,
+          "task_id": "alibaba_FederatedScope/144"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 15.0,
+          "task_id": "alibaba_FederatedScope/151"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 15.0,
+          "task_id": "alibaba_FederatedScope/156"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 26.0,
+          "task_id": "alibaba_FederatedScope/172"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 17.0,
+          "task_id": "alibaba_FederatedScope/185"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 54.0,
+          "task_id": "alibaba_FederatedScope/191"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 16.0,
+          "task_id": "pytorch_rl/3"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 33.0,
+          "task_id": "pytorch_rl/9"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 15.0,
+          "task_id": "pytorch_rl/32"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 4.0,
+          "task_id": "pytorch_rl/58"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 20.0,
+          "task_id": "pytorch_rl/62"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 13.0,
+          "task_id": "pytorch_rl/66"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 43.0,
+          "task_id": "pytorch_rl/69"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 47.0,
+          "task_id": "pytorch_rl/72"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 20.0,
+          "task_id": "pytorch_rl/81"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 27.0,
+          "task_id": "pytorch_rl/139"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 47.0,
+          "task_id": "pytorch_rl/143"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 27.0,
+          "task_id": "pytorch_rl/171"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 47.0,
+          "task_id": "pytorch_rl/190"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 49.0,
+          "task_id": "pytorch_rl/191"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 29.0,
+          "task_id": "opendilab_ACE/0"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 46.0,
+          "task_id": "opendilab_ACE/8"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 100.0,
+          "task_id": "opendilab_ACE/61"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 7.0,
+          "task_id": "opendilab_ACE/99"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 35.0,
+          "task_id": "opendilab_ACE/110"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 35.0,
+          "task_id": "opendilab_ACE/117"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 60.0,
+          "task_id": "opendilab_ACE/119"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 27.0,
+          "task_id": "opendilab_ACE/135"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 25.0,
+          "task_id": "opendilab_ACE/139"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 29.0,
+          "task_id": "opendilab_ACE/143"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 31.0,
+          "task_id": "opendilab_ACE/177"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 58.0,
+          "task_id": "opendilab_ACE/179"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 57.0,
+          "task_id": "opendilab_ACE/194"
+        }
+      ]
+    },
+    "macro_mean": {
+      "em": 41.37,
+      "es": 4053.19
+    }
+  },
+  "pass2_final": {
+    "cceval_python": {
+      "em": 24.0,
+      "es": 3636.0,
+      "count": 100,
+      "details": [
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 18.0,
+          "task_id": "project_cc_python/160"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 55.0,
+          "task_id": "project_cc_python/199"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 57.0,
+          "task_id": "project_cc_python/207"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 51.0,
+          "task_id": "project_cc_python/790"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 32.0,
+          "task_id": "project_cc_python/799"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 28.0,
+          "task_id": "project_cc_python/829"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 99.0,
+          "task_id": "project_cc_python/884"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 34.0,
+          "task_id": "project_cc_python/1074"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 33.0,
+          "task_id": "project_cc_python/1109"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 28.0,
+          "task_id": "project_cc_python/1177"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 34.0,
+          "task_id": "project_cc_python/1190"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 71.0,
+          "task_id": "project_cc_python/1277"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 36.0,
+          "task_id": "project_cc_python/1409"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 54.0,
+          "task_id": "project_cc_python/1519"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 36.0,
+          "task_id": "project_cc_python/1556"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 29.0,
+          "task_id": "project_cc_python/1728"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 17.0,
+          "task_id": "project_cc_python/1715"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 33.0,
+          "task_id": "project_cc_python/2002"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 32.0,
+          "task_id": "project_cc_python/2041"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 36.0,
+          "task_id": "project_cc_python/2049"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 30.0,
+          "task_id": "project_cc_python/2412"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 23.0,
+          "task_id": "project_cc_python/2466"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 29.0,
+          "task_id": "project_cc_python/2526"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 23.0,
+          "task_id": "project_cc_python/2684"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 50.0,
+          "task_id": "project_cc_python/2982"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 20.0,
+          "task_id": "project_cc_python/3103"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 30.0,
+          "task_id": "project_cc_python/3170"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 53.0,
+          "task_id": "project_cc_python/3195"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 66.0,
+          "task_id": "project_cc_python/3347"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 71.0,
+          "task_id": "project_cc_python/3511"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 15.0,
+          "task_id": "project_cc_python/3517"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 33.0,
+          "task_id": "project_cc_python/3555"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 33.0,
+          "task_id": "project_cc_python/3541"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 12.0,
+          "task_id": "project_cc_python/3748"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 14.0,
+          "task_id": "project_cc_python/3958"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 61.0,
+          "task_id": "project_cc_python/4173"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 41.0,
+          "task_id": "project_cc_python/4240"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 19.0,
+          "task_id": "project_cc_python/4339"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 23.0,
+          "task_id": "project_cc_python/4364"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 38.0,
+          "task_id": "project_cc_python/4412"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 18.0,
+          "task_id": "project_cc_python/4563"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 38.0,
+          "task_id": "project_cc_python/4577"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 35.0,
+          "task_id": "project_cc_python/4589"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 61.0,
+          "task_id": "project_cc_python/4802"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 33.0,
+          "task_id": "project_cc_python/4680"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 29.0,
+          "task_id": "project_cc_python/4788"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 34.0,
+          "task_id": "project_cc_python/4882"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 39.0,
+          "task_id": "project_cc_python/4941"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 28.0,
+          "task_id": "project_cc_python/4956"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 35.0,
+          "task_id": "project_cc_python/5073"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 15.0,
+          "task_id": "project_cc_python/5174"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 8.0,
+          "task_id": "project_cc_python/5265"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 20.0,
+          "task_id": "project_cc_python/5393"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 50.0,
+          "task_id": "project_cc_python/5546"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 50.0,
+          "task_id": "project_cc_python/5555"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 62.0,
+          "task_id": "project_cc_python/5658"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 57.0,
+          "task_id": "project_cc_python/5694"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 33.0,
+          "task_id": "project_cc_python/5710"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 18.0,
+          "task_id": "project_cc_python/5706"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 24.0,
+          "task_id": "project_cc_python/5980"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 63.0,
+          "task_id": "project_cc_python/6068"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 61.0,
+          "task_id": "project_cc_python/6070"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 16.0,
+          "task_id": "project_cc_python/6052"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 40.0,
+          "task_id": "project_cc_python/6056"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 40.0,
+          "task_id": "project_cc_python/6217"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 46.0,
+          "task_id": "project_cc_python/6258"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 32.0,
+          "task_id": "project_cc_python/6291"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 21.0,
+          "task_id": "project_cc_python/6344"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 25.0,
+          "task_id": "project_cc_python/6507"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 67.0,
+          "task_id": "project_cc_python/6518"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 30.0,
+          "task_id": "project_cc_python/6650"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 42.0,
+          "task_id": "project_cc_python/6901"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 38.0,
+          "task_id": "project_cc_python/6957"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 31.0,
+          "task_id": "project_cc_python/7127"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 67.0,
+          "task_id": "project_cc_python/7234"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 28.0,
+          "task_id": "project_cc_python/7285"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 47.0,
+          "task_id": "project_cc_python/7395"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 36.0,
+          "task_id": "project_cc_python/7481"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 15.0,
+          "task_id": "project_cc_python/7523"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 35.0,
+          "task_id": "project_cc_python/7532"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 20.0,
+          "task_id": "project_cc_python/7597"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 22.0,
+          "task_id": "project_cc_python/7977"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 33.0,
+          "task_id": "project_cc_python/8023"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 33.0,
+          "task_id": "project_cc_python/8112"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 60.0,
+          "task_id": "project_cc_python/8251"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 36.0,
+          "task_id": "project_cc_python/8347"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 11.0,
+          "task_id": "project_cc_python/8608"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 16.0,
+          "task_id": "project_cc_python/8680"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 31.0,
+          "task_id": "project_cc_python/8674"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 51.0,
+          "task_id": "project_cc_python/8695"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 20.0,
+          "task_id": "project_cc_python/8842"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 30.0,
+          "task_id": "project_cc_python/8935"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 39.0,
+          "task_id": "project_cc_python/9104"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 19.0,
+          "task_id": "project_cc_python/9224"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 1,
+          "es": 55.0,
+          "task_id": "project_cc_python/9353"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 33.0,
+          "task_id": "project_cc_python/9518"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 15.0,
+          "task_id": "project_cc_python/9545"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 27.0,
+          "task_id": "project_cc_python/9797"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 55.0,
+          "task_id": "project_cc_python/9877"
+        },
+        {
+          "repo": "project_cc_python",
+          "em": 0,
+          "es": 66.0,
+          "task_id": "project_cc_python/9878"
+        }
+      ]
+    },
+    "cceval_java": {
+      "em": 35.0,
+      "es": 3832.0,
+      "count": 100,
+      "details": [
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 53.0,
+          "task_id": "project_cc_java/113"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 31.0,
+          "task_id": "project_cc_java/94"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 54.0,
+          "task_id": "project_cc_java/210"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 48.0,
+          "task_id": "project_cc_java/156"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 41.0,
+          "task_id": "project_cc_java/286"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 53.0,
+          "task_id": "project_cc_java/279"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 49.0,
+          "task_id": "project_cc_java/517"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 52.0,
+          "task_id": "project_cc_java/526"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 23.0,
+          "task_id": "project_cc_java/540"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 31.0,
+          "task_id": "project_cc_java/826"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 55.0,
+          "task_id": "project_cc_java/847"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 47.0,
+          "task_id": "project_cc_java/819"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 49.0,
+          "task_id": "project_cc_java/867"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 43.0,
+          "task_id": "project_cc_java/923"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 54.0,
+          "task_id": "project_cc_java/1011"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 60.0,
+          "task_id": "project_cc_java/1124"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 15.0,
+          "task_id": "project_cc_java/1152"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 35.0,
+          "task_id": "project_cc_java/1085"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 23.0,
+          "task_id": "project_cc_java/1402"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 37.0,
+          "task_id": "project_cc_java/1503"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 26.0,
+          "task_id": "project_cc_java/1525"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 28.0,
+          "task_id": "project_cc_java/1543"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 35.0,
+          "task_id": "project_cc_java/1643"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 24.0,
+          "task_id": "project_cc_java/1735"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 70.0,
+          "task_id": "project_cc_java/1793"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 33.0,
+          "task_id": "project_cc_java/1797"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 33.0,
+          "task_id": "project_cc_java/1906"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 38.0,
+          "task_id": "project_cc_java/1881"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 40.0,
+          "task_id": "project_cc_java/2033"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 23.0,
+          "task_id": "project_cc_java/2074"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 43.0,
+          "task_id": "project_cc_java/2168"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 27.0,
+          "task_id": "project_cc_java/2261"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 44.0,
+          "task_id": "project_cc_java/2292"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 43.0,
+          "task_id": "project_cc_java/2283"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 22.0,
+          "task_id": "project_cc_java/2220"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 27.0,
+          "task_id": "project_cc_java/2563"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 11.0,
+          "task_id": "project_cc_java/2580"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 27.0,
+          "task_id": "project_cc_java/2583"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 19.0,
+          "task_id": "project_cc_java/2700"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 26.0,
+          "task_id": "project_cc_java/2528"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 21.0,
+          "task_id": "project_cc_java/2981"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 61.0,
+          "task_id": "project_cc_java/3036"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 37.0,
+          "task_id": "project_cc_java/3164"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 26.0,
+          "task_id": "project_cc_java/3304"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 48.0,
+          "task_id": "project_cc_java/3311"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 16.0,
+          "task_id": "project_cc_java/3390"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 32.0,
+          "task_id": "project_cc_java/3491"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 35.0,
+          "task_id": "project_cc_java/3442"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 81.0,
+          "task_id": "project_cc_java/3423"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 44.0,
+          "task_id": "project_cc_java/3510"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 31.0,
+          "task_id": "project_cc_java/3532"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 32.0,
+          "task_id": "project_cc_java/3632"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 52.0,
+          "task_id": "project_cc_java/3550"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 34.0,
+          "task_id": "project_cc_java/3684"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 31.0,
+          "task_id": "project_cc_java/3874"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 61.0,
+          "task_id": "project_cc_java/3859"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 50.0,
+          "task_id": "project_cc_java/3889"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 52.0,
+          "task_id": "project_cc_java/3890"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 29.0,
+          "task_id": "project_cc_java/3992"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 46.0,
+          "task_id": "project_cc_java/3994"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 29.0,
+          "task_id": "project_cc_java/4110"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 32.0,
+          "task_id": "project_cc_java/4112"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 18.0,
+          "task_id": "project_cc_java/4245"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 27.0,
+          "task_id": "project_cc_java/4161"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 34.0,
+          "task_id": "project_cc_java/4163"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 39.0,
+          "task_id": "project_cc_java/4292"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 30.0,
+          "task_id": "project_cc_java/4272"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 52.0,
+          "task_id": "project_cc_java/4211"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 15.0,
+          "task_id": "project_cc_java/4352"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 43.0,
+          "task_id": "project_cc_java/4498"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 30.0,
+          "task_id": "project_cc_java/4507"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 44.0,
+          "task_id": "project_cc_java/4583"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 33.0,
+          "task_id": "project_cc_java/4530"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 40.0,
+          "task_id": "project_cc_java/5147"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 34.0,
+          "task_id": "project_cc_java/5190"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 23.0,
+          "task_id": "project_cc_java/5136"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 32.0,
+          "task_id": "project_cc_java/5280"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 19.0,
+          "task_id": "project_cc_java/5223"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 34.0,
+          "task_id": "project_cc_java/5296"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 68.0,
+          "task_id": "project_cc_java/5327"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 58.0,
+          "task_id": "project_cc_java/5434"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 20.0,
+          "task_id": "project_cc_java/5533"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 21.0,
+          "task_id": "project_cc_java/5589"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 40.0,
+          "task_id": "project_cc_java/5690"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 57.0,
+          "task_id": "project_cc_java/5778"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 31.0,
+          "task_id": "project_cc_java/5711"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 30.0,
+          "task_id": "project_cc_java/5712"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 72.0,
+          "task_id": "project_cc_java/5801"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 29.0,
+          "task_id": "project_cc_java/5798"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 33.0,
+          "task_id": "project_cc_java/5818"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 57.0,
+          "task_id": "project_cc_java/5947"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 61.0,
+          "task_id": "project_cc_java/5943"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 80.0,
+          "task_id": "project_cc_java/6059"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 37.0,
+          "task_id": "project_cc_java/6000"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 17.0,
+          "task_id": "project_cc_java/6214"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 32.0,
+          "task_id": "project_cc_java/6241"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 0,
+          "es": 52.0,
+          "task_id": "project_cc_java/6381"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 41.0,
+          "task_id": "project_cc_java/6554"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 59.0,
+          "task_id": "project_cc_java/6545"
+        },
+        {
+          "repo": "project_cc_java",
+          "em": 1,
+          "es": 18.0,
+          "task_id": "project_cc_java/6557"
+        }
+      ]
+    },
+    "repoeval_api": {
+      "em": 48.04,
+      "es": 5479.87,
+      "count": 100,
+      "details": [
+        {
+          "repo": "huggingface_diffusers",
+          "em": 0,
+          "es": 26.0,
+          "task_id": "huggingface_diffusers/4"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 22.0,
+          "task_id": "huggingface_diffusers/20"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 35.0,
+          "task_id": "huggingface_diffusers/58"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 0,
+          "es": 84.0,
+          "task_id": "huggingface_diffusers/62"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 0,
+          "es": 20.0,
+          "task_id": "huggingface_diffusers/89"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 66.0,
+          "task_id": "huggingface_diffusers/119"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 33.0,
+          "task_id": "huggingface_diffusers/125"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 43.0,
+          "task_id": "huggingface_diffusers/131"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 75.0,
+          "task_id": "huggingface_diffusers/134"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 0,
+          "es": 62.0,
+          "task_id": "huggingface_diffusers/146"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 50.0,
+          "task_id": "huggingface_diffusers/150"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 0,
+          "es": 33.0,
+          "task_id": "huggingface_diffusers/157"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 40.0,
+          "task_id": "huggingface_diffusers/164"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 64.0,
+          "task_id": "nerfstudio-project_nerfstudio/9"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 1,
+          "es": 68.0,
+          "task_id": "nerfstudio-project_nerfstudio/10"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 1,
+          "es": 48.0,
+          "task_id": "nerfstudio-project_nerfstudio/11"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 78.0,
+          "task_id": "nerfstudio-project_nerfstudio/98"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 27.0,
+          "task_id": "nerfstudio-project_nerfstudio/105"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 47.0,
+          "task_id": "nerfstudio-project_nerfstudio/115"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 80.0,
+          "task_id": "nerfstudio-project_nerfstudio/123"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 87.0,
+          "task_id": "nerfstudio-project_nerfstudio/169"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 48.0,
+          "task_id": "nerfstudio-project_nerfstudio/175"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 21.0,
+          "task_id": "nerfstudio-project_nerfstudio/185"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 1,
+          "es": 57.0,
+          "task_id": "nerfstudio-project_nerfstudio/196"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 0,
+          "es": 89.0,
+          "task_id": "awslabs_fortuna/44"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 69.0,
+          "task_id": "awslabs_fortuna/91"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 0,
+          "es": 97.0,
+          "task_id": "awslabs_fortuna/96"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 0,
+          "es": 43.0,
+          "task_id": "awslabs_fortuna/107"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 0,
+          "es": 38.0,
+          "task_id": "awslabs_fortuna/110"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 67.0,
+          "task_id": "awslabs_fortuna/144"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 67.0,
+          "task_id": "awslabs_fortuna/162"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 0,
+          "es": 67.0,
+          "task_id": "huggingface_evaluate/60"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 0,
+          "es": 95.0,
+          "task_id": "huggingface_evaluate/69"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 55.0,
+          "task_id": "huggingface_evaluate/78"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 41.0,
+          "task_id": "huggingface_evaluate/81"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 91.0,
+          "task_id": "huggingface_evaluate/84"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 55.0,
+          "task_id": "huggingface_evaluate/105"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 0,
+          "es": 97.0,
+          "task_id": "huggingface_evaluate/114"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 49.0,
+          "task_id": "huggingface_evaluate/171"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 0,
+          "es": 92.0,
+          "task_id": "huggingface_evaluate/181"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 39.0,
+          "task_id": "huggingface_evaluate/191"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 37.0,
+          "task_id": "google_vizier/1"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 41.0,
+          "task_id": "google_vizier/56"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 47.0,
+          "task_id": "google_vizier/74"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 58.0,
+          "task_id": "google_vizier/95"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 64.0,
+          "task_id": "google_vizier/97"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 68.0,
+          "task_id": "google_vizier/108"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 73.0,
+          "task_id": "google_vizier/114"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 70.0,
+          "task_id": "google_vizier/121"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 30.0,
+          "task_id": "google_vizier/124"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 38.0,
+          "task_id": "google_vizier/162"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 46.0,
+          "task_id": "google_vizier/176"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 46.0,
+          "task_id": "google_vizier/182"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 59.0,
+          "task_id": "google_vizier/190"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 70.0,
+          "task_id": "google_vizier/193"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 60.0,
+          "task_id": "alibaba_FederatedScope/11"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 100.0,
+          "task_id": "alibaba_FederatedScope/33"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 94.0,
+          "task_id": "alibaba_FederatedScope/35"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 58.0,
+          "task_id": "alibaba_FederatedScope/67"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 92.0,
+          "task_id": "alibaba_FederatedScope/71"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 92.0,
+          "task_id": "alibaba_FederatedScope/75"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 47.0,
+          "task_id": "alibaba_FederatedScope/104"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 40.0,
+          "task_id": "alibaba_FederatedScope/143"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 95.0,
+          "task_id": "alibaba_FederatedScope/149"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 79.0,
+          "task_id": "alibaba_FederatedScope/153"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 87.0,
+          "task_id": "alibaba_FederatedScope/162"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 42.0,
+          "task_id": "alibaba_FederatedScope/169"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 87.0,
+          "task_id": "alibaba_FederatedScope/179"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 63.0,
+          "task_id": "alibaba_FederatedScope/180"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 59.0,
+          "task_id": "alibaba_FederatedScope/184"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 68.0,
+          "task_id": "alibaba_FederatedScope/198"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 40.0,
+          "task_id": "pytorch_rl/5"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 36.0,
+          "task_id": "pytorch_rl/8"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 38.0,
+          "task_id": "pytorch_rl/13"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 34.0,
+          "task_id": "pytorch_rl/25"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 32.0,
+          "task_id": "pytorch_rl/32"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 39.0,
+          "task_id": "pytorch_rl/73"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 55.0,
+          "task_id": "pytorch_rl/83"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 48.0,
+          "task_id": "pytorch_rl/94"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 44.0,
+          "task_id": "pytorch_rl/111"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 22.0,
+          "task_id": "pytorch_rl/123"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 44.0,
+          "task_id": "pytorch_rl/126"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 24.0,
+          "task_id": "pytorch_rl/166"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 19.0,
+          "task_id": "pytorch_rl/178"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 52.0,
+          "task_id": "pytorch_rl/183"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 79.0,
+          "task_id": "opendilab_ACE/8"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 20.0,
+          "task_id": "opendilab_ACE/21"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 12.0,
+          "task_id": "opendilab_ACE/24"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 37.0,
+          "task_id": "opendilab_ACE/27"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 25.0,
+          "task_id": "opendilab_ACE/28"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 49.0,
+          "task_id": "opendilab_ACE/31"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 32.0,
+          "task_id": "opendilab_ACE/48"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 36.0,
+          "task_id": "opendilab_ACE/56"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 38.0,
+          "task_id": "opendilab_ACE/64"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 49.0,
+          "task_id": "opendilab_ACE/73"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 75.0,
+          "task_id": "opendilab_ACE/92"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 19.0,
+          "task_id": "opendilab_ACE/148"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 16.0,
+          "task_id": "opendilab_ACE/156"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 35.0,
+          "task_id": "opendilab_ACE/176"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 38.0,
+          "task_id": "opendilab_ACE/192"
+        }
+      ]
+    },
+    "repoeval_line": {
+      "em": 60.45,
+      "es": 3331.26,
+      "count": 100,
+      "details": [
+        {
+          "repo": "huggingface_diffusers",
+          "em": 0,
+          "es": 42.0,
+          "task_id": "huggingface_diffusers/17"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 77.0,
+          "task_id": "huggingface_diffusers/34"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 77.0,
+          "task_id": "huggingface_diffusers/41"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 4.0,
+          "task_id": "huggingface_diffusers/63"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 24.0,
+          "task_id": "huggingface_diffusers/75"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 36.0,
+          "task_id": "huggingface_diffusers/98"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 0,
+          "es": 19.0,
+          "task_id": "huggingface_diffusers/112"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 31.0,
+          "task_id": "huggingface_diffusers/148"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 27.0,
+          "task_id": "huggingface_diffusers/180"
+        },
+        {
+          "repo": "huggingface_diffusers",
+          "em": 1,
+          "es": 16.0,
+          "task_id": "huggingface_diffusers/193"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 27.0,
+          "task_id": "nerfstudio-project_nerfstudio/15"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 1,
+          "es": 3.0,
+          "task_id": "nerfstudio-project_nerfstudio/16"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 1,
+          "es": 46.0,
+          "task_id": "nerfstudio-project_nerfstudio/47"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 25.0,
+          "task_id": "nerfstudio-project_nerfstudio/67"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 1,
+          "es": 33.0,
+          "task_id": "nerfstudio-project_nerfstudio/92"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 1,
+          "es": 30.0,
+          "task_id": "nerfstudio-project_nerfstudio/115"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 20.0,
+          "task_id": "nerfstudio-project_nerfstudio/120"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 26.0,
+          "task_id": "nerfstudio-project_nerfstudio/127"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 8.0,
+          "task_id": "nerfstudio-project_nerfstudio/142"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 1,
+          "es": 100.0,
+          "task_id": "nerfstudio-project_nerfstudio/148"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 1,
+          "es": 64.0,
+          "task_id": "nerfstudio-project_nerfstudio/156"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 0,
+          "es": 40.0,
+          "task_id": "nerfstudio-project_nerfstudio/159"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 1,
+          "es": 31.0,
+          "task_id": "nerfstudio-project_nerfstudio/160"
+        },
+        {
+          "repo": "nerfstudio-project_nerfstudio",
+          "em": 1,
+          "es": 65.0,
+          "task_id": "nerfstudio-project_nerfstudio/199"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 26.0,
+          "task_id": "awslabs_fortuna/8"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 18.0,
+          "task_id": "awslabs_fortuna/14"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 0,
+          "es": 17.0,
+          "task_id": "awslabs_fortuna/35"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 46.0,
+          "task_id": "awslabs_fortuna/85"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 56.0,
+          "task_id": "awslabs_fortuna/89"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 46.0,
+          "task_id": "awslabs_fortuna/100"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 0,
+          "es": 10.0,
+          "task_id": "awslabs_fortuna/140"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 28.0,
+          "task_id": "awslabs_fortuna/152"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 31.0,
+          "task_id": "awslabs_fortuna/167"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 38.0,
+          "task_id": "awslabs_fortuna/175"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 19.0,
+          "task_id": "awslabs_fortuna/187"
+        },
+        {
+          "repo": "awslabs_fortuna",
+          "em": 1,
+          "es": 36.0,
+          "task_id": "awslabs_fortuna/195"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 0,
+          "es": 19.0,
+          "task_id": "huggingface_evaluate/43"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 20.0,
+          "task_id": "huggingface_evaluate/45"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 0,
+          "es": 20.0,
+          "task_id": "huggingface_evaluate/60"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 6.0,
+          "task_id": "huggingface_evaluate/85"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 40.0,
+          "task_id": "huggingface_evaluate/108"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 0,
+          "es": 30.0,
+          "task_id": "huggingface_evaluate/125"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 1.0,
+          "task_id": "huggingface_evaluate/134"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 69.0,
+          "task_id": "huggingface_evaluate/135"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 0,
+          "es": 39.0,
+          "task_id": "huggingface_evaluate/136"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 1,
+          "es": 70.0,
+          "task_id": "huggingface_evaluate/152"
+        },
+        {
+          "repo": "huggingface_evaluate",
+          "em": 0,
+          "es": 13.0,
+          "task_id": "huggingface_evaluate/179"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 19.0,
+          "task_id": "google_vizier/13"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 45.0,
+          "task_id": "google_vizier/41"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 21.0,
+          "task_id": "google_vizier/43"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 2.0,
+          "task_id": "google_vizier/77"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 58.0,
+          "task_id": "google_vizier/81"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 63.0,
+          "task_id": "google_vizier/90"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 39.0,
+          "task_id": "google_vizier/105"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 27.0,
+          "task_id": "google_vizier/114"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 25.0,
+          "task_id": "google_vizier/142"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 32.0,
+          "task_id": "google_vizier/145"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 1,
+          "es": 11.0,
+          "task_id": "google_vizier/180"
+        },
+        {
+          "repo": "google_vizier",
+          "em": 0,
+          "es": 38.0,
+          "task_id": "google_vizier/191"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 16.0,
+          "task_id": "alibaba_FederatedScope/15"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 34.0,
+          "task_id": "alibaba_FederatedScope/19"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 35.0,
+          "task_id": "alibaba_FederatedScope/37"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 19.0,
+          "task_id": "alibaba_FederatedScope/41"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 35.0,
+          "task_id": "alibaba_FederatedScope/57"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 43.0,
+          "task_id": "alibaba_FederatedScope/75"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 59.0,
+          "task_id": "alibaba_FederatedScope/87"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 7.0,
+          "task_id": "alibaba_FederatedScope/123"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 62.0,
+          "task_id": "alibaba_FederatedScope/144"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 15.0,
+          "task_id": "alibaba_FederatedScope/151"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 15.0,
+          "task_id": "alibaba_FederatedScope/156"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 26.0,
+          "task_id": "alibaba_FederatedScope/172"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 0,
+          "es": 17.0,
+          "task_id": "alibaba_FederatedScope/185"
+        },
+        {
+          "repo": "alibaba_FederatedScope",
+          "em": 1,
+          "es": 54.0,
+          "task_id": "alibaba_FederatedScope/191"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 16.0,
+          "task_id": "pytorch_rl/3"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 33.0,
+          "task_id": "pytorch_rl/9"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 16.0,
+          "task_id": "pytorch_rl/32"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 4.0,
+          "task_id": "pytorch_rl/58"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 20.0,
+          "task_id": "pytorch_rl/62"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 13.0,
+          "task_id": "pytorch_rl/66"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 43.0,
+          "task_id": "pytorch_rl/69"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 47.0,
+          "task_id": "pytorch_rl/72"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 20.0,
+          "task_id": "pytorch_rl/81"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 27.0,
+          "task_id": "pytorch_rl/139"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 47.0,
+          "task_id": "pytorch_rl/143"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 27.0,
+          "task_id": "pytorch_rl/171"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 0,
+          "es": 47.0,
+          "task_id": "pytorch_rl/190"
+        },
+        {
+          "repo": "pytorch_rl",
+          "em": 1,
+          "es": 49.0,
+          "task_id": "pytorch_rl/191"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 29.0,
+          "task_id": "opendilab_ACE/0"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 46.0,
+          "task_id": "opendilab_ACE/8"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 100.0,
+          "task_id": "opendilab_ACE/61"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 7.0,
+          "task_id": "opendilab_ACE/99"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 35.0,
+          "task_id": "opendilab_ACE/110"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 35.0,
+          "task_id": "opendilab_ACE/117"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 60.0,
+          "task_id": "opendilab_ACE/119"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 27.0,
+          "task_id": "opendilab_ACE/135"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 25.0,
+          "task_id": "opendilab_ACE/139"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 29.0,
+          "task_id": "opendilab_ACE/143"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 0,
+          "es": 31.0,
+          "task_id": "opendilab_ACE/177"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 58.0,
+          "task_id": "opendilab_ACE/179"
+        },
+        {
+          "repo": "opendilab_ACE",
+          "em": 1,
+          "es": 57.0,
+          "task_id": "opendilab_ACE/194"
+        }
+      ]
+    },
+    "macro_mean": {
+      "em": 41.87,
+      "es": 4069.78
+    }
+  },
+  "gate_stats": {
+    "tree_spec_injected": 125,
+    "redundancy_gated": 40,
+    "no_spec": 83,
+    "copy_protected": 152
+  },
+  "wins_count": 2,
+  "losses_count": 0,
+  "wins": [
+    {
+      "benchmark": "cceval_python",
+      "task_id": "project_cc_python/160"
+    },
+    {
+      "benchmark": "cceval_python",
+      "task_id": "project_cc_python/3541"
+    }
+  ],
+  "losses": []
+}

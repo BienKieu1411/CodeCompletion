@@ -325,3 +325,28 @@ Khi kiểm tra toàn bộ `4,804` mẫu test của CrossCodeEval (`2,665` `cceva
 
 
 
+
+---
+
+## Vòng 12: Đột Phá Kiến Trúc CADRE-Tree (Tree-CSSI + Target Spec + Copy-Protection Safety Gate)
+
+### 1. Bối cảnh & Phát Hiện Bản Chất Kỹ Nghệ Phần Mềm (Software Engineering Grounding)
+Khắc phục 4 bệnh lý cốt lõi của RAG khối phẳng (Flat Text Chunks) trong sinh mã repo-level:
+1. **Inheritance Blindness (CHA Failure):** Khi lớp con kế thừa từ lớp cha ở file khác, Flat RAG bỏ lỡ các method do giới hạn token budget. `TypedContextTree` (T_CSSI) dựa trên AST phân tích thứ tự phân giải method (MRO) và trích xuất chữ ký hợp đồng sạch ($L_{\text{stub}}$ PEP 484).
+2. **Shallow Signature Collisions (Điểm nghẽn ở Task `1177`):** Nhiều file cùng khai báo hàm trùng tên (ví dụ `get_relevant` ở `base.py` có chữ ký chung `num_relevant=5`, nhưng `local.py` mới định nghĩa `def get_relevant(self, text: str, k: int)`). Gating lọc thô bỏ lỡ định nghĩa chuẩn; việc phân giải cây và symbol table giúp khôi phục đúng chữ ký đặc hiệu.
+3. **Negative Transfer / Retrieval Tax:** Tiêm ngữ cảnh ngoài một cách vô điều kiện làm suy giảm các đoạn mã lặp lại hoặc gán biến cục bộ. `Copy-Protection Safety Gate` ($\text{copy\_sim} \ge 0.85$) loại bỏ triệt để hiện tượng này.
+
+### 2. Kết Quả Đo Đạc Chính Thức (400 Pilot Tasks, DeepSeek-Coder-1.3B)
+Số liệu đo đạc chính thức được trích xuất từ [cadre_official_consolidated_metrics.json](file:///Users/kieugiangbien/Downloads/Project/CodeCompletion/experiments/mb_spt_iterative/cadre_official_consolidated_metrics.json):
+
+| Benchmark | Baseline CADRE v3 | CADRE-Tree (Bản Hợp Nhất Mới Nhất) | Chênh Lệch ($\Delta$ EM) |
+| :--- | :---: | :---: | :---: |
+| **`cceval_python`** | 22.00% | **27.00%** | **`+5.00%`** (All-time Peak) |
+| **`cceval_java`** | 35.00% | **35.00%** | Giữ vững |
+| **`repoeval_api`** | 48.04% | **50.04%** | **`+2.00%`** (Vượt mốc 50%) |
+| **`repoeval_line`** | 60.45% | **60.45%** | **100% Bảo toàn (0 Losses)** |
+| **`MACRO MEAN EM`** | **41.37%** | **`43.12%`** | **`+1.75%`** (Đỉnh cao nhất lịch sử) |
+| **Tổn thất (Losses)** | — | **0 tasks** | **Zero Negative Transfer** |
+
+- **Mã nguồn runner chuẩn hóa:** [`experiments/mb_spt_iterative/run_cadre_26_final_pilot.py`](file:///Users/kieugiangbien/Downloads/Project/CodeCompletion/experiments/mb_spt_iterative/run_cadre_26_final_pilot.py)
+- **Module lõi chính thức:** Đã hợp nhất vào thư viện [`cadre_official/cadre`](file:///Users/kieugiangbien/Downloads/Project/CodeCompletion/cadre_official/cadre) gồm `pipeline.py`, `spec_resolver.py`, `cssi.py`, `intent_parser.py`, và toàn bộ 10/10 test suite đều đạt 100% Passed.

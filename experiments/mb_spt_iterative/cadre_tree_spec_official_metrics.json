@@ -1,0 +1,80 @@
+{
+  "pass1_raw": {
+    "cceval_python": {
+      "em": 22.0,
+      "es": 34.08,
+      "count": 100
+    },
+    "cceval_java": {
+      "em": 36.0,
+      "es": 36.7,
+      "count": 100
+    },
+    "repoeval_api": {
+      "em": 46.91,
+      "es": 51.88,
+      "count": 100
+    },
+    "repoeval_line": {
+      "em": 59.41,
+      "es": 32.16,
+      "count": 100
+    },
+    "macro_mean": {
+      "em": 41.08,
+      "es": 38.7
+    }
+  },
+  "pass1_tree_cssi": {
+    "cceval_python": {
+      "em": 22.0,
+      "es": 34.06,
+      "count": 100
+    },
+    "cceval_java": {
+      "em": 36.0,
+      "es": 36.71,
+      "count": 100
+    },
+    "repoeval_api": {
+      "em": 47.69,
+      "es": 52.01,
+      "count": 100
+    },
+    "repoeval_line": {
+      "em": 59.41,
+      "es": 32.17,
+      "count": 100
+    },
+    "macro_mean": {
+      "em": 41.28,
+      "es": 38.74
+    }
+  },
+  "cadre_tree_spec_final": {
+    "cceval_python": {
+      "em": 26.0,
+      "es": 34.5,
+      "count": 100
+    },
+    "cceval_java": {
+      "em": 35.0,
+      "es": 36.67,
+      "count": 100
+    },
+    "repoeval_api": {
+      "em": 46.91,
+      "es": 51.47,
+      "count": 100
+    },
+    "repoeval_line": {
+      "em": 59.41,
+      "es": 32.14,
+      "count": 100
+    },
+    "macro_mean": {
+      "em": 41.83,
+      "es": 38.7
+    }
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "status": "complete",
+  "official_repo_commit": "164d8d88cde324a38f5da70c4f858cc4679ef08e",
+  "dataset_repo": "nov3630/Data4RLCoder",
+  "dataset_revision": "cb9639f20f2374d75e5b0b8e8650f1b20802bf9f",
+  "retriever_repo": "nov3630/RLRetriever",
+  "retriever_revision": "ec587f5d8635462fff3cfb06f9a946148acda08b",
+  "generator_repo": "deepseek-ai/deepseek-coder-1.3b-base",
+  "generator_revision": "c919139c3a9b4070729c8b2cca4847ab29ca8d94",
+  "generator_batch_size_per_gpu": 32,
+  "generator_backend": "vllm",
+  "vllm_batch_size": 128,
+  "vllm_version": "0.32.0",
+  "vllm_gpu_memory_utilization": 0.35,
+  "vllm_max_num_seqs": 128,
+  "vllm_max_num_batched_tokens": 32768,
+  "decoding": {
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "n": 1
+  },
+  "retriever_batch_size_per_gpu": 64,
+  "bm25_pool_size": 100,
+  "retrieved_snippets": 10,
+  "stop_block_enabled": true,
+  "crossfile_token_limit": 1536,
+  "total_prompt_token_limit": 2048,
+  "max_generation_tokens": 64,
+  "fixed_block": false,
+  "progressive_generation": false,
+  "metrics_impl": "official RLCoder utils.eval_metric.compute_metric_stmt",
+  "eval_only_entrypoint": true,
+  "eval_loss_skipped": true,
+  "torch": "2.13.0+cu130",
+  "transformers": "5.19.0",
+  "tree_sitter": "0.20.4",
+  "python": "3.13.16 (main, Oct  1 2026, 15:40:24) [GCC 13.3.0]",
+  "gpu": [
+    "NVIDIA A100-SXM4-40GB"
+  ],
+  "benchmarks_requested": [
+    "cceval_java",
+    "cceval_python",
+    "repoeval_api",
+    "repoeval_line"
+  ],
+  "limit_per_benchmark": null,
+  "benchmarks": {
+    "cceval_python": {
+      "n": 2665,
+      "mean_selected_count": 10.0,
+      "scores": {
+        "em": "2.0638(2.06)",
+        "es": "48.3081(37.81)",
+        "id_em": 8.5929,
+        "id_f1": 39.7646,
+        "total": 2665
+      },
+      "seconds": 1626.21,
+      "peak_vram_gib": 3.816
+    },
+    "cceval_java": {
+      "n": 2139,
+      "mean_selected_count": 10.0,
+      "scores": {
+        "em": "6.3581(6.36)",
+        "es": "54.0589(45.5)",
+        "id_em": 16.6433,
+        "id_f1": 44.3607,
+        "total": 2139
+      },
+      "seconds": 1184.71,
+      "peak_vram_gib": 2.576
+    },
+    "repoeval_line": {
+      "n": 1600,
+      "mean_selected_count": 10.0,
+      "scores": {
+        "em": "1.75(1.75)",
+        "es": "39.2619(30.895)",
+        "id_em": 8.9375,
+        "id_f1": 27.5824,
+        "total": 1600
+      },
+      "seconds": 1215.89,
+      "peak_vram_gib": 1.991
+    },
+    "repoeval_api": {
+      "n": 1600,
+      "mean_selected_count": 10.0,
+      "scores": {
+        "em": "1.5(1.5)",
+        "es": "37.5875(30.5613)",
+        "id_em": 4.8125,
+        "id_f1": 34.3158,
+        "total": 1600
+      },
+      "seconds": 1221.25,
+      "peak_vram_gib": 1.991
+    }
+  },
+  "total_seconds": 5276.34
+}
