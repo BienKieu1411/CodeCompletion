@@ -1,0 +1,173 @@
+{
+  "status": "complete",
+  "official_repo_commit": "164d8d88cde324a38f5da70c4f858cc4679ef08e",
+  "dataset_repo": "nov3630/Data4RLCoder",
+  "dataset_revision": "cb9639f20f2374d75e5b0b8e8650f1b20802bf9f",
+  "retriever_repo": "nov3630/RLRetriever",
+  "retriever_revision": "ec587f5d8635462fff3cfb06f9a946148acda08b",
+  "generator_repo": "deepseek-ai/deepseek-coder-1.3b-base",
+  "generator_revision": "c919139c3a9b4070729c8b2cca4847ab29ca8d94",
+  "generator_tokenizer_revision": "c919139c3a9b4070729c8b2cca4847ab29ca8d94",
+  "generator_batch_size_per_gpu": 32,
+  "generator_backend": "vllm",
+  "vllm_batch_size": 128,
+  "vllm_version": "0.32.0",
+  "vllm_gpu_memory_utilization": 0.85,
+  "vllm_max_num_seqs": 128,
+  "vllm_max_num_batched_tokens": 32768,
+  "vllm_prompt_input": "token_ids",
+  "vllm_add_special_tokens": false,
+  "vllm_return_token_ids": true,
+  "prediction_decode": "pinned HF tokenizer decode(token_ids, skip_special_tokens=True); uses the same tokenizer cleanup default as upstream RLCoder",
+  "decoding": {
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "n": 1
+  },
+  "retriever_batch_size_per_gpu": 512,
+  "bm25_pool_size": 100,
+  "retrieved_snippets": 10,
+  "stop_block_enabled": true,
+  "crossfile_token_limit": 1536,
+  "total_prompt_token_limit": 2048,
+  "max_generation_tokens": 64,
+  "fixed_block": false,
+  "progressive_generation": false,
+  "metrics_impl": "official RLCoder utils.eval_metric.compute_metric_stmt",
+  "eval_only_entrypoint": true,
+  "eval_loss_skipped": true,
+  "torch": "2.13.0+cu130",
+  "transformers": "5.19.0",
+  "tree_sitter": "0.20.4",
+  "python": "3.13.16 (main, Oct  1 2026, 15:40:24) [GCC 13.3.0]",
+  "gpu": [
+    "NVIDIA A100-SXM4-40GB"
+  ],
+  "benchmarks_requested": [
+    "cceval_java",
+    "cceval_python",
+    "repoeval_api",
+    "repoeval_line"
+  ],
+  "limit_per_benchmark": null,
+  "benchmarks": {
+    "cceval_python": {
+      "n": 2665,
+      "mean_selected_count": 10.0,
+      "scores": {
+        "em": "24.0901(24.09)",
+        "es": "70.5332(61.71)",
+        "id_em": 35.0469,
+        "id_f1": 62.2095,
+        "total": 2665
+      },
+      "seconds": 1658.8,
+      "generation_seconds": 224.4,
+      "retrieval_seconds": 1434.4,
+      "peak_vram_gib": 9.612,
+      "generation_diagnostics": {
+        "prompt_id_mismatches": 0,
+        "prompt_decode_reencode_matches": 2665,
+        "prompt_decode_reencode_mismatches": 0,
+        "server_text_hf_decode_matches": 2665,
+        "server_text_hf_decode_mismatches": 0,
+        "server_text_without_whitespace": 2,
+        "hf_decoded_text_without_whitespace": 2,
+        "finish_reason_counts": {
+          "length": 2656,
+          "stop": 9
+        },
+        "mean_generated_tokens": 63.931,
+        "diagnostics_file": "generation_diagnostics.jsonl"
+      }
+    },
+    "cceval_java": {
+      "n": 2139,
+      "mean_selected_count": 10.0,
+      "scores": {
+        "em": "20.9444(20.94)",
+        "es": "63.6503(55.77)",
+        "id_em": 29.453,
+        "id_f1": 55.1609,
+        "total": 2139
+      },
+      "seconds": 1226.55,
+      "generation_seconds": 164.6,
+      "retrieval_seconds": 1061.95,
+      "peak_vram_gib": 9.612,
+      "generation_diagnostics": {
+        "prompt_id_mismatches": 0,
+        "prompt_decode_reencode_matches": 2139,
+        "prompt_decode_reencode_mismatches": 0,
+        "server_text_hf_decode_matches": 2134,
+        "server_text_hf_decode_mismatches": 5,
+        "server_text_without_whitespace": 1,
+        "hf_decoded_text_without_whitespace": 1,
+        "finish_reason_counts": {
+          "length": 2139
+        },
+        "mean_generated_tokens": 64.0,
+        "diagnostics_file": "generation_diagnostics.jsonl"
+      }
+    },
+    "repoeval_line": {
+      "n": 1600,
+      "mean_selected_count": 10.0,
+      "scores": {
+        "em": "19.375(43.3125)",
+        "es": "50.1112(65.42)",
+        "id_em": 27.375,
+        "id_f1": 47.7338,
+        "total": 1600
+      },
+      "seconds": 1272.94,
+      "generation_seconds": 192.77,
+      "retrieval_seconds": 1080.17,
+      "peak_vram_gib": 9.612,
+      "generation_diagnostics": {
+        "prompt_id_mismatches": 0,
+        "prompt_decode_reencode_matches": 1600,
+        "prompt_decode_reencode_mismatches": 0,
+        "server_text_hf_decode_matches": 1600,
+        "server_text_hf_decode_mismatches": 0,
+        "server_text_without_whitespace": 0,
+        "hf_decoded_text_without_whitespace": 0,
+        "finish_reason_counts": {
+          "length": 1600
+        },
+        "mean_generated_tokens": 64.0,
+        "diagnostics_file": "generation_diagnostics.jsonl"
+      }
+    },
+    "repoeval_api": {
+      "n": 1600,
+      "mean_selected_count": 10.0,
+      "scores": {
+        "em": "25.0625(36.0)",
+        "es": "59.2075(60.5275)",
+        "id_em": 29.625,
+        "id_f1": 59.3723,
+        "total": 1600
+      },
+      "seconds": 1297.25,
+      "generation_seconds": 209.59,
+      "retrieval_seconds": 1087.66,
+      "peak_vram_gib": 9.612,
+      "generation_diagnostics": {
+        "prompt_id_mismatches": 0,
+        "prompt_decode_reencode_matches": 1600,
+        "prompt_decode_reencode_mismatches": 0,
+        "server_text_hf_decode_matches": 1600,
+        "server_text_hf_decode_mismatches": 0,
+        "server_text_without_whitespace": 0,
+        "hf_decoded_text_without_whitespace": 0,
+        "finish_reason_counts": {
+          "length": 1600
+        },
+        "mean_generated_tokens": 64.0,
+        "diagnostics_file": "generation_diagnostics.jsonl"
+      }
+    }
+  },
+  "total_seconds": 5574.64
+}

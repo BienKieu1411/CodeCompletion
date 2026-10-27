@@ -1,0 +1,112 @@
+{
+  "pass1_raw": {
+    "cceval_python": {
+      "em": 22.29,
+      "es": 69.35,
+      "count": 2665
+    },
+    "cceval_java": {
+      "em": 24.22,
+      "es": 65.87,
+      "count": 2139
+    },
+    "repoeval_api": {
+      "em": 34.44,
+      "es": 62.85,
+      "count": 1600
+    },
+    "repoeval_line": {
+      "em": 43.56,
+      "es": 66.36,
+      "count": 1600
+    },
+    "macro_mean": {
+      "em": 31.13,
+      "es": 66.11
+    }
+  },
+  "pass1_tree_cssi": {
+    "cceval_python": {
+      "em": 23.9,
+      "es": 70.19,
+      "count": 2665
+    },
+    "cceval_java": {
+      "em": 24.22,
+      "es": 65.9,
+      "count": 2139
+    },
+    "repoeval_api": {
+      "em": 34.69,
+      "es": 63.16,
+      "count": 1600
+    },
+    "repoeval_line": {
+      "em": 43.69,
+      "es": 66.52,
+      "count": 1600
+    },
+    "macro_mean": {
+      "em": 31.62,
+      "es": 66.44
+    }
+  },
+  "cadre_tree_spec_raw": {
+    "cceval_python": {
+      "em": 25.14,
+      "es": 70.52,
+      "count": 2665
+    },
+    "cceval_java": {
+      "em": 24.54,
+      "es": 65.71,
+      "count": 2139
+    },
+    "repoeval_api": {
+      "em": 34.62,
+      "es": 62.89,
+      "count": 1600
+    },
+    "repoeval_line": {
+      "em": 44.0,
+      "es": 66.66,
+      "count": 1600
+    },
+    "macro_mean": {
+      "em": 32.08,
+      "es": 66.44
+    }
+  },
+  "cadre_26_final": {
+    "cceval_python": {
+      "em": 25.03,
+      "es": 70.51,
+      "count": 2665
+    },
+    "cceval_java": {
+      "em": 24.68,
+      "es": 65.85,
+      "count": 2139
+    },
+    "repoeval_api": {
+      "em": 34.75,
+      "es": 63.11,
+      "count": 1600
+    },
+    "repoeval_line": {
+      "em": 43.88,
+      "es": 66.62,
+      "count": 1600
+    },
+    "macro_mean": {
+      "em": 32.08,
+      "es": 66.52
+    }
+  },
+  "metadata": {
+    "total_tasks": 8004,
+    "eval_protocol": "Official Statement Truncation (CrossCodeEval AST/Bracket + Microsoft RepoEval line length matching)",
+    "generator": "deepseek-ai/deepseek-coder-1.3b-base",
+    "retriever": "nov3630/RLRetriever (Top-10 fixed)"
+  }
+}
