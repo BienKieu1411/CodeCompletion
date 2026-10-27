@@ -505,6 +505,21 @@ Cô hướng dẫn yêu cầu chỉ ra pain point bằng số liệu, gồm hai 
     - **E9a FAIL** (oracle gap 4.18 / 2.58; CCEval < 3). **E9b FAIL**: đạt ở RepoEval-API với cả hai scorer, nhưng CCEval-py hòa (simple 25.07 = 25.07, official 25.44 < 25.48).
     - Diễn giải: lặp lại đúng giới hạn E5. Trục budget mạnh khi có lấn chỗ (RepoEval, file dài), gần như bằng 0 ở CCEval (file ngắn, cửa sổ 3072 hầu như không bị cắt; b1536 tốt nhất hẳn). Trên CADRE, E2 thêm +2.3 EM ở RepoEval-API, nâng CADRE từ 40.6 lên 42.9.
 
+36. **E9c: E2 trong CADRE với budget chỉnh theo cửa sổ {384, 1536, 2304} — PASS (E9a + E9b)** (2026-10-27, Colab A100, `e9_cadre_budget.py` `621646a2` (chạy) / `373f71d6` (phân tích, chỉ thêm phần E9d, logic E9c không đổi), `--window 3072 --budgets 384,1536,2304 --min-left-big 256`; output `MyDrive/dep_oracle/runs/e9c/`, summary của cả 3 lượt Colab ở `results_e9/colab_e9_summaries.json`). Quy tắc chốt trước khi chạy E9c: giữ tỉ lệ budget / cửa sổ của E2 (12.5 / 50 / 75%); budget > 1536 hạ min_left của CADRE xuống 256 (b1536 vẫn là CADRE v2.8). **Lưu ý: E9c được thiết kế sau khi E9 FAIL**, nên E9 vẫn được báo là FAIL.
+
+    | EM (simple / CADRE official) | b384 | b1536 (=CADRE) | b2304 | **conf3** | oracle3 | conf3 vs b1536 W/L, p |
+    |---|---|---|---|---|---|---|
+    | RepoEval-API | 34.69 / 34.56 | 40.94 / 40.62 | 41.12 / 40.94 | **44.44 / 44.31** | 47.19 | 75/16, <0.001 |
+    | CCEval-py | 14.97 / 15.23 | 24.54 / 24.95 | 26.08 / 26.57 | **26.42 / 26.87** | 29.12 | 84/33, <0.001 |
+    | RepoEval-line (phụ) | 40.88 / 40.62 | 49.25 / 49.00 | 49.31 / 49.06 | **51.31 / 51.12** | 54.38 | 57/23, 0.0002 |
+    | CCEval-java (phụ) | 15.61 / 17.48 | 23.70 / 26.23 | 24.54 / 27.26 | 24.73 / 27.16 | 26.69 | 45/25, 0.02 |
+
+    - Mốc b1536: EM chính thức trùng partner tuyệt đối trên 3/4 bộ (24.95, 26.23, 49.06; API 40.62 vs 40.50); trùng nguyên văn 89–98%.
+    - Gộp 2 bộ chính conf3 vs CADRE: 159/49, p<1e-4. ES conf3 ≥ mọi budget cố định trên cả 4 bộ (API 70.30 vs 67.34).
+    - **Đọc cẩn thận:** ở CCEval phần lớn lợi ích đến từ việc cho cross-file nhiều chỗ hơn (b2304 cố định đã +1.6 so với CADRE). conf3 chỉ hơn budget cố định tốt nhất +0.34 / +0.30 (chưa có McNemar riêng cho cặp này); ở CCEval-java official conf3 còn thua b2304 (27.16 vs 27.26). Ở RepoEval, conf3 hơn budget cố định tốt nhất +3.3 EM, đây là phần lợi thật của việc chọn theo từng mẫu.
+    - So với E9 (dải {256, 1024, 1536}): CCEval từ hòa thành thắng, nhờ trên dải có một budget lớn hơn mặc định. Trục budget cần phủ cả hai phía của mức mặc định.
+    - E9d (conf6 trên {raw, main} × budget, chốt trước 2026-10-28) đang chạy trên Modal L4 (`modal_e9.py`, fc-01M5Z5AED40WQ08M27AZWQBQWG → volume `dep-oracle-probe/e9d`); lượt này cũng tái lập E9c.
+
 ## Bước tiếp theo
 **Chuyển sang Colab (2026-10-25):** Modal gần hết credit. Session mới đọc `HANDOFF_COLAB.md` trước: cách chạy trên Colab (`colab_runner.ipynb`, `colab_bundle.zip`, tạo lại bằng `make_colab_bundle.py`) và danh sách việc tiếp theo theo thứ tự ưu tiên.
 
