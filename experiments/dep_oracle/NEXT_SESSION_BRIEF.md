@@ -19,8 +19,9 @@ Bằng chứng đã có (toàn bộ test, DeepSeek-Coder-1.3B, cửa sổ 2k, ca
 
 ## 3. Đã chốt, không mở lại
 - **Chấm điểm từng chunk không cần GT là không khả thi** (E1, E1b, AMI, Revela: Spearman ≤ 0.2). Probe từ một lần prefill (E4), cascade (E6), CAD (E8) và nén in-file (E3) đều FAIL.
-- **Tín hiệu chọn ngân sách nằm ở việc thật sự sinh**, không đọc được trước khi sinh.
+- **Tín hiệu chọn ngân sách nằm ở việc thật sự sinh**, không đọc được trước khi sinh. Đổi ngân sách giữa lúc sinh tại `.` / `(` (H1, HANDOFF mục 30) FAIL: kém conf3 trên cả hai bộ. CAD: phân tích nguyên nhân ở mục 29.
 - **D2 (likelihood chéo giữa các prompt) FAIL** (HANDOFF mục 24): prompt khác chấm ứng viên kém hơn chính prompt đã sinh ra nó; E2 đã là bộ chọn tốt nhất trong họ tín hiệu likelihood chỉ dùng prefix. Hướng mới còn lại: H1 / D1 trong `research/directions_beyond_budget_2026-10-25.md`.
+- **E9 (HANDOFF mục 35): E2 bên trong CADRE v2.8 FAIL theo ngưỡng chốt trước.** RepoEval-API 40.6 → 42.9 (p<0.001); CCEval-py hòa. Lưu ý: CADRE v2.8 của partner thực chạy ở cửa sổ 3072, không phải 2560.
 - **Rủi ro novelty:** Caret (arXiv 2610.04837) và Ciniselli et al. 2025 đã có cơ chế "sinh nhiều biến thể context rồi chọn". Vì vậy đóng góp phải là **trục ngân sách và phân tích**, không phải cơ chế chọn.
 - **Giới hạn đã biết:**
   - Trục ngân sách chỉ mạnh khi có lấn chỗ: RepoEval mạnh, CCEval yếu (E5). Ở cửa sổ 8k, CCEval chỉ 3.5% mẫu bị cắt, RepoEval còn 31.7%.
@@ -50,6 +51,8 @@ B5  Chỉ khi cô cho dùng right context: E5 với RCV + tái lập Caret làm 
 B6  Phương pháp mạnh hơn (nếu còn CU): trộn phân phối token của 3 ngân sách ở từng bước (pilot 200 mẫu/bộ,
     ~1 giờ L4; viết theo khuôn e8_cad.py); đạt nếu vượt E2 trên cả hai bộ
 ```
+
+So với branch BienKieu của partner (repo `../CodeCompletion`, chấm cùng scorer, 2026-10-26): CADRE 8k đạt CCEval-py 30.58 so với AlignCoder-2k 28.74 (p = 0.0008), RepoEval-API 42.19, còn E2 ở 2k đạt 43.12. (Baseline RepoEval 41.25 mà branch BienKieu dùng là một lần chạy không chuẩn ngày 6/10; baseline tái tạo được là align1536 = 36.81. Xem HANDOFF mục 28.) Phần thắng của CADRE chủ yếu là giảm lấn chỗ; nó chỉ sửa khoảng 4% lỗi "dùng sai". Đề xuất cho CADRE (chưa chạy): dòng call site trong Channel B; chọn theo độ tự tin giữa CADRE 2k / 4k / 8k; thêm nhánh AlignCoder-8k và thống nhất scorer. Code E/D đã push lên branch `Phong` (`experiments/dep_oracle/`, commit `0cb7e9d`).
 
 Báo cáo tổng hợp mới nhất (gộp các lần chạy + báo cáo Antigravity D1/D1.2/D2, kèm hiệu chỉnh): `REPORT_2026-10-26.md`. Ứng viên bước tiếp (chưa chốt): hợp nhất E2 + D1.2 với một chính sách chốt trước, xác nhận D1.2 trên hold-out, hold-out 6.7B.
 
