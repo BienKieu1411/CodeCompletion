@@ -152,8 +152,15 @@ def get_python_one_statement(prompt, completion, parser):
         code = prompt + completion[:i + 1]
         if not is_parse_valid(parser, code):
             continue
-        if completion[i + 1] == "\n":
+        if i + 1 < len(completion) and completion[i + 1] == "\n":
             return completion[:i + 1].rstrip()
+        elif i + 1 == len(completion):
+            return completion[:i + 1].rstrip()
+
+    if "\n" in completion:
+        first_line = completion.split("\n")[0]
+        if is_parse_valid(parser, prompt + first_line):
+            return first_line.rstrip()
 
     return completion
 

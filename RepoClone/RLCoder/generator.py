@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset, SequentialSampler
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, PreTrainedTokenizerFast
 from tqdm import tqdm
 import numpy as np
 from utils.eval_utils import is_identifier
@@ -119,9 +119,12 @@ class Generator:
         args: Configuration parameters.
     """
     def __init__(self, args):
-        self.tokenizer = AutoTokenizer.from_pretrained(args.generator_model_path)
+        try:
+            self.tokenizer = PreTrainedTokenizerFast.from_pretrained(args.generator_model_path)
+        except Exception:
+            self.tokenizer = AutoTokenizer.from_pretrained(args.generator_model_path)
         self.tokenizer.model_max_length = 1e10
-        if self.tokenizer.pad_token_id == None:
+        if self.tokenizer.pad_token_id is None:
             self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
 
         if not args.disable_generator:
