@@ -1,0 +1,72 @@
+{
+  "official_rlcoder_base": {
+    "macro_mean": {
+      "em": 31.13,
+      "es": 66.11,
+      "id_em": 41.97,
+      "id_f1": 64.82
+    },
+    "benchmarks": {
+      "cceval_python": {
+        "em": 22.29,
+        "es": 69.35,
+        "id_em": 35.05,
+        "id_f1": 62.21
+      },
+      "cceval_java": {
+        "em": 24.22,
+        "es": 65.87,
+        "id_em": 29.45,
+        "id_f1": 55.16
+      },
+      "repoeval_api": {
+        "em": 34.44,
+        "es": 62.85,
+        "id_em": 45.12,
+        "id_f1": 68.32
+      },
+      "repoeval_line": {
+        "em": 43.56,
+        "es": 66.36,
+        "id_em": 58.25,
+        "id_f1": 73.6
+      }
+    }
+  },
+  "bm25_top100_cssi_rerank": {
+    "cceval_python": {
+      "em": 21.54,
+      "es": 68.96,
+      "id_em": 0.19,
+      "id_f1": 30.55,
+      "count": 2665
+    },
+    "cceval_java": {
+      "em": 24.08,
+      "es": 66.93,
+      "id_em": 0.79,
+      "id_f1": 38.29,
+      "count": 2139
+    },
+    "repoeval_api": {
+      "em": 38.25,
+      "es": 65.09,
+      "id_em": 2.88,
+      "id_f1": 50.38,
+      "count": 1600
+    },
+    "repoeval_line": {
+      "em": 48.25,
+      "es": 69.33,
+      "id_em": 1.88,
+      "id_f1": 32.11,
+      "count": 1600
+    },
+    "macro_mean": {
+      "em": 33.03,
+      "es": 67.58,
+      "id_em": 1.43,
+      "id_f1": 37.83
+    }
+  }
+}

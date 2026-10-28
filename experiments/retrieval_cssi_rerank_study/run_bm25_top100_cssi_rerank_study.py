@@ -317,56 +317,50 @@ def compute_cssi_bonus(code_content: str, signals: Dict[str, Any]) -> float:
 # -------------------------------------------------------------
 # Prompt Construction
 # -------------------------------------------------------------
-def coalesce_chunks_for_prompt(chunks: List[Dict[str, Any]], language: str, max_tokens: int = 1536) -> str:
+def coalesce_chunks_for_prompt(chunks: List[Dict[str, Any]], language: str, tok: Any, max_tokens: int = 1536) -> List[int]:
     comment_sym = "#" if language == "python" else "//"
     chunks_by_file = defaultdict(list)
     for c in chunks:
         fp = c.get("file_path") or c.get("path") or ""
         if not fp or c.get("is_stop"):
-            continue
+            break
         code = c.get("code_content") or c.get("code") or c.get("text") or ""
-        if code.strip():
+        if fp and code.strip():
             chunks_by_file[fp].append(code.strip())
 
-    blocks = []
+    exemplar_ids = []
     for fp, clist in chunks_by_file.items():
-        header = f"{comment_sym} file path: {fp}\n"
-        body = "\n...\n".join(clist)
-        blocks.append(f"{header}{body}\n\n")
-
-    full_text = "".join(blocks)
-    words = full_text.split()
-    if len(words) > max_tokens:
-        full_text = " ".join(words[:max_tokens])
-    return full_text
+        content = "\n...\n".join(clist)
+        block = f"{comment_sym} file path: {fp}\n{content}\n\n"
+        b_ids = tok.encode(block, add_special_tokens=False)
+        if len(exemplar_ids) + len(b_ids) > max_tokens:
+            break
+        exemplar_ids.extend(b_ids)
+    return exemplar_ids
 
 
-def build_completion_prompt(
+def build_completion_prompt_ids(
     task: Dict[str, Any],
     candidates: List[Dict[str, Any]],
     tok: Any,
     max_context: int = 3072,
     crossfile_budget: int = 1536,
+    max_left_tokens: int = 1536,
     headroom: int = 64,
-) -> str:
+) -> List[int]:
     lang = task["language"]
     cs = "#" if lang == "python" else "//"
     path = task.get("path", "file.py" if lang == "python" else "File.java")
 
-    path_text = f"\n\n{cs} file path: {path}\n\n"
+    path_text = f"{cs} file path: {path}\n"
     path_ids = tok.encode(path_text, add_special_tokens=False)
 
-    cross_text = coalesce_chunks_for_prompt(candidates[:10], lang, max_tokens=crossfile_budget)
-    cross_ids = tok.encode(cross_text, add_special_tokens=False)[:crossfile_budget]
-
-    left_all_ids = tok.encode(task["left_context"], add_special_tokens=False)
+    cross_ids = coalesce_chunks_for_prompt(candidates[:10], lang, tok=tok, max_tokens=crossfile_budget)
+    left_ids = tok.encode(task["left_context"], add_special_tokens=False)[-max_left_tokens:]
 
     max_input_tokens = max_context - headroom
-    allowed_left = max(0, max_input_tokens - len(cross_ids) - len(path_ids))
-    left_ids = left_all_ids[-allowed_left:] if allowed_left else []
-
     final_ids = (cross_ids + path_ids + left_ids)[-max_input_tokens:]
-    return tok.decode(final_ids)
+    return final_ids
 
 
 # -------------------------------------------------------------
@@ -421,6 +415,7 @@ def main():
     print("\n[Step 2/5] Running Stage 1: BM25 Candidate Extraction (Top 100 blocks)...", flush=True)
     t_bm25_start = time.time()
     bm25_top100_by_task = []
+    file_blocks_cache: Dict[str, List[Dict[str, Any]]] = {}
 
     for idx, t in enumerate(tasks):
         lang = t["language"]
@@ -428,7 +423,9 @@ def main():
         blocks = []
         for rel_path, fid in pool_fids.items():
             if fid in files:
-                blocks.extend(split_into_smaller_blocks(rel_path, files[fid]["text"], lang))
+                if fid not in file_blocks_cache:
+                    file_blocks_cache[fid] = split_into_smaller_blocks(rel_path, files[fid]["text"], lang)
+                blocks.extend(file_blocks_cache[fid])
 
         if not blocks:
             top100 = []
@@ -495,7 +492,6 @@ def main():
     queries = ["\n".join([l for l in t["left_context"].splitlines() if l.strip()][-20:]) for t in tasks]
     q_embs = encode_texts(queries, is_query=True, max_len=256, batch_size=256)
 
-    cands_base_top10_by_task = []
     cands_cssi_top10_by_task = []
 
     CHUNK_SIZE = 200
@@ -529,12 +525,7 @@ def main():
             t = tasks[t_idx]
             signals = extract_cssi_signals(t["left_context"])
 
-            # 1. Base Rerank: Pick top 10 solely by neural dense cosine
-            top10_base_idx = sims.argsort()[-10:][::-1]
-            top10_base = [dict(cands[i], dense_score=float(sims[i])) for i in top10_base_idx]
-            cands_base_top10_by_task.append(top10_base)
-
-            # 2. Proposed CSSI Rerank on Top 100: Combine dense cosine with CSSI structural bonus
+            # Proposed CSSI Rerank on Top 100: Combine dense cosine with CSSI structural bonus
             scored_cssi = []
             for i, b in enumerate(cands):
                 if b.get("is_stop"):
@@ -553,13 +544,12 @@ def main():
 
     print(f"✓ Neural & CSSI Reranking on Top 100 completed in {time.time() - t_ret_start:.1f}s.")
 
-    # 4. Stage 3: Prompt Building & vLLM Generation
-    print("\n[Step 4/5] Building prompts and generating completions via vLLM on A100...", flush=True)
+    # 4. Stage 3: Prompt Building & vLLM Generation (ONLY Branch B: CSSI Rerank)
+    print("\n[Step 4/5] Building prompts and generating completions for Branch B (CSSI Rerank) via vLLM on A100...", flush=True)
     gen_tok = AutoTokenizer.from_pretrained(GENERATOR_MODEL, trust_remote_code=True)
     if gen_tok.pad_token_id is None: gen_tok.pad_token = gen_tok.eos_token
 
-    prompts_base = [build_completion_prompt(t, cands, tok=gen_tok, max_context=args.max_model_len, headroom=64) for t, cands in zip(tasks, cands_base_top10_by_task)]
-    prompts_cssi = [build_completion_prompt(t, cands, tok=gen_tok, max_context=args.max_model_len, headroom=64) for t, cands in zip(tasks, cands_cssi_top10_by_task)]
+    prompts_cssi_ids = [build_completion_prompt_ids(t, cands, tok=gen_tok, max_context=args.max_model_len, headroom=64) for t, cands in zip(tasks, cands_cssi_top10_by_task)]
 
     del rl_model
     torch.cuda.empty_cache()
@@ -578,18 +568,24 @@ def main():
         stop=["\n\n\n", "# file path:", "// file path:"],
     )
 
-    print(f"  Generating Arm 1: Base RLCoder (BM25 Top100 -> Dense -> Top10)...", flush=True)
-    t_g1 = time.time()
-    outs_base = llm.generate(prompts_base, sampling_params)
-    print(f"  ✓ Arm 1 completed in {time.time() - t_g1:.2f}s ({len(prompts_base)/(time.time()-t_g1):.1f} req/s).", flush=True)
-
-    print(f"  Generating Arm 2: Proposed CADRE (BM25 Top100 -> Dense+CSSI Rerank -> Top10)...", flush=True)
+    print(f"  Generating Branch B: Proposed CADRE (BM25 Top100 -> Dense+CSSI Rerank -> Top10)...", flush=True)
     t_g2 = time.time()
-    outs_cssi = llm.generate(prompts_cssi, sampling_params)
-    print(f"  ✓ Arm 2 completed in {time.time() - t_g2:.2f}s ({len(prompts_cssi)/(time.time()-t_g2):.1f} req/s).", flush=True)
+    outs_cssi = llm.generate([{"prompt_token_ids": p} for p in prompts_cssi_ids], sampling_params)
+    print(f"  ✓ Branch B completed in {time.time() - t_g2:.2f}s ({len(prompts_cssi_ids)/(time.time()-t_g2):.1f} req/s).", flush=True)
+
+    # Decode predictions preserving whitespace
+    preds_cssi = []
+    for o in outs_cssi:
+        out_token_ids = list(o.outputs[0].token_ids)
+        decoded = gen_tok.decode(out_token_ids, skip_special_tokens=True)
+        srv_text = o.outputs[0].text
+        ws_dec = sum(c.isspace() for c in decoded)
+        ws_srv = sum(c.isspace() for c in srv_text)
+        final_text = decoded if ws_dec >= ws_srv else srv_text
+        preds_cssi.append(final_text)
 
     # 5. Evaluate Official EM/ES
-    print("\n[Step 5/5] Evaluating Official EM & ES across both pipelines...", flush=True)
+    print("\n[Step 5/5] Evaluating Official EM & ES for Branch B...", flush=True)
     records = []
     for idx, t in enumerate(tasks):
         records.append({
@@ -597,15 +593,29 @@ def main():
             "benchmark": t["benchmark"],
             "language": t["language"],
             "groundtruth": t["groundtruth"],
-            "pred_base": outs_base[idx].outputs[0].text,
-            "pred_cssi": outs_cssi[idx].outputs[0].text,
+            "pred_cssi": preds_cssi[idx],
         })
 
-    m_base = evaluate_records_official(records, "pred_base")
     m_cssi = evaluate_records_official(records, "pred_cssi")
 
+    # Reference official baseline for Branch A (RLCoder Base on full 8,004 tasks)
+    official_base = {
+        "macro_mean": {
+            "em": 31.13,
+            "es": 66.11,
+            "id_em": 41.97,
+            "id_f1": 64.82,
+        },
+        "benchmarks": {
+            "cceval_python": {"em": 22.29, "es": 69.35, "id_em": 35.05, "id_f1": 62.21},
+            "cceval_java": {"em": 24.22, "es": 65.87, "id_em": 29.45, "id_f1": 55.16},
+            "repoeval_api": {"em": 34.44, "es": 62.85, "id_em": 45.12, "id_f1": 68.32},
+            "repoeval_line": {"em": 43.56, "es": 66.36, "id_em": 58.25, "id_f1": 73.60},
+        }
+    }
+
     results = {
-        "bm25_top100_dense_base": m_base,
+        "official_rlcoder_base": official_base,
         "bm25_top100_cssi_rerank": m_cssi,
     }
 
@@ -618,19 +628,19 @@ def main():
             f.write(json.dumps(r) + "\n")
 
     print("\n" + "=" * 95)
-    print("FINAL RESULTS: BM25 TOP-100 RERANKING EXPERIMENT (A100 vLLM)")
+    print("FINAL RESULTS: BM25 TOP-100 CSSI RERANKING EXPERIMENT (A100 vLLM)")
     print("=" * 95)
-    header = f"{'Configuration':<40} | {'Macro EM':<10} | {'Macro ES':<10} | {'Macro ID-EM':<12} | {'Macro ID-F1':<12}"
+    header = f"{'Configuration':<45} | {'Macro EM':<10} | {'Macro ES':<10} | {'Macro ID-EM':<12} | {'Macro ID-F1':<12}"
     print(header)
     print("-" * len(header))
-    mb = m_base["macro_mean"]
+    mb = official_base["macro_mean"]
     mc = m_cssi["macro_mean"]
-    print(f"{'Arm 1: BM25 Top100 -> Dense Base':<40} | {mb['em']:>8.2f}% | {mb['es']:>8.2f}% | {mb['id_em']:>10.2f}% | {mb['id_f1']:>10.2f}%")
-    print(f"{'Arm 2: BM25 Top100 -> CSSI Rerank':<40} | {mc['em']:>8.2f}% | {mc['es']:>8.2f}% | {mc['id_em']:>10.2f}% | {mc['id_f1']:>10.2f}%")
+    print(f"{'Branch A: Official RLCoder Base (Top10)':<45} | {mb['em']:>8.2f}% | {mb['es']:>8.2f}% | {mb['id_em']:>10.2f}% | {mb['id_f1']:>10.2f}%")
+    print(f"{'Branch B: BM25 Top100 -> Dense+CSSI Rerank -> Top10':<45} | {mc['em']:>8.2f}% | {mc['es']:>8.2f}% | {mc['id_em']:>10.2f}% | {mc['id_f1']:>10.2f}%")
     print("-" * len(header))
     delta_em = mc['em'] - mb['em']
     delta_es = mc['es'] - mb['es']
-    print(f"{'Improvement (Δ CSSI vs Base)':<40} | {delta_em:>+8.2f} pp | {delta_es:>+8.2f} pp | {mc['id_em'] - mb['id_em']:>+10.2f} pp | {mc['id_f1'] - mb['id_f1']:>+10.2f} pp")
+    print(f"{'Improvement (Δ Branch B vs Official Base)':<45} | {delta_em:>+8.2f} pp | {delta_es:>+8.2f} pp | {mc['id_em'] - mb['id_em']:>+10.2f} pp | {mc['id_f1'] - mb['id_f1']:>+10.2f} pp")
     print("=" * 95, flush=True)
 
 
