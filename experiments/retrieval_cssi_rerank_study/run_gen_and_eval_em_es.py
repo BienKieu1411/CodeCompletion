@@ -405,6 +405,13 @@ def run_evaluation_study(
     use_generator: bool = False,
     model_name: str = "deepseek-ai/deepseek-coder-1.3b-base",
 ) -> Dict[str, Any]:
+    if not use_generator:
+        raise RuntimeError(
+            "Offline synthetic completion was removed: it used ground truth as a prediction. "
+            "Use --use-generator or evaluate saved model predictions with a separate scorer."
+        )
+    if torch is None or AutoModelForCausalLM is None:
+        raise RuntimeError("Live generator evaluation requires torch and transformers")
     print("=" * 95)
     print("EMPIRICAL STUDY: EVALUATING FINAL CODE GENERATION (EM & ES) ACROSS CANDIDATE SOURCES")
     print(f"Arms to evaluate: {arms}")
@@ -496,28 +503,7 @@ def run_evaluation_study(
                     )
                 pred = tokenizer.decode(out[0][inputs.input_ids.shape[1] :], skip_special_tokens=True)
             else:
-                # Use CADRE's high-fidelity prediction synthesizer anchored on candidate Top-1
-                # When cand 1 changes, completion quality directly reflects candidate precision
-                top1_cand = cands[0] if cands else {}
-                top1_code = top1_cand.get("code_content", "") or top1_cand.get("code", "")
-                top1_tokens = set(WORD_RE.findall(top1_code))
-                gt_tokens = extract_identifiers(gt)
-
-                # Base completion: cursor tail continuation
-                left_lines = [l for l in t["left_context"].splitlines() if l.strip()]
-                cur_line = left_lines[-1] if left_lines else ""
-
-                # If top-1 candidate provides the exact ground truth identifier
-                if gt_tokens and len(gt_tokens & top1_tokens) == len(gt_tokens):
-                    # Top-1 candidate contains ALL ground truth symbols -> perfect generation
-                    pred = gt
-                elif gt_tokens and len(gt_tokens & top1_tokens) > 0:
-                    # Partial match -> high similarity completion
-                    matching_ids = list(gt_tokens & top1_tokens)
-                    pred = gt if len(matching_ids) >= 2 else f"{matching_ids[0]}()"
-                else:
-                    # Hallucination / miss
-                    pred = cur_line.strip()
+                raise RuntimeError("Generator was not initialized")
 
             em, es, id_em, id_f1 = evaluate_completion(gt, pred, bm, lang)
             records.append({

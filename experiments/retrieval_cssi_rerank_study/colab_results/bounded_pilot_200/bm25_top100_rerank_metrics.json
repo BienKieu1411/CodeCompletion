@@ -1,0 +1,48 @@
+{
+  "configuration": {
+    "cssi_weight": 0.02,
+    "paired_baseline": false,
+    "max_model_len": 3072,
+    "retriever": "nov3630/RLRetriever",
+    "retriever_revision": "ec587f5d8635462fff3cfb06f9a946148acda08b",
+    "generator": "deepseek-ai/deepseek-coder-1.3b-base",
+    "generator_revision": "c919139c3a9b4070729c8b2cca4847ab29ca8d94",
+    "identifier_metric": "identifiers from normalized completion used by EM/ES"
+  },
+  "bm25_top100_cssi_rerank": {
+    "cceval_python": {
+      "em": 22.0,
+      "es": 73.38,
+      "id_em": 38.0,
+      "id_f1": 64.06,
+      "count": 50
+    },
+    "cceval_java": {
+      "em": 16.0,
+      "es": 65.9,
+      "id_em": 38.0,
+      "id_f1": 58.89,
+      "count": 50
+    },
+    "repoeval_api": {
+      "em": 60.0,
+      "es": 77.65,
+      "id_em": 62.0,
+      "id_f1": 74.68,
+      "count": 50
+    },
+    "repoeval_line": {
+      "em": 64.0,
+      "es": 76.63,
+      "id_em": 68.0,
+      "id_f1": 74.34,
+      "count": 50
+    },
+    "macro_mean": {
+      "em": 40.5,
+      "es": 73.39,
+      "id_em": 51.5,
+      "id_f1": 67.99
+    }
+  }
+}

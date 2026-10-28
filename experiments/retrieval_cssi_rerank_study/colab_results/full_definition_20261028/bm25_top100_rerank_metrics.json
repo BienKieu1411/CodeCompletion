@@ -1,0 +1,49 @@
+{
+  "configuration": {
+    "cssi_weight": 0.02,
+    "cssi_signal_mode": "definition",
+    "paired_baseline": false,
+    "max_model_len": 3072,
+    "retriever": "nov3630/RLRetriever",
+    "retriever_revision": "ec587f5d8635462fff3cfb06f9a946148acda08b",
+    "generator": "deepseek-ai/deepseek-coder-1.3b-base",
+    "generator_revision": "c919139c3a9b4070729c8b2cca4847ab29ca8d94",
+    "identifier_metric": "identifiers from normalized completion used by EM/ES"
+  },
+  "bm25_top100_cssi_rerank": {
+    "cceval_python": {
+      "em": 25.59,
+      "es": 71.02,
+      "id_em": 38.09,
+      "id_f1": 61.65,
+      "count": 2665
+    },
+    "cceval_java": {
+      "em": 25.11,
+      "es": 66.64,
+      "id_em": 32.49,
+      "id_f1": 58.32,
+      "count": 2139
+    },
+    "repoeval_api": {
+      "em": 40.19,
+      "es": 67.31,
+      "id_em": 44.88,
+      "id_f1": 68.16,
+      "count": 1600
+    },
+    "repoeval_line": {
+      "em": 48.5,
+      "es": 69.95,
+      "id_em": 58.06,
+      "id_f1": 69.13,
+      "count": 1600
+    },
+    "macro_mean": {
+      "em": 34.85,
+      "es": 68.73,
+      "id_em": 43.38,
+      "id_f1": 64.32
+    }
+  }
+}

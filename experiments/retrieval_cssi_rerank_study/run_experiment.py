@@ -127,9 +127,10 @@ def evaluate_chunk_list(target_ids: set[str], chunks: list[dict]) -> tuple[dict[
             first_hit_rank = rank
             mrr = 1.0 / rank
 
-        for k in [1, 3, 5, 10]:
-            if rank == k and len(target_ids & accumulated_tokens) > 0:
-                hits[k] = 1
+    # The first match is also a hit at larger K, including when fewer than K
+    # non-STOP candidates are present or the kth entry itself is STOP.
+    for k in hits:
+        hits[k] = int(first_hit_rank is not None and first_hit_rank <= k)
 
     overlap_10 = len(target_ids & accumulated_tokens)
     recall_10 = (overlap_10 / len(target_ids)) if target_ids else 0.0

@@ -46,3 +46,8 @@ local_server_results/
 
 research/
 dataset/
+
+# Large artifacts and heavy raw trace files (>100MB)
+*.tar
+experiments/retrieval_cssi_rerank_study/colab_results/full_definition_20261028/retrieval_trace.jsonl.gz
+experiments/retrieval_cssi_rerank_study/_*.py

@@ -1,0 +1,54 @@
+{
+  "raw": {
+    "cceval_python": {
+      "em": 26.0,
+      "es": 71.05,
+      "count": 2665
+    },
+    "cceval_java": {
+      "em": 25.29,
+      "es": 67.18,
+      "count": 2139
+    },
+    "repoeval_api": {
+      "em": 41.62,
+      "es": 68.0,
+      "count": 1600
+    },
+    "repoeval_line": {
+      "em": 49.81,
+      "es": 70.78,
+      "count": 1600
+    },
+    "macro_mean": {
+      "em": 35.68,
+      "es": 69.25
+    }
+  },
+  "final": {
+    "cceval_python": {
+      "em": 28.52,
+      "es": 72.95,
+      "count": 2665
+    },
+    "cceval_java": {
+      "em": 27.54,
+      "es": 68.13,
+      "count": 2139
+    },
+    "repoeval_api": {
+      "em": 44.06,
+      "es": 70.0,
+      "count": 1600
+    },
+    "repoeval_line": {
+      "em": 51.62,
+      "es": 71.9,
+      "count": 1600
+    },
+    "macro_mean": {
+      "em": 37.94,
+      "es": 70.75
+    }
+  }
+}

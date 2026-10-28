@@ -1,0 +1,110 @@
+{
+  "cssi_rerank": {
+    "cceval_python": {
+      "em": 4.0,
+      "es": 39.34,
+      "id_em": 4.0,
+      "id_f1": 31.86,
+      "count": 50
+    },
+    "cceval_java": {
+      "em": 8.0,
+      "es": 57.52,
+      "id_em": 2.0,
+      "id_f1": 32.83,
+      "count": 50
+    },
+    "repoeval_api": {
+      "em": 0.0,
+      "es": 28.15,
+      "id_em": 16.0,
+      "id_f1": 52.89,
+      "count": 50
+    },
+    "repoeval_line": {
+      "em": 0.0,
+      "es": 19.96,
+      "id_em": 4.0,
+      "id_f1": 27.19,
+      "count": 50
+    },
+    "macro_mean": {
+      "em": 3.0,
+      "es": 36.24,
+      "id_em": 6.5,
+      "id_f1": 36.19
+    }
+  },
+  "full_left": {
+    "cceval_python": {
+      "em": 4.0,
+      "es": 34.28,
+      "id_em": 4.0,
+      "id_f1": 26.17,
+      "count": 50
+    },
+    "cceval_java": {
+      "em": 2.0,
+      "es": 53.72,
+      "id_em": 0.0,
+      "id_f1": 30.88,
+      "count": 50
+    },
+    "repoeval_api": {
+      "em": 0.0,
+      "es": 24.22,
+      "id_em": 2.0,
+      "id_f1": 34.51,
+      "count": 50
+    },
+    "repoeval_line": {
+      "em": 0.0,
+      "es": 17.81,
+      "id_em": 4.0,
+      "id_f1": 21.47,
+      "count": 50
+    },
+    "macro_mean": {
+      "em": 1.5,
+      "es": 32.51,
+      "id_em": 2.5,
+      "id_f1": 28.26
+    }
+  },
+  "cssi_query": {
+    "cceval_python": {
+      "em": 6.0,
+      "es": 35.06,
+      "id_em": 6.0,
+      "id_f1": 28.67,
+      "count": 50
+    },
+    "cceval_java": {
+      "em": 2.0,
+      "es": 53.72,
+      "id_em": 0.0,
+      "id_f1": 30.88,
+      "count": 50
+    },
+    "repoeval_api": {
+      "em": 0.0,
+      "es": 24.67,
+      "id_em": 2.0,
+      "id_f1": 35.96,
+      "count": 50
+    },
+    "repoeval_line": {
+      "em": 0.0,
+      "es": 18.54,
+      "id_em": 4.0,
+      "id_f1": 23.2,
+      "count": 50
+    },
+    "macro_mean": {
+      "em": 2.0,
+      "es": 33.0,
+      "id_em": 3.0,
+      "id_f1": 29.68
+    }
+  }
+}

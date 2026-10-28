@@ -1,0 +1,20 @@
+{
+  "command": [
+    "/usr/bin/python3",
+    "-u",
+    "/content/run_bounded_full.py",
+    "--data-root",
+    "/content",
+    "--output-dir",
+    "/content/cadre-results/full_definition_20261028",
+    "--max-model-len",
+    "3072",
+    "--cssi-weight",
+    "0.02",
+    "--cssi-signal-mode",
+    "definition"
+  ],
+  "script_sha256": "bf66ccb37b24ff833e79de03c84aa9c18ff1973834b7d03cec76fd1b0e791ad4",
+  "bundle_sha256": "be013b9563889ccb083cce59864a009dc4edc15cd930050f26e8ed0f54ca968a",
+  "start_utc": "2026-10-28T05:37:06Z"
+}

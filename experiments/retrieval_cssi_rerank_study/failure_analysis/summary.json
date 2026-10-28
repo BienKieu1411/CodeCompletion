@@ -1,0 +1,106 @@
+{
+  "cceval_python": {
+    "count": 2665,
+    "outcomes": {
+      "wrong_to_wrong": 1858,
+      "wrong_to_correct": 148,
+      "correct_to_correct": 426,
+      "correct_to_wrong": 233
+    },
+    "metrics": {
+      "baseline": {
+        "em": 24.73,
+        "es": 70.47,
+        "count": 2665
+      },
+      "pred_cssi": {
+        "em": 21.54,
+        "es": 68.96,
+        "count": 2665
+      },
+      "v29": {
+        "em": 26.6,
+        "es": 71.86,
+        "count": 2665
+      }
+    }
+  },
+  "cceval_java": {
+    "count": 2139,
+    "outcomes": {
+      "wrong_to_wrong": 1511,
+      "wrong_to_correct": 142,
+      "correct_to_correct": 373,
+      "correct_to_wrong": 113
+    },
+    "metrics": {
+      "baseline": {
+        "em": 22.72,
+        "es": 63.62,
+        "count": 2139
+      },
+      "pred_cssi": {
+        "em": 24.08,
+        "es": 66.93,
+        "count": 2139
+      },
+      "v29": {
+        "em": 27.4,
+        "es": 67.89,
+        "count": 2139
+      }
+    }
+  },
+  "repoeval_api": {
+    "count": 1600,
+    "outcomes": {
+      "correct_to_correct": 469,
+      "wrong_to_wrong": 879,
+      "wrong_to_correct": 143,
+      "correct_to_wrong": 109
+    },
+    "metrics": {
+      "baseline": {
+        "em": 36.12,
+        "es": 63.43,
+        "count": 1600
+      },
+      "pred_cssi": {
+        "em": 38.25,
+        "es": 65.09,
+        "count": 1600
+      },
+      "v29": {
+        "em": 43.88,
+        "es": 70.05,
+        "count": 1600
+      }
+    }
+  },
+  "repoeval_line": {
+    "count": 1600,
+    "outcomes": {
+      "wrong_to_wrong": 758,
+      "correct_to_correct": 631,
+      "wrong_to_correct": 141,
+      "correct_to_wrong": 70
+    },
+    "metrics": {
+      "baseline": {
+        "em": 43.81,
+        "es": 66.79,
+        "count": 1600
+      },
+      "pred_cssi": {
+        "em": 48.25,
+        "es": 69.33,
+        "count": 1600
+      },
+      "v29": {
+        "em": 51.12,
+        "es": 71.24,
+        "count": 1600
+      }
+    }
+  }
+}
