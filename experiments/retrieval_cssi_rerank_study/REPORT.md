@@ -128,3 +128,44 @@ Kết quả thực nghiệm 8.004 tác vụ mang lại một đóng góp lý thu
 2. **Thiết kế tối ưu của CADRE:** 
    - Retriever truy vấn bằng 100% ngữ cảnh cục bộ sâu nhất sát cursor.
    - CSSI đóng vai trò bộ lọc định hướng cấu trúc (Structural Arbiter) ở tầng **Reranking**, và bộ hướng dẫn cú pháp ở tầng **Generation Prompt**.
+
+
+---
+
+## 5. Phần 3: Ảnh Hưởng Đến Kết Quả Sinh Mã Cuối Cùng (End-to-End Generation: EM, ES, ID-F1)
+
+Nhằm làm sáng tỏ câu hỏi: *"Khi nguồn ứng viên Top-10 thay đổi do mở rộng left context hoặc do CSSI rerank, chất lượng sinh mã cuối cùng (EM, ES) của mô hình biến đổi như thế nào?"*, chúng tôi tiến hành chạy sinh mã và đánh giá chuẩn theo 4 cấu hình ứng viên trên toàn bộ 8.004 tác vụ:
+
+1. **Arm 1 (Standard Tail - Baseline):** Sử dụng Top-10 ứng viên từ truy vấn chuẩn 508 tail tokens.
+2. **Arm 2 (Full Left Context):** Sử dụng Top-10 ứng viên khi mở rộng left context vào truy vấn (BM25 bị loãng).
+3. **Arm 3 (CSSI-in-Query):** Sử dụng Top-10 ứng viên khi ép CSSI vào câu truy vấn 512 tokens (`256 CSSI + 252 tail`).
+4. **Arm 4 (CSSI Structural Rerank):** Sử dụng Top-10 ứng viên từ truy vấn chuẩn nhưng được **tái xếp hạng bởi CSSI Structural Prior**.
+
+### 5.1 Bảng Kết Quả Sinh Mã Toàn Diện (Official Benchmark Protocol trên 8.004 Tasks)
+
+| Cấu Hình Ứng Viên Đầu Vào | Benchmark | Exact Match (EM) | Edit Sim (ES) | Identifier EM | Identifier F1 |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **Arm 1: Standard Tail (RLCoder Base)** | cceval_python | 27.73% | 49.22% | 27.84% | 41.23% |
+| | cceval_java | 29.27% | 52.17% | 29.64% | 47.49% |
+| | repoeval_api | 54.62% | 64.62% | 54.88% | 67.55% |
+| | repoeval_line | 37.38% | 51.48% | 41.88% | 52.72% |
+| | **Macro Mean** | **37.25%** | **54.37%** | **38.56%** | **52.25%** |
+| **Arm 2: Full Left Context (Expanded)** | cceval_python | 22.63% | 45.00% | 22.74% | 35.15% |
+| | cceval_java | 26.18% | 49.49% | 26.55% | 44.44% |
+| | repoeval_api | 45.00% | 57.02% | 45.44% | 60.99% |
+| | repoeval_line | 33.00% | 48.63% | 37.44% | 48.76% |
+| | **Macro Mean** | **31.70%** (*-5.55 pp*) | **50.04%** (*-4.33 pp*) | **33.04%** | **47.33%** |
+| **Arm 3: CSSI in Query (512 Budget)** | cceval_python | 22.66% | 44.89% | 22.74% | 34.94% |
+| | cceval_java | 26.32% | 49.58% | 26.69% | 44.48% |
+| | repoeval_api | 44.69% | 56.86% | 45.19% | 60.65% |
+| | repoeval_line | 33.19% | 48.78% | 37.62% | 49.06% |
+| | **Macro Mean** | **31.71%** (*-5.54 pp*) | **50.03%** (*-4.34 pp*) | **33.06%** | **47.28%** |
+| **Arm 4: CSSI Structural Rerank (Proposed)**| cceval_python | **28.67%** (+0.94 pp) | **50.08%** (+0.86 pp) | **28.78%** | **42.35%** |
+| | cceval_java | **31.65%** (+2.38 pp) | **53.80%** (+1.63 pp) | **32.02%** | **49.39%** |
+| | repoeval_api | **59.06%** (+4.44 pp) | **67.19%** (+2.57 pp) | **59.19%** | **69.82%** |
+| | repoeval_line | **43.00%** (+5.62 pp) | **55.06%** (+3.58 pp) | **47.25%** | **56.96%** |
+| | **Macro Mean** | **40.60%** (**+3.35 pp**) | **56.53%** (**+2.16 pp**) | **41.81%** (**+3.25 pp**) | **54.63%** (**+2.38 pp**) |
+
+### 5.2 Kết Luận Thực Nghiệm
+1. **Khi Top-10 bị biến đổi do mở rộng Left Context hoặc nhồi CSSI vào Query 512:** Macro EM sụt giảm nghiêm trọng từ **37.25% xuống 31.70%** (-5.55 pp). Điều này chứng minh rằng việc cố gắng "cải tiến" query retrieval bằng cách đưa thêm ngữ cảnh ngoài vào một không gian 512 tokens chật hẹp chỉ mang lại tác động tiêu cực tới kết quả sinh mã cuối cùng.
+2. **Khi áp dụng CSSI Structural Reranking:** Ứng viên mang nhãn đúng được đẩy từ Rank 3–5 lên Rank 1, giúp prompt đưa mã nguồn chính xác vào tầm nhìn của LLM. Kết quả là **Macro EM tăng vọt lên 40.60% (+3.35 pp)** và **ES tăng lên 56.53% (+2.16 pp)**, đặc biệt tác vụ `repoeval_line` tăng tới **+5.62 pp EM**.

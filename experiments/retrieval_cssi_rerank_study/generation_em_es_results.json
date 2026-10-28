@@ -1,0 +1,146 @@
+{
+  "standard_tail": {
+    "cceval_python": {
+      "em": 27.73,
+      "es": 49.22,
+      "id_em": 27.84,
+      "id_f1": 41.23,
+      "count": 2665
+    },
+    "cceval_java": {
+      "em": 29.27,
+      "es": 52.17,
+      "id_em": 29.64,
+      "id_f1": 47.49,
+      "count": 2139
+    },
+    "repoeval_api": {
+      "em": 54.62,
+      "es": 64.62,
+      "id_em": 54.88,
+      "id_f1": 67.55,
+      "count": 1600
+    },
+    "repoeval_line": {
+      "em": 37.38,
+      "es": 51.48,
+      "id_em": 41.88,
+      "id_f1": 52.72,
+      "count": 1600
+    },
+    "macro_mean": {
+      "em": 37.25,
+      "es": 54.37,
+      "id_em": 38.56,
+      "id_f1": 52.25
+    }
+  },
+  "full_left": {
+    "cceval_python": {
+      "em": 22.63,
+      "es": 45.0,
+      "id_em": 22.74,
+      "id_f1": 35.15,
+      "count": 2665
+    },
+    "cceval_java": {
+      "em": 26.18,
+      "es": 49.49,
+      "id_em": 26.55,
+      "id_f1": 44.44,
+      "count": 2139
+    },
+    "repoeval_api": {
+      "em": 45.0,
+      "es": 57.02,
+      "id_em": 45.44,
+      "id_f1": 60.99,
+      "count": 1600
+    },
+    "repoeval_line": {
+      "em": 33.0,
+      "es": 48.63,
+      "id_em": 37.44,
+      "id_f1": 48.76,
+      "count": 1600
+    },
+    "macro_mean": {
+      "em": 31.7,
+      "es": 50.04,
+      "id_em": 33.04,
+      "id_f1": 47.33
+    }
+  },
+  "cssi_query": {
+    "cceval_python": {
+      "em": 22.66,
+      "es": 44.89,
+      "id_em": 22.74,
+      "id_f1": 34.94,
+      "count": 2665
+    },
+    "cceval_java": {
+      "em": 26.32,
+      "es": 49.58,
+      "id_em": 26.69,
+      "id_f1": 44.48,
+      "count": 2139
+    },
+    "repoeval_api": {
+      "em": 44.69,
+      "es": 56.86,
+      "id_em": 45.19,
+      "id_f1": 60.65,
+      "count": 1600
+    },
+    "repoeval_line": {
+      "em": 33.19,
+      "es": 48.78,
+      "id_em": 37.62,
+      "id_f1": 49.06,
+      "count": 1600
+    },
+    "macro_mean": {
+      "em": 31.71,
+      "es": 50.03,
+      "id_em": 33.06,
+      "id_f1": 47.28
+    }
+  },
+  "cssi_rerank": {
+    "cceval_python": {
+      "em": 28.67,
+      "es": 50.08,
+      "id_em": 28.78,
+      "id_f1": 42.35,
+      "count": 2665
+    },
+    "cceval_java": {
+      "em": 31.65,
+      "es": 53.8,
+      "id_em": 32.02,
+      "id_f1": 49.39,
+      "count": 2139
+    },
+    "repoeval_api": {
+      "em": 59.06,
+      "es": 67.19,
+      "id_em": 59.19,
+      "id_f1": 69.82,
+      "count": 1600
+    },
+    "repoeval_line": {
+      "em": 43.0,
+      "es": 55.06,
+      "id_em": 47.25,
+      "id_f1": 56.96,
+      "count": 1600
+    },
+    "macro_mean": {
+      "em": 40.6,
+      "es": 56.53,
+      "id_em": 41.81,
+      "id_f1": 54.63
+    }
+  }
+}
