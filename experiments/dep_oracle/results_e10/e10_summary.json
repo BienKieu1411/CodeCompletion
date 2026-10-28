@@ -1,0 +1,298 @@
+{
+ "n": 8004,
+ "folds_sha": "5e8a1738",
+ "em": {
+  "b1536 (CADRE v2.8)": {
+   "cceval_python": 25.14,
+   "cceval_java": 26.23,
+   "repoeval_api": 40.56,
+   "repoeval_line": 48.94,
+   "primary_mean": 32.85
+  },
+  "test-tuned M_set": {
+   "cceval_python": 26.98,
+   "cceval_java": 27.12,
+   "repoeval_api": 44.0,
+   "repoeval_line": 51.12,
+   "primary_mean": 35.49
+  },
+  "crossfit M_set": {
+   "cceval_python": 26.53,
+   "cceval_java": 27.07,
+   "repoeval_api": 43.81,
+   "repoeval_line": 51.0,
+   "primary_mean": 35.17
+  },
+  "conf3 (E9c)": {
+   "cceval_python": 26.98,
+   "cceval_java": 27.12,
+   "repoeval_api": 44.0,
+   "repoeval_line": 51.12,
+   "primary_mean": 35.49
+  },
+  "v2.9 published (t1472, b0.15)": {
+   "cceval_python": 27.09,
+   "cceval_java": 27.4,
+   "repoeval_api": 44.0,
+   "repoeval_line": 51.31,
+   "primary_mean": 35.55
+  },
+  "v2.9 alt (t704, b0.15)": {
+   "cceval_python": 27.05,
+   "cceval_java": 27.63,
+   "repoeval_api": 43.94,
+   "repoeval_line": 51.19,
+   "primary_mean": 35.5
+  },
+  "test-tuned M_v29": {
+   "cceval_python": 27.09,
+   "cceval_java": 27.4,
+   "repoeval_api": 44.06,
+   "repoeval_line": 51.31,
+   "primary_mean": 35.58
+  },
+  "crossfit M_v29": {
+   "cceval_python": 26.98,
+   "cceval_java": 27.44,
+   "repoeval_api": 44.0,
+   "repoeval_line": 51.31,
+   "primary_mean": 35.49
+  },
+  "learned (repo cross-fit)": {
+   "cceval_python": 26.83,
+   "cceval_java": 27.4,
+   "repoeval_api": 42.94,
+   "repoeval_line": 50.94,
+   "primary_mean": 34.88
+  },
+  "oracle3": {
+   "cceval_python": 29.79,
+   "cceval_java": 29.64,
+   "repoeval_api": 46.69,
+   "repoeval_line": 54.06,
+   "primary_mean": 38.24
+  }
+ },
+ "per_fold": {
+  "b1536 (CADRE v2.8)": {
+   "0": {
+    "cceval_python": 25.75,
+    "cceval_java": 23.77,
+    "repoeval_api": 33.0,
+    "repoeval_line": 42.75
+   },
+   "1": {
+    "cceval_python": 24.53,
+    "cceval_java": 28.71,
+    "repoeval_api": 48.12,
+    "repoeval_line": 55.12
+   }
+  },
+  "test-tuned M_set": {
+   "0": {
+    "cceval_python": 28.15,
+    "cceval_java": 24.42,
+    "repoeval_api": 36.75,
+    "repoeval_line": 46.12
+   },
+   "1": {
+    "cceval_python": 25.81,
+    "cceval_java": 29.83,
+    "repoeval_api": 51.25,
+    "repoeval_line": 56.12
+   }
+  },
+  "crossfit M_set": {
+   "0": {
+    "cceval_python": 27.25,
+    "cceval_java": 24.32,
+    "repoeval_api": 36.38,
+    "repoeval_line": 45.88
+   },
+   "1": {
+    "cceval_python": 25.81,
+    "cceval_java": 29.83,
+    "repoeval_api": 51.25,
+    "repoeval_line": 56.12
+   }
+  },
+  "conf3 (E9c)": {
+   "0": {
+    "cceval_python": 28.15,
+    "cceval_java": 24.42,
+    "repoeval_api": 36.75,
+    "repoeval_line": 46.12
+   },
+   "1": {
+    "cceval_python": 25.81,
+    "cceval_java": 29.83,
+    "repoeval_api": 51.25,
+    "repoeval_line": 56.12
+   }
+  },
+  "v2.9 published (t1472, b0.15)": {
+   "0": {
+    "cceval_python": 28.3,
+    "cceval_java": 24.79,
+    "repoeval_api": 36.75,
+    "repoeval_line": 46.0
+   },
+   "1": {
+    "cceval_python": 25.88,
+    "cceval_java": 30.02,
+    "repoeval_api": 51.25,
+    "repoeval_line": 56.62
+   }
+  },
+  "v2.9 alt (t704, b0.15)": {
+   "0": {
+    "cceval_python": 28.15,
+    "cceval_java": 25.07,
+    "repoeval_api": 36.62,
+    "repoeval_line": 45.88
+   },
+   "1": {
+    "cceval_python": 25.96,
+    "cceval_java": 30.21,
+    "repoeval_api": 51.25,
+    "repoeval_line": 56.5
+   }
+  },
+  "test-tuned M_v29": {
+   "0": {
+    "cceval_python": 28.15,
+    "cceval_java": 24.88,
+    "repoeval_api": 36.75,
+    "repoeval_line": 46.0
+   },
+   "1": {
+    "cceval_python": 26.03,
+    "cceval_java": 29.92,
+    "repoeval_api": 51.38,
+    "repoeval_line": 56.62
+   }
+  },
+  "crossfit M_v29": {
+   "0": {
+    "cceval_python": 28.15,
+    "cceval_java": 24.88,
+    "repoeval_api": 36.75,
+    "repoeval_line": 46.0
+   },
+   "1": {
+    "cceval_python": 25.81,
+    "cceval_java": 30.02,
+    "repoeval_api": 51.25,
+    "repoeval_line": 56.62
+   }
+  },
+  "learned (repo cross-fit)": {
+   "0": {
+    "cceval_python": 27.7,
+    "cceval_java": 24.79,
+    "repoeval_api": 35.0,
+    "repoeval_line": 44.62
+   },
+   "1": {
+    "cceval_python": 25.96,
+    "cceval_java": 30.02,
+    "repoeval_api": 50.88,
+    "repoeval_line": 57.25
+   }
+  },
+  "oracle3": {
+   "0": {
+    "cceval_python": 30.63,
+    "cceval_java": 27.31,
+    "repoeval_api": 38.5,
+    "repoeval_line": 48.25
+   },
+   "1": {
+    "cceval_python": 28.96,
+    "cceval_java": 31.99,
+    "repoeval_api": 54.88,
+    "repoeval_line": 59.88
+   }
+  }
+ },
+ "chosen": {
+  "M_set": {
+   "0": "conf384_1536_2304",
+   "1": "conf384_2304"
+  },
+  "M_set_test_tuned": "conf384_1536_2304",
+  "M_v29": {
+   "0": "t2048_beta0.15",
+   "1": "t1024_beta0.15"
+  },
+  "M_v29_test_tuned": "t1024_beta0.15"
+ },
+ "transfer": {
+  "M_set": {
+   "cceval->repoeval": {
+    "chosen": "conf1536_2304",
+    "em": {
+     "repoeval_api": 42.62,
+     "repoeval_line": 50.56
+    }
+   },
+   "repoeval->cceval": {
+    "chosen": "conf384_2304",
+    "em": {
+     "cceval_python": 26.38,
+     "cceval_java": 27.21
+    }
+   }
+  },
+  "M_v29": {
+   "cceval->repoeval": {
+    "chosen": "t768_beta0.15",
+    "em": {
+     "repoeval_api": 43.94,
+     "repoeval_line": 51.12
+    }
+   },
+   "repoeval->cceval": {
+    "chosen": "t1024_beta0.0",
+    "em": {
+     "cceval_python": 27.02,
+     "cceval_java": 27.26
+    }
+   }
+  }
+ },
+ "mcnemar": {
+  "crossfit M_set vs b1536, primary": [
+   166,
+   77,
+   0.0
+  ],
+  "crossfit M_v29 vs crossfit M_set, primary": [
+   48,
+   33,
+   0.1193
+  ],
+  "learned vs conf3, primary": [
+   48,
+   69,
+   0.064
+  ],
+  "learned vs conf3, repoeval_api": [
+   20,
+   37,
+   0.0331
+  ],
+  "learned vs conf3, cceval_python": [
+   28,
+   32,
+   0.6989
+  ]
+ },
+ "H1": {
+  "gain_test_tuned": 2.64,
+  "gain_crossfit": 2.32,
+  "kept": 0.879,
+  "verdict": "PASS"
+ },
+ "H3": "FAIL"
+}

@@ -1,0 +1,140 @@
+{
+ "n": {
+  "repoeval": 1600,
+  "cceval": 2665
+ },
+ "best_fixed_chosen_on_fold": {
+  "0": {
+   "repoeval": 512,
+   "cceval": 1536
+  },
+  "1": {
+   "repoeval": 1024,
+   "cceval": 1536
+  }
+ },
+ "em": {
+  "best_fixed": {
+   "repoeval": 40.94,
+   "cceval": 28.86
+  },
+  "learned3": {
+   "repoeval": 42.94,
+   "cceval": 29.94
+  },
+  "conf3": {
+   "repoeval": 43.06,
+   "cceval": 29.72
+  },
+  "oracle4": {
+   "repoeval": 46.88,
+   "cceval": 33.55
+  }
+ },
+ "per_fold": {
+  "best_fixed": {
+   "0": {
+    "repoeval": 32.75,
+    "cceval": 28.45
+   },
+   "1": {
+    "repoeval": 49.12,
+    "cceval": 29.26
+   }
+  },
+  "learned3": {
+   "0": {
+    "repoeval": 35.38,
+    "cceval": 29.43
+   },
+   "1": {
+    "repoeval": 50.5,
+    "cceval": 30.46
+   }
+  },
+  "conf3": {
+   "0": {
+    "repoeval": 36.12,
+    "cceval": 28.83
+   },
+   "1": {
+    "repoeval": 50.0,
+    "cceval": 30.61
+   }
+  },
+  "oracle4": {
+   "0": {
+    "repoeval": 38.88,
+    "cceval": 32.88
+   },
+   "1": {
+    "repoeval": 54.88,
+    "cceval": 34.21
+   }
+  }
+ },
+ "mcnemar": {
+  "learned3 vs best_fixed": {
+   "pooled": [
+    124,
+    63,
+    0.0
+   ],
+   "repoeval": [
+    64,
+    32,
+    0.0014
+   ],
+   "cceval": [
+    60,
+    31,
+    0.0031
+   ]
+  },
+  "conf3 vs best_fixed": {
+   "pooled": [
+    139,
+    82,
+    0.0001
+   ],
+   "repoeval": [
+    68,
+    34,
+    0.001
+   ],
+   "cceval": [
+    71,
+    48,
+    0.0433
+   ]
+  },
+  "learned3 vs conf3": {
+   "pooled": [
+    36,
+    32,
+    0.7163
+   ],
+   "repoeval": [
+    13,
+    15,
+    0.8506
+   ],
+   "cceval": [
+    23,
+    17,
+    0.4296
+   ]
+  }
+ },
+ "verdict": "PASS",
+ "reference_E2_task_level": {
+  "learned3": {
+   "repoeval": 43.12,
+   "cceval": 29.83
+  },
+  "best_fixed": {
+   "repoeval": 41.38,
+   "cceval": 28.86
+  }
+ }
+}

@@ -532,6 +532,19 @@ Cô hướng dẫn yêu cầu chỉ ra pain point bằng số liệu, gồm hai 
     - **E9d FAIL** (CCEval-py hòa; gộp 34/24, p=0.24). Trục nội dung (raw so với tree/spec) gần như không thêm gì khi đã có trục budget, khớp với E9-pre (mục 34).
     - **E9c tái lập trên L4:** conf3 vs CADRE gộp 159/55, p<1e-4; E9a, E9b PASS lần nữa. Lệch so với Colab A100 ≤0.3 EM (API 44.12 vs 44.44 simple, CCEval 26.53 vs 26.42). Kết luận E9c vững qua hai GPU / hai lần chạy.
 
+38. **Kiểm tra CADRE v2.9 của partner (BienKieu `d811afc`): về bản chất là E9c + cổng slack + điểm grounding; độ chính xác ngang E9c** (2026-10-28, CPU, so cặp dự đoán v2.9 của partner với dự đoán E9d trên Modal, scorer CADRE). v2.9 dùng đúng budget {384, 1536, 2304}, cửa sổ 3072, quy tắc min_left 256 cho budget > 1536 và `first_line_conf` (chép nguyên văn từ `budget_sweep.py`). Phần thêm: (a) cổng slack: mẫu có `len(left) + 2304 + 64 ≤ 3072` chỉ được chọn trong {1536, 2304}, tức bỏ b384 (2940/8004 mẫu); (b) điểm = conf + 0.15 × tỉ lệ identifier ở dòng đầu có trong context.
+
+    | EM official | CADRE v2.8 (b1536) | E9c conf3 (Modal) | conf3 + cổng slack (offline) | v2.9 partner | v2.9 vs E9c W/L, p |
+    |---|---|---|---|---|---|
+    | RepoEval-API | 40.56 | 44.00 | 43.94 | 43.88 | 9/11, 0.82 |
+    | CCEval-py | 25.14 | 26.98 | 26.98 | 26.60 | 31/41, 0.29 |
+    | RepoEval-line | 48.94 | 51.12 | 51.25 | 51.12 | 7/7, 1.0 |
+    | CCEval-java | 26.23 | 27.12 | 27.40 | 27.40 | 16/10, 0.33 |
+
+    - Không chênh lệch nào có ý nghĩa thống kê. Điểm grounding (β=0.15) không thêm gì (CCEval-py 26.60 so với 26.98 nếu chỉ dùng cổng slack). Cổng slack giữ nguyên độ chính xác và bớt khoảng 12% lượt sinh: đây là lợi về chi phí, không phải về độ chính xác.
+    - Không có dev split cho β và luật slack; nếu partner chỉnh trên test thì có rủi ro rò test. Docstring của v2.9 không ghi nguồn E2/E9c, cần thống nhất ghi công trước khi viết bài.
+    - Cảnh báo khi đọc bảng: v2.9 và E9d là hai lần sinh khác nhau, nên khác biệt từng mẫu có lẫn nhiễu số học (khoảng 3–10% dự đoán khác nhau dù cùng cấu hình).
+
 ## Bước tiếp theo
 **Chuyển sang Colab (2026-10-25):** Modal gần hết credit. Session mới đọc `HANDOFF_COLAB.md` trước: cách chạy trên Colab (`colab_runner.ipynb`, `colab_bundle.zip`, tạo lại bằng `make_colab_bundle.py`) và danh sách việc tiếp theo theo thứ tự ưu tiên.
 
@@ -559,6 +572,25 @@ Cô hướng dẫn yêu cầu chỉ ra pain point bằng số liệu, gồm hai 
 
 Báo cáo cho cô (kết quả 1–7, 2026-10-19): https://claude.ai/artifact/A4GkM2hapbik8xJyc13fth. Nguồn là `report_supervisor.html`.
 - Bản cũ https://claude.ai/code/artifact/75b317db-f706-449f-99da-8ff63a4bb782 không mở được từ tài khoản hiện tại.
+
+39. **E10: cross-fit 2 fold theo repo cho mọi tham số của E9c / v2.9 và cho chính sách học — H1 PASS, H3 FAIL, E10b PASS** (2026-10-28, CPU local, 0 GPU). Kế hoạch ở `DEV_SPLIT_PLAN.md`. Fold: `dev_split.py` `27d5489a` → `dev_folds.json` `5e8a1738` (seed `e10-2026-10-28`; RepoEval 4/4 repo, CCEval-py 240/231 repo = 1332/1333 task, java 119/120 repo). Repo của CCEval lấy từ `metadata.repository` trong `docs/research/audits/aligncoder_dataset/data/cceval/*/test.jsonl`.
+    - **E10** (`e10_crossfit.py` `ec7a4ec0`, dữ liệu E9d Modal, scorer CADRE official, `results_e10/e10_summary.json`). Chọn chính sách trên fold f theo EM trung bình 4 bộ, chấm trên fold 1−f, gộp lại. Mốc khớp: b1536 = 40.56 / 25.14, conf3 = 44.00 / 26.98 (API / CCEval-py).
+
+      | | API | CCEval-py | line | java |
+      |---|---|---|---|---|
+      | b1536 (CADRE v2.8) | 40.56 | 25.14 | 48.94 | 26.23 |
+      | conf3 = M_set chọn trên test | 44.00 | 26.98 | 51.12 | 27.12 |
+      | **M_set cross-fit** (fold0 chọn conf3, fold1 chọn conf{384,2304}) | **43.81** | **26.53** | 51.00 | 27.07 |
+      | v2.9 tái hiện (t1472, β0.15; grounding tự viết) | 44.00 | 27.09 | 51.31 | 27.40 |
+      | M_v29 cross-fit (fold0 t2048 β0.15, fold1 t1024 β0.15) | 44.00 | 26.98 | 51.31 | 27.44 |
+      | learned (logistic, repo cross-fit) | 42.94 | 26.83 | 50.94 | 27.40 |
+      | oracle3 | 46.69 | 29.79 | 54.06 | 29.64 |
+
+      - **H1 PASS:** mức tăng trung bình 2 bộ chính so với b1536: chọn trên test +2.64, cross-fit +2.32 (giữ 88% ≥ 80%); McNemar gộp 166/77, p < 1e-4.
+      - H2 (mô tả): M_v29 cross-fit hơn M_set cross-fit 48/33, p = 0.12, không có ý nghĩa. β = 0.15 được chọn ở cả hai fold, ngưỡng slack thì không ổn định (2048 / 1024).
+      - **H3 FAIL:** learned kém conf3 (gộp 48/69, p = 0.064; API 20/37, p = 0.033). Bộ chọn của bài là conf argmax, không claim bản học.
+      - Chuyển giao giữa benchmark: chọn trên CCEval → RepoEval chọn conf{1536,2304} (API 42.62); chọn trên RepoEval → CCEval chọn conf{384,2304} (26.38). Chọn bộ budget phụ thuộc benchmark; conf3 là lựa chọn chung an toàn.
+    - **E10b** (`e10b_e2_repo_crossfit.py` `d195642d`, sweep AlignCoder 2k dev + hold-out, simple_score, `results_e10/e10b_summary.json`). E2 gốc cross-fit dev↔hold-out theo task, và CV trên CCEval dùng nhóm giả ngẫu nhiên, nên cùng repo nằm ở cả hai phía. Chia lại theo repo: learned3 42.94 / 29.94 (gốc 43.12 / 29.83), best fixed chọn trên fold 40.94 / 28.86, conf3 43.06 / 29.72. **PASS:** learned3 vs best fixed gộp 124/63 p < 1e-4 (RepoEval p = 0.001, CCEval p = 0.003). learned3 vs conf3 36/32, p = 0.72. Kết luận E2 đứng vững khi chia theo repo; phần học không thêm gì so với conf3.
 
 ## Quy tắc làm việc
 - Không quay lại vòng audit evaluator/manifest, không đổi hướng nghiên cứu khi chưa có số liệu.
