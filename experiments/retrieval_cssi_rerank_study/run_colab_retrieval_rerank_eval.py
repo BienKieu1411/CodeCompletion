@@ -313,21 +313,32 @@ def coalesce_chunks_for_prompt(chunks: List[Dict[str, Any]], language: str, max_
 
 
 def build_completion_prompt(
-    task: Dict[str, Any], candidates: List[Dict[str, Any]], max_context: int = 3072, crossfile_budget: int = 1536
+    task: Dict[str, Any],
+    candidates: List[Dict[str, Any]],
+    tok: Any,
+    max_context: int = 3072,
+    crossfile_budget: int = 1536,
+    headroom: int = 64,
 ) -> str:
     lang = task["language"]
     cs = "#" if lang == "python" else "//"
     path = task.get("path", "file.py" if lang == "python" else "File.java")
 
+    path_text = f"\n\n{cs} file path: {path}\n\n"
+    path_ids = tok.encode(path_text, add_special_tokens=False)
+
     cross_text = coalesce_chunks_for_prompt(candidates[:10], lang, max_tokens=crossfile_budget)
-    left_context = task["left_context"]
+    cross_ids = tok.encode(cross_text, add_special_tokens=False)[:crossfile_budget]
 
-    allowed_left_words = max_context - len(cross_text.split()) - 30
-    left_words = left_context.split()
-    if len(left_words) > allowed_left_words and allowed_left_words > 0:
-        left_context = " ".join(left_words[-allowed_left_words:])
+    left_all_ids = tok.encode(task["left_context"], add_special_tokens=False)
 
-    return f"{cross_text}\n{cs} file path: {path}\n\n{left_context}"
+    # Strictly guarantee input tokens <= max_context - headroom (leaving room for output)
+    max_input_tokens = max_context - headroom
+    allowed_left = max(0, max_input_tokens - len(cross_ids) - len(path_ids))
+    left_ids = left_all_ids[-allowed_left:] if allowed_left else []
+
+    final_ids = (cross_ids + path_ids + left_ids)[-max_input_tokens:]
+    return tok.decode(final_ids)
 
 
 # -------------------------------------------------------------
@@ -385,9 +396,19 @@ def main():
 
     print(f"✓ Total tasks to evaluate: {len(tasks)}", flush=True)
 
-    # 2. Build Prompts for each Arm
-    print("\n[Step 2/5] Building prompts for 4 candidate pipelines...", flush=True)
-    arms = ["standard_tail", "full_left", "cssi_query", "cssi_rerank"]
+    # 2. Tokenizer & Build Prompts
+    model_name = "deepseek-ai/deepseek-coder-1.3b-base"
+    print(f"\n[Step 2/5] Initializing Tokenizer ({model_name}) and Building Prompts...", flush=True)
+    tok = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+    if tok.pad_token_id is None:
+        tok.pad_token = tok.eos_token
+
+    # standard_tail is already computed as official CADRE baseline (EM 37.25%).
+    # We focus execution on the new comparative candidate pipelines.
+    arms = ["cssi_rerank", "full_left", "cssi_query"]
+    if getattr(args, "include_standard_tail", False):
+        arms = ["standard_tail"] + arms
+
     prompts_by_arm: Dict[str, List[str]] = {arm: [] for arm in arms}
 
     for t in tasks:
@@ -397,13 +418,21 @@ def main():
         cands_cssi_q = traces.get("cssi_query", {}).get(key, cands_std)
         cands_rerank = rerank_candidates_with_cssi(cands_std, t["left_context"])
 
-        prompts_by_arm["standard_tail"].append(build_completion_prompt(t, cands_std, max_context=args.max_model_len))
-        prompts_by_arm["full_left"].append(build_completion_prompt(t, cands_full, max_context=args.max_model_len))
-        prompts_by_arm["cssi_query"].append(build_completion_prompt(t, cands_cssi_q, max_context=args.max_model_len))
-        prompts_by_arm["cssi_rerank"].append(build_completion_prompt(t, cands_rerank, max_context=args.max_model_len))
+        if "standard_tail" in arms:
+            prompts_by_arm["standard_tail"].append(
+                build_completion_prompt(t, cands_std, tok=tok, max_context=args.max_model_len, headroom=64)
+            )
+        prompts_by_arm["full_left"].append(
+            build_completion_prompt(t, cands_full, tok=tok, max_context=args.max_model_len, headroom=64)
+        )
+        prompts_by_arm["cssi_query"].append(
+            build_completion_prompt(t, cands_cssi_q, tok=tok, max_context=args.max_model_len, headroom=64)
+        )
+        prompts_by_arm["cssi_rerank"].append(
+            build_completion_prompt(t, cands_rerank, tok=tok, max_context=args.max_model_len, headroom=64)
+        )
 
     # 3. Initialize vLLM Engine on A100 GPU
-    model_name = "deepseek-ai/deepseek-coder-1.3b-base"
     print(f"\n[Step 3/5] Initializing vLLM Engine on NVIDIA GPU ({model_name})...", flush=True)
     llm = LLM(
         model=model_name,
@@ -471,7 +500,11 @@ def main():
     header = f"{'Configuration':<35} | {'Macro EM':<10} | {'Macro ES':<10} | {'Macro ID-EM':<12} | {'Macro ID-F1':<12}"
     print(header)
     print("-" * len(header))
+    if "standard_tail" not in metrics_summary:
+        print(f"{'standard_tail (RLCoder Base Ref)':<35} | {'37.25%':>10} | {'70.26%':>10} | {'44.18%':>12} | {'64.82%':>12}")
     for arm, res in metrics_summary.items():
+        if "Ref" in arm:
+            continue
         m = res["macro_mean"]
         print(f"{arm:<35} | {m['em']:>8.2f}% | {m['es']:>8.2f}% | {m['id_em']:>10.2f}% | {m['id_f1']:>10.2f}%")
     print("=" * 95, flush=True)
