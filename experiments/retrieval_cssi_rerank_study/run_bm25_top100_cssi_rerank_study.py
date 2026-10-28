@@ -32,6 +32,13 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+import subprocess
+for pkg in ["rank_bm25", "fuzzywuzzy", "python-Levenshtein", "editdistance"]:
+    try:
+        __import__(pkg.replace("-", "_"))
+    except ImportError:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", pkg])
+
 import numpy as np
 import torch
 from rank_bm25 import BM25Okapi

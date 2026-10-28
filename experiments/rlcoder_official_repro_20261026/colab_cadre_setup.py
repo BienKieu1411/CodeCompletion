@@ -25,7 +25,7 @@ if Path("/content/full_benchmark_8004_bundle.tar.gz").is_file():
 print("=== 2. Installing Dependencies ===", flush=True)
 subprocess.check_call([
     "pip", "install", "-q",
-    "vllm", "fuzzywuzzy", "python-Levenshtein", "editdistance",
+    "vllm", "rank_bm25", "fuzzywuzzy", "python-Levenshtein", "editdistance",
     "tree-sitter==0.20.4", "huggingface_hub", "transformers", "accelerate"
 ])
 
