@@ -26,7 +26,7 @@ TRACE_STD_PATH = MB_DIR / "rlcoder_full_8004_retrieval_trace.jsonl.gz"
 TRACE_FULL_PATH = MB_DIR / "rlcoder_full_left_standard_8004_trace.jsonl.gz"
 TRACE_CSSI_PATH = MB_DIR / "rlcoder_full_left_cssi_guided_8004_trace.jsonl.gz"
 
-RUN_SCRIPT = STUDY_DIR / "run_colab_retrieval_rerank_eval.py"
+RUN_SCRIPT = STUDY_DIR / "run_bm25_top100_cssi_rerank_study.py"
 SETUP_SCRIPT = REPRO_DIR / "colab_cadre_setup.py"
 
 
@@ -86,7 +86,7 @@ def main() -> None:
         cadre_tar = Path("/tmp/cadre_official.tar.gz")
         subprocess.run(["tar", "-czf", str(cadre_tar), "-C", str(ROOT_DIR), "cadre_official"], check=True)
         run_colab(["upload", "-s", SESSION_NAME, str(cadre_tar), "/content/cadre_official.tar.gz"])
-        run_colab(["upload", "-s", SESSION_NAME, str(RUN_SCRIPT), "/content/run_colab_retrieval_rerank_eval.py"])
+        run_colab(["upload", "-s", SESSION_NAME, str(RUN_SCRIPT), "/content/run_bm25_top100_cssi_rerank_study.py"])
 
         print("=== Step 3: Checking / Uploading Bundles and Traces ===", flush=True)
         check_py = STUDY_DIR / "_check_remote.py"
@@ -94,8 +94,6 @@ def main() -> None:
 import os
 print("bundle:", os.path.exists("/content/full_benchmark_8004_bundle.tar.gz"))
 print("trace_std:", os.path.exists("/content/rlcoder_full_8004_retrieval_trace.jsonl.gz"))
-print("trace_full:", os.path.exists("/content/rlcoder_full_left_standard_8004_trace.jsonl.gz"))
-print("trace_cssi:", os.path.exists("/content/rlcoder_full_left_cssi_guided_8004_trace.jsonl.gz"))
 try:
     import vllm
     print("setup_done: True")
@@ -105,8 +103,6 @@ except Exception:
         res_chk = run_colab(["exec", "-s", SESSION_NAME, "-f", str(check_py), "--timeout", "60"], check=False)
         has_bundle = "bundle: True" in res_chk.stdout
         has_trace_std = "trace_std: True" in res_chk.stdout
-        has_trace_full = "trace_full: True" in res_chk.stdout
-        has_trace_cssi = "trace_cssi: True" in res_chk.stdout
         setup_done = "setup_done: True" in res_chk.stdout
 
         if not has_bundle:
@@ -115,12 +111,6 @@ except Exception:
         if not has_trace_std:
             print(f"Uploading {TRACE_STD_PATH.name}...", flush=True)
             run_colab(["upload", "-s", SESSION_NAME, str(TRACE_STD_PATH), "/content/rlcoder_full_8004_retrieval_trace.jsonl.gz"])
-        if not has_trace_full:
-            print(f"Uploading {TRACE_FULL_PATH.name}...", flush=True)
-            run_colab(["upload", "-s", SESSION_NAME, str(TRACE_FULL_PATH), "/content/rlcoder_full_left_standard_8004_trace.jsonl.gz"])
-        if not has_trace_cssi:
-            print(f"Uploading {TRACE_CSSI_PATH.name}...", flush=True)
-            run_colab(["upload", "-s", SESSION_NAME, str(TRACE_CSSI_PATH), "/content/rlcoder_full_left_cssi_guided_8004_trace.jsonl.gz"])
 
         if not setup_done:
             print("=== Step 4: Setting Up Remote Dependencies (vLLM, tree-sitter, etc.) ===", flush=True)
@@ -135,7 +125,7 @@ except Exception:
         print("Waiting 10s for kernel initialization...", flush=True)
         time.sleep(10)
 
-        print("=== Step 6: Running Live vLLM Generation on A100 GPU ===", flush=True)
+        print("=== Step 6: Running BM25 Top 100 CSSI Rerank & Live vLLM Generation on A100 GPU ===", flush=True)
         remote_runner_py = STUDY_DIR / "_remote_runner.py"
         limit_arg = ""
         if args.limit_per_bm:
@@ -147,9 +137,9 @@ except Exception:
 import os, sys, subprocess
 sys.path.insert(0, "/content/cadre_official")
 cmd = [
-    "python3", "-u", "/content/run_colab_retrieval_rerank_eval.py",
+    "python3", "-u", "/content/run_bm25_top100_cssi_rerank_study.py",
     "--data-root", "/content",
-    "--output-dir", "/content/cadre-results/rerank_study",
+    "--output-dir", "/content/cadre-results/bm25_top100_rerank",
     "--max-model-len", "3072",
 ]
 lim = "{limit_arg}".strip()
@@ -172,12 +162,16 @@ if proc.returncode != 0:
         zip_script = STUDY_DIR / "_zip_results.py"
         zip_script.write_text("""
 import shutil
-shutil.make_archive("/content/cadre-results/rerank_study", 'tar', root_dir="/content/cadre-results", base_dir="rerank_study")
+shutil.make_archive("/content/cadre-results/bm25_top100_rerank", 'tar', root_dir="/content/cadre-results", base_dir="bm25_top100_rerank")
 print("Archive created successfully.", flush=True)
 """)
         stream_colab_file(SESSION_NAME, zip_script, timeout=300)
 
-        run_colab(["download", "-s", SESSION_NAME, "/content/cadre-results/rerank_study/rerank_study_metrics.json", str(local_out / "rerank_study_metrics.json")])
+        run_colab(["download", "-s", SESSION_NAME, "/content/cadre-results/bm25_top100_rerank/bm25_top100_rerank_metrics.json", str(local_out / "bm25_top100_rerank_metrics.json")])
+        run_colab(["download", "-s", SESSION_NAME, "/content/cadre-results/bm25_top100_rerank.tar", str(local_out / "bm25_top100_rerank.tar")])
+
+        subprocess.run(["tar", "-xf", str(local_out / "bm25_top100_rerank.tar"), "-C", str(local_out)], check=True)
+        print(f"\n✓ Successfully downloaded and extracted results to {local_out}!", flush=True)
         run_colab(["download", "-s", SESSION_NAME, "/content/cadre-results/rerank_study.tar", str(local_out / "rerank_study.tar")])
 
         subprocess.run(["tar", "-xf", str(local_out / "rerank_study.tar"), "-C", str(local_out)], check=True)
